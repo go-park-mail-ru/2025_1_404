@@ -15,7 +15,7 @@ func main() {
 	// Эндпоинт для объявлений
 	mux.HandleFunc("/offers", getOffers)
 	// Эндпоинт для регистрации пользователей
-	mux.HandleFunc("/auth/register/", registerUser)
+	mux.HandleFunc("/auth/register", registerUser)
 
 	// Добавляем логирование всех запросов
 	loggedMux := loggingMiddleware(mux)
