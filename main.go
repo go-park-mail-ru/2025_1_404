@@ -1,6 +1,9 @@
 package main
 
 import (
+	"github.com/go-park-mail-ru/2025_1_404/internal/auth"
+	"github.com/go-park-mail-ru/2025_1_404/internal/offers"
+	"github.com/go-park-mail-ru/2025_1_404/utils"
 	"log"
 	"net/http"
 )
@@ -11,17 +14,19 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Обработка OPTIONS-запросов
-	mux.HandleFunc("/", corsMiddleware)
-	// Эндпоинт для объявлений
-	mux.HandleFunc("/offers", getOffers)
-	// Эндпоинт для регистрации пользователей
-	mux.HandleFunc("/auth/register", registerUser)
+	mux.HandleFunc("/", utils.CorsMiddleware)
 
-	// Добавляем логирование всех запросов
-	loggedMux := loggingMiddleware(mux)
+	// Объявления
+	mux.HandleFunc("/api/v1/offers", offers.GetOffersHandler)
+
+	// Авторизация
+	mux.HandleFunc("/api/v1/auth/register", auth.RegisterHandler)
+	mux.HandleFunc("/api/v1/auth/login", auth.LoginHandler)
+	mux.HandleFunc("/api/v1/auth/me", auth.MeHandler)
+	mux.HandleFunc("/api/v1/auth/logout", auth.LogoutHandler)
 
 	// Запуск сервера
-	err := http.ListenAndServe(":8000", loggedMux)
+	err := http.ListenAndServe(":8000", mux)
 	if err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)
 	}
