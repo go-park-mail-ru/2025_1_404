@@ -53,6 +53,21 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// Создаём пользователя
 	user := CreateUser(req.Email, string(hashedPassword), req.FirstName, req.LastName)
 
+	token, err := GenerateJWT(user.ID)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при создании токена", http.StatusInternalServerError)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		Expires:  time.Now().Add(24 * time.Hour),
+	})
+
 	utils.SendJSONResponse(w, map[string]interface{}{
 		"id":         user.ID,
 		"email":      user.Email,
