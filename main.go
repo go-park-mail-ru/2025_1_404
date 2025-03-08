@@ -11,7 +11,7 @@ import (
 
 // Основной обработчик маршрутов
 func main() {
-	log.Println("Сервер запущен на http://localhost:8000")
+	log.Println("Сервер запущен на http://localhost:8001")
 	mux := http.NewServeMux()
 
 	// Обработка всех путей
@@ -30,7 +30,7 @@ func main() {
 	corsMux := middleware.CORSHandler(mux)
 
 	// Запуск сервера
-	err := http.ListenAndServe(":8000", corsMux)
+	err := http.ListenAndServe(":8001", corsMux)
 	if err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)
 	}
