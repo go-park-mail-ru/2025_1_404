@@ -43,15 +43,11 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Хешируем пароль
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		utils.SendErrorResponse(w, "Ошибка при хешировании пароля", http.StatusInternalServerError)
-		return
-	}
-
 	// Создаём пользователя
-	user := CreateUser(req.Email, string(hashedPassword), req.FirstName, req.LastName)
+	user, err := CreateUser(req.Email, req.Password, req.FirstName, req.LastName)
+	if err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+	}
 
 	token, err := GenerateJWT(user.ID)
 	if err != nil {
