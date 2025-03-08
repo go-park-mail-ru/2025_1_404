@@ -2,7 +2,7 @@ test:
 	go test ./... -cover
 
 build:
-	go build -o bin/server ./...
+	go build -o bin ./...
 
 run:
 	go run .
