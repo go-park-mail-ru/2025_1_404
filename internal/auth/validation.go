@@ -8,6 +8,7 @@ import (
 
 // Регулярка для email
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+var nameRegex = regexp.MustCompile(`^([А-ЯЁ])[а-яё]+$`)
 
 // ValidateEmail Валидация email
 func ValidateEmail(email string) error {
@@ -37,6 +38,14 @@ func ValidatePassword(password string) error {
 
 	if !hasUpper || !hasLower || !hasDigit {
 		return errors.New("пароль должен включать хотя бы одну букву каждого регистра и цифру")
+	}
+
+	return nil
+}
+
+func ValidateName(name string) error {
+	if name == "" || !nameRegex.MatchString(name) || len(name) > 16 {
+		return errors.New("неверное имя/фамилия")
 	}
 
 	return nil

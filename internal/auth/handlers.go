@@ -27,12 +27,20 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Валидация email и пароля
+	// Валидация email, пароля и имени/фамилии
 	if err := ValidateEmail(req.Email); err != nil {
 		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if err := ValidatePassword(req.Password); err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := ValidateName(req.FirstName); err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := ValidateName(req.LastName); err != nil {
 		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
