@@ -8,7 +8,7 @@ import (
 
 // Регулярка для email
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-var nameRegex = regexp.MustCompile(`^([А-ЯЁ])[а-яё]+$`)
+var nameRegex = regexp.MustCompile(`^[A-Za-zА-Яа-яЁё-]+$`)
 
 // ValidateEmail Валидация email
 func ValidateEmail(email string) error {
