@@ -31,8 +31,8 @@ func TestValidatePassword(t *testing.T) {
 }
 
 func TestValidateName(t *testing.T) {
-	validNames := []string{"Вадим", "Иванов", "Клёшкин"}
-	invalidNames := []string{"вадим", "Изподвыподвывертовичкин", "К.", ""}
+	validNames := []string{"Вадим", "Иванов", "Петров-сидоров"}
+	invalidNames := []string{"вадим123", "Изподвыподвывертовичкин", "К.", ""}
 
 	for _, name := range validNames {
 		if err := ValidateName(name); err != nil {

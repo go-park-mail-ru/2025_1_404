@@ -44,7 +44,7 @@ func ValidatePassword(password string) error {
 }
 
 func ValidateName(name string) error {
-	if name == "" || !nameRegex.MatchString(name) || len(name) > 16 {
+	if name == "" || !nameRegex.MatchString(name) || len(name) > 32 {
 		return errors.New("неверное имя/фамилия")
 	}
 
