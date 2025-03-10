@@ -2,101 +2,187 @@ package auth
 
 import "testing"
 
-// Тест валидации почты
+// Тест ValidateEmail
 func TestValidateEmail(t *testing.T) {
-	validEmails := []string{"user@example.com", "test123@mail.ru"}
-	invalidEmails := []string{"bademail", "user@com", ""}
-
-	for _, email := range validEmails {
-		if err := ValidateEmail(email); err != nil {
-			t.Errorf("Верная почта не прошла валидацию: %s", email)
-		}
+	tests := []struct {
+		name    string
+		email   string
+		wantErr bool
+	}{
+		{"Корректный email", "user@example.com", false},
+		{"Корректный email с чисоами", "test123@mail.ru", false},
+		{"Некорректный email 1", "bademail", true},
+		{"Некорректный email 2", "user@com", true},
+		{"Пустой email", "", true},
 	}
 
-	for _, email := range invalidEmails {
-		if err := ValidateEmail(email); err == nil {
-			t.Errorf("Неверная почта прошла валидацию: %s", email)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateEmail(tt.email)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateEmail для %s: ожидалась ошибка = %v, получено ошибка = %v", tt.email, tt.wantErr, err)
+			}
+		})
 	}
 }
 
-// Тест валидации пароля
+// Тест ValidatePassword
 func TestValidatePassword(t *testing.T) {
-	if err := ValidatePassword("1234567"); err == nil {
-		t.Errorf("Ожидалась ошибка для короткого пароля")
+	tests := []struct {
+		name     string
+		password string
+		wantErr  bool
+	}{
+		{"Корректный пароль", "Password123", false},
+		{"Короткий пароль", "Pass1", true},
+		{"Без заглавных букв", "password123", true},
+		{"Без цифр", "Passwordword", true},
 	}
-	if err := ValidatePassword("password123"); err == nil {
-		t.Errorf("Ожидалась ошибка об отсутствии верхнего регистра")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidatePassword(tt.password)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidatePassword для %s: ожидалась ошибка = %v, получено ошибка = %v", tt.password, tt.wantErr, err)
+			}
+		})
 	}
 }
 
+// Тест ValidateName
 func TestValidateName(t *testing.T) {
-	validNames := []string{"Вадим", "Иванов", "Петров-сидоров"}
-	invalidNames := []string{"вадим123", "Изподвыподвывертовичкин", "К.", ""}
-
-	for _, name := range validNames {
-		if err := ValidateName(name); err != nil {
-			t.Errorf("Верное имя не прошло валидацию: %s", name)
-		}
+	tests := []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{"Корректное имя", "Вадим", false},
+		{"Корректная фамилия", "Иванов", false},
+		{"Имя с тире", "Петров-Сидоров", false},
+		{"Имя с цифрами", "вадим123", true},
+		{"Слишком длинное имя", "Изподвыподвывертовичкин", true},
+		{"Имя с одной буквой", "К.", true},
+		{"Пустое имя", "", true},
 	}
 
-	for _, name := range invalidNames {
-		if err := ValidateName(name); err == nil {
-			t.Errorf("Неверное имя прошло валидацию: %s", name)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateName(tt.value)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateName для %s: ожидалась ошибка = %v, получено ошибка = %v", tt.value, tt.wantErr, err)
+			}
+		})
 	}
 }
 
 // Тест ValidateRegisterRequest (поля регистрации)
 func TestValidateRegisterRequest(t *testing.T) {
-	validReq := RegisterRequest{
-		Email:     "user@example.com",
-		Password:  "SecurePass123",
-		FirstName: "Иван",
-		LastName:  "Петров",
+	tests := []struct {
+		name    string
+		request RegisterRequest
+		wantErr bool
+	}{
+		{
+			name: "Валидный запрос",
+			request: RegisterRequest{
+				Email:     "user@example.com",
+				Password:  "SecurePass123",
+				FirstName: "Иван",
+				LastName:  "Петров",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Пустой email",
+			request: RegisterRequest{
+				Email:     "",
+				Password:  "SecurePass123",
+				FirstName: "Иван",
+				LastName:  "Петров",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Пустой пароль",
+			request: RegisterRequest{
+				Email:     "user@example.com",
+				Password:  "",
+				FirstName: "Иван",
+				LastName:  "Петров",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Пустое имя",
+			request: RegisterRequest{
+				Email:     "user@example.com",
+				Password:  "SecurePass123",
+				FirstName: "",
+				LastName:  "Петров",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Пустая фамилия",
+			request: RegisterRequest{
+				Email:     "user@example.com",
+				Password:  "SecurePass123",
+				FirstName: "Иван",
+				LastName:  "",
+			},
+			wantErr: true,
+		},
 	}
 
-	invalidReqs := []RegisterRequest{
-		{"", "SecurePass123", "Иван", "Петров"},             // Пустой email
-		{"user@example.com", "", "Иван", "Петров"},          // Пустой пароль
-		{"user@example.com", "SecurePass123", "", "Петров"}, // Пустое имя
-		{"user@example.com", "SecurePass123", "Иван", ""},   // Пустая фамилия
-	}
-
-	// Валидный запрос должен пройти
-	if err := ValidateRegisterRequest(validReq); err != nil {
-		t.Errorf("Ожидалось, что запрос с корректными данными пройдет, но получена ошибка: %v", err)
-	}
-
-	// Некорректные запросы должны вызывать ошибку
-	for _, req := range invalidReqs {
-		if err := ValidateRegisterRequest(req); err == nil {
-			t.Errorf("Ожидалась ошибка для некорректного запроса %+v, но её не было", req)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateRegisterRequest(tt.request)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateRegisterRequest для '%s': ожидалась ошибка = %v, получено ошибка = %v", tt.name, tt.wantErr, err)
+			}
+		})
 	}
 }
 
 // Тест ValidateLoginRequest (поля логина)
 func TestValidateLoginRequest(t *testing.T) {
-	validReq := LoginRequest{
-		Email:    "user@example.com",
-		Password: "SecurePass123",
+	tests := []struct {
+		name    string
+		request LoginRequest
+		wantErr bool
+	}{
+		{
+			name: "Корректный запрос",
+			request: LoginRequest{
+				Email:    "user@example.com",
+				Password: "Password123",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Пустой email",
+			request: LoginRequest{
+				Email:    "",
+				Password: "Password123",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Пустой пароль",
+			request: LoginRequest{
+				Email:    "user@example.com",
+				Password: "",
+			},
+			wantErr: true,
+		},
 	}
 
-	invalidReqs := []LoginRequest{
-		{"", "SecurePass123"},    // Пустой email
-		{"user@example.com", ""}, // Пустой пароль
-	}
-
-	// Валидный запрос должен пройти
-	if err := ValidateLoginRequest(validReq); err != nil {
-		t.Errorf("Ожидалось, что запрос с корректными данными пройдет, но получена ошибка: %v", err)
-	}
-
-	// Некорректные запросы должны вызывать ошибку
-	for _, req := range invalidReqs {
-		if err := ValidateLoginRequest(req); err == nil {
-			t.Errorf("Ожидалась ошибка для некорректного запроса %+v, но её не было", req)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateLoginRequest(tt.request)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateLoginRequest для %s: ожидалась ошибка = %v, получено ошибка = %v", tt.name, tt.wantErr, err)
+			}
+		})
 	}
 }
