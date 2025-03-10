@@ -51,6 +51,23 @@ func ValidateName(name string) error {
 	return nil
 }
 
+func ValidateUser(user User) error {
+	validations := []error{
+		ValidateEmail(user.Email),
+		ValidatePassword(user.Password),
+		ValidateName(user.FirstName),
+		ValidateName(user.LastName),
+	}
+
+	for _, err := range validations {
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ValidateRegisterRequest Проверка полей регистрации
 func ValidateRegisterRequest(req RegisterRequest) error {
 	if req.Email == "" || req.Password == "" || req.FirstName == "" || req.LastName == "" {
