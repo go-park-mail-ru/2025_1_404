@@ -1,8 +1,11 @@
-package auth
+package http
 
 import (
 	"encoding/json"
-	"github.com/go-park-mail-ru/2025_1_404/utils"
+	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/validation"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
@@ -15,20 +18,20 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req RegisterRequest
+	var req domain.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest)
 		return
 	}
 
 	// Проверка полей запроса
-	if err := ValidateRegisterRequest(req); err != nil {
+	if err := validation.ValidateRegisterRequest(req); err != nil {
 		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Валидация email, пароля и имени/фамилии
-	if err := ValidateUser(User{
+	if err := validation.ValidateUser(domain.User{
 		0,
 		req.Email,
 		req.Password,
@@ -40,18 +43,18 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверка уникальности email
-	if IsEmailTaken(req.Email) {
+	if usecase.IsEmailTaken(req.Email) {
 		utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
 		return
 	}
 
 	// Создаём пользователя
-	user, err := CreateUser(req.Email, req.Password, req.FirstName, req.LastName)
+	user, err := usecase.CreateUser(req.Email, req.Password, req.FirstName, req.LastName)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 	}
 
-	token, err := GenerateJWT(user.ID)
+	token, err := utils.GenerateJWT(user.ID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Ошибка при создании токена", http.StatusInternalServerError)
 		return
@@ -81,20 +84,20 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req LoginRequest
+	var req domain.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest)
 		return
 	}
 
 	// Проверка полей запроса
-	if err := ValidateLoginRequest(req); err != nil {
+	if err := validation.ValidateLoginRequest(req); err != nil {
 		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Ищем юзера по почте
-	user, err := GetUserByEmail(req.Email)
+	user, err := usecase.GetUserByEmail(req.Email)
 	if err != nil {
 		utils.SendErrorResponse(w, "Неверная почта или пароль", http.StatusUnauthorized)
 		return
@@ -107,7 +110,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Генерируем JWT
-	token, err := GenerateJWT(user.ID)
+	token, err := utils.GenerateJWT(user.ID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Ошибка при создании токена", http.StatusInternalServerError)
 		return
@@ -145,13 +148,13 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims, err := ParseJWT(cookie.Value)
+	claims, err := utils.ParseJWT(cookie.Value)
 	if err != nil {
 		utils.SendErrorResponse(w, "Неверный токен", http.StatusUnauthorized)
 		return
 	}
 
-	user, err := GetUserByID(claims.UserID)
+	user, err := usecase.GetUserByID(claims.UserID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Пользователь не найден", http.StatusUnauthorized)
 		return

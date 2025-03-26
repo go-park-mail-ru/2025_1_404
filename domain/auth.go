@@ -1,4 +1,4 @@
-package auth
+package domain
 
 // User Структура пользователя
 type User struct {

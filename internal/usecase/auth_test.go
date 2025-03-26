@@ -1,13 +1,14 @@
-package auth
+package usecase
 
 import (
+	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"golang.org/x/crypto/bcrypt"
 	"testing"
 )
 
 // Тест IsEmailTaken (существующий и новый email)
 func TestIsEmailTaken(t *testing.T) {
-	t.Cleanup(func() { users = []User{} })
+	t.Cleanup(func() { Users = []domain.User{} })
 
 	CreateUser("user@example.com", "password", "Иван", "Петров")
 
@@ -22,7 +23,7 @@ func TestIsEmailTaken(t *testing.T) {
 
 // Тест CreateUser (успешное создание пользователя)
 func TestCreateUser_Success(t *testing.T) {
-	t.Cleanup(func() { users = []User{} })
+	t.Cleanup(func() { Users = []domain.User{} })
 
 	user, _ := CreateUser("test@example.com", "SecurePass123", "Анна", "Смирнова")
 
@@ -47,7 +48,7 @@ func TestCreateUser_Success(t *testing.T) {
 
 // Тест GetUserByEmail (существующий и несуществующий email)
 func TestGetUserByEmail(t *testing.T) {
-	t.Cleanup(func() { users = []User{} })
+	t.Cleanup(func() { Users = []domain.User{} })
 
 	CreateUser("user@example.com", "password", "Иван", "Петров")
 
@@ -69,7 +70,7 @@ func TestGetUserByEmail(t *testing.T) {
 
 // Тест GetUserByID (существующий и несуществующий ID)
 func TestGetUserByID(t *testing.T) {
-	t.Cleanup(func() { users = []User{} })
+	t.Cleanup(func() { Users = []domain.User{} })
 
 	user, _ := CreateUser("id@example.com", "password", "ID", "Тест")
 

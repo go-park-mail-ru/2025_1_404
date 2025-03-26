@@ -1,4 +1,4 @@
-package offers
+package http
 
 import (
 	"net/http"

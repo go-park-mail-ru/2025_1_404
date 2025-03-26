@@ -1,8 +1,12 @@
-package offers
+package mocks
+
+import (
+	"github.com/go-park-mail-ru/2025_1_404/domain"
+)
 
 // GetMockOffers Мок-данные объявлений
-func GetMockOffers() []Offer {
-	return []Offer{
+func GetMockOffers() []domain.Offer {
+	return []domain.Offer{
 		{
 			ID:           1,
 			Seller:       "Иван Петров",

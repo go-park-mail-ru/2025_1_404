@@ -1,10 +1,9 @@
 package main
 
 import (
-	"github.com/go-park-mail-ru/2025_1_404/internal/auth"
-	"github.com/go-park-mail-ru/2025_1_404/internal/offers"
-	"github.com/go-park-mail-ru/2025_1_404/middleware"
-	"github.com/go-park-mail-ru/2025_1_404/utils"
+	delivery "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"log"
 	"net/http"
 )
@@ -18,13 +17,13 @@ func main() {
 	mux.HandleFunc("/", utils.NotFoundHandler)
 
 	// Объявления
-	mux.HandleFunc("/api/v1/offers", offers.GetOffersHandler)
+	mux.HandleFunc("/api/v1/offers", delivery.GetOffersHandler)
 
 	// Авторизация
-	mux.HandleFunc("/api/v1/auth/register", auth.RegisterHandler)
-	mux.HandleFunc("/api/v1/auth/login", auth.LoginHandler)
-	mux.HandleFunc("/api/v1/auth/me", auth.MeHandler)
-	mux.HandleFunc("/api/v1/auth/logout", auth.LogoutHandler)
+	mux.HandleFunc("/api/v1/auth/register", delivery.RegisterHandler)
+	mux.HandleFunc("/api/v1/auth/login", delivery.LoginHandler)
+	mux.HandleFunc("/api/v1/auth/me", delivery.MeHandler)
+	mux.HandleFunc("/api/v1/auth/logout", delivery.LogoutHandler)
 
 	// CORS-middleware
 	corsMux := middleware.CORSHandler(mux)

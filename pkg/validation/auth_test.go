@@ -1,6 +1,9 @@
-package auth
+package validation
 
-import "testing"
+import (
+	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"testing"
+)
 
 // Тест ValidateEmail
 func TestValidateEmail(t *testing.T) {
@@ -79,12 +82,12 @@ func TestValidateName(t *testing.T) {
 func TestValidateRegisterRequest(t *testing.T) {
 	tests := []struct {
 		name    string
-		request RegisterRequest
+		request domain.RegisterRequest
 		wantErr bool
 	}{
 		{
 			name: "Валидный запрос",
-			request: RegisterRequest{
+			request: domain.RegisterRequest{
 				Email:     "user@example.com",
 				Password:  "SecurePass123",
 				FirstName: "Иван",
@@ -94,7 +97,7 @@ func TestValidateRegisterRequest(t *testing.T) {
 		},
 		{
 			name: "Пустой email",
-			request: RegisterRequest{
+			request: domain.RegisterRequest{
 				Email:     "",
 				Password:  "SecurePass123",
 				FirstName: "Иван",
@@ -104,7 +107,7 @@ func TestValidateRegisterRequest(t *testing.T) {
 		},
 		{
 			name: "Пустой пароль",
-			request: RegisterRequest{
+			request: domain.RegisterRequest{
 				Email:     "user@example.com",
 				Password:  "",
 				FirstName: "Иван",
@@ -114,7 +117,7 @@ func TestValidateRegisterRequest(t *testing.T) {
 		},
 		{
 			name: "Пустое имя",
-			request: RegisterRequest{
+			request: domain.RegisterRequest{
 				Email:     "user@example.com",
 				Password:  "SecurePass123",
 				FirstName: "",
@@ -124,7 +127,7 @@ func TestValidateRegisterRequest(t *testing.T) {
 		},
 		{
 			name: "Пустая фамилия",
-			request: RegisterRequest{
+			request: domain.RegisterRequest{
 				Email:     "user@example.com",
 				Password:  "SecurePass123",
 				FirstName: "Иван",
@@ -148,12 +151,12 @@ func TestValidateRegisterRequest(t *testing.T) {
 func TestValidateLoginRequest(t *testing.T) {
 	tests := []struct {
 		name    string
-		request LoginRequest
+		request domain.LoginRequest
 		wantErr bool
 	}{
 		{
 			name: "Корректный запрос",
-			request: LoginRequest{
+			request: domain.LoginRequest{
 				Email:    "user@example.com",
 				Password: "Password123",
 			},
@@ -161,7 +164,7 @@ func TestValidateLoginRequest(t *testing.T) {
 		},
 		{
 			name: "Пустой email",
-			request: LoginRequest{
+			request: domain.LoginRequest{
 				Email:    "",
 				Password: "Password123",
 			},
@@ -169,7 +172,7 @@ func TestValidateLoginRequest(t *testing.T) {
 		},
 		{
 			name: "Пустой пароль",
-			request: LoginRequest{
+			request: domain.LoginRequest{
 				Email:    "user@example.com",
 				Password: "",
 			},

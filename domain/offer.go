@@ -1,4 +1,4 @@
-package offers
+package domain
 
 // Offer Структура объявления
 type Offer struct {

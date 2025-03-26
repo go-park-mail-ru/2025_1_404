@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/go-park-mail-ru/2025_1_404/utils"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"net/http"
 )
 

@@ -1,7 +1,8 @@
-package auth
+package validation
 
 import (
 	"errors"
+	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"regexp"
 	"unicode"
 )
@@ -51,7 +52,7 @@ func ValidateName(name string) error {
 	return nil
 }
 
-func ValidateUser(user User) error {
+func ValidateUser(user domain.User) error {
 	validations := []error{
 		ValidateEmail(user.Email),
 		ValidatePassword(user.Password),
@@ -69,7 +70,7 @@ func ValidateUser(user User) error {
 }
 
 // ValidateRegisterRequest Проверка полей регистрации
-func ValidateRegisterRequest(req RegisterRequest) error {
+func ValidateRegisterRequest(req domain.RegisterRequest) error {
 	if req.Email == "" || req.Password == "" || req.FirstName == "" || req.LastName == "" {
 		return errors.New("все поля обязательны")
 	}
@@ -77,7 +78,7 @@ func ValidateRegisterRequest(req RegisterRequest) error {
 }
 
 // ValidateLoginRequest Проверка полей логина
-func ValidateLoginRequest(req LoginRequest) error {
+func ValidateLoginRequest(req domain.LoginRequest) error {
 	if req.Email == "" || req.Password == "" {
 		return errors.New("все поля обязательны")
 	}

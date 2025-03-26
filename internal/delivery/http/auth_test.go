@@ -1,8 +1,11 @@
-package auth
+package http
 
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,9 +13,9 @@ import (
 
 // Тест на регистрацию (успешный)
 func TestRegisterHandler_Success(t *testing.T) {
-	t.Cleanup(func() { users = []User{} })
+	t.Cleanup(func() { usecase.Users = []domain.User{} })
 
-	reqBody, _ := json.Marshal(RegisterRequest{
+	reqBody, _ := json.Marshal(domain.RegisterRequest{
 		Email:     "test@example.com",
 		Password:  "Password123",
 		FirstName: "Иван",
@@ -56,11 +59,11 @@ func TestRegisterHandler_InvalidBody(t *testing.T) {
 
 // Тест успешного входа
 func TestLoginHandler_Success(t *testing.T) {
-	t.Cleanup(func() { users = []User{} })
+	t.Cleanup(func() { usecase.Users = []domain.User{} })
 
-	user, _ := CreateUser("user@example.com", "password", "Иван", "Петров")
+	user, _ := usecase.CreateUser("user@example.com", "password", "Иван", "Петров")
 
-	reqBody, _ := json.Marshal(LoginRequest{
+	reqBody, _ := json.Marshal(domain.LoginRequest{
 		Email:    user.Email,
 		Password: "password",
 	})
@@ -78,11 +81,11 @@ func TestLoginHandler_Success(t *testing.T) {
 
 // Тест на вход (неверный пароль)
 func TestLoginHandler_InvalidPassword(t *testing.T) {
-	t.Cleanup(func() { users = []User{} })
+	t.Cleanup(func() { usecase.Users = []domain.User{} })
 
-	CreateUser("user@example.com", "password", "Иван", "Петров") // Обычный пароль
+	usecase.CreateUser("user@example.com", "password", "Иван", "Петров") // Обычный пароль
 
-	reqBody, _ := json.Marshal(LoginRequest{
+	reqBody, _ := json.Marshal(domain.LoginRequest{
 		Email:    "user@example.com",
 		Password: "wrongpassword",
 	})
@@ -112,10 +115,10 @@ func TestLoginHandler_MethodNotAllowed(t *testing.T) {
 
 // Тест получения пользователя (/auth/me с валидным токеном)
 func TestMeHandler_Success(t *testing.T) {
-	t.Cleanup(func() { users = []User{} })
+	t.Cleanup(func() { usecase.Users = []domain.User{} })
 
-	user, _ := CreateUser("me@example.com", "securepassword", "Анна", "Сидорова")
-	token, _ := GenerateJWT(user.ID)
+	user, _ := usecase.CreateUser("me@example.com", "securepassword", "Анна", "Сидорова")
+	token, _ := utils.GenerateJWT(user.ID)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
 	req.AddCookie(&http.Cookie{Name: "token", Value: token})

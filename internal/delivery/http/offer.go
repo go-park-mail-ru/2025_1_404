@@ -1,9 +1,9 @@
-package offers
+package http
 
 import (
+	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"net/http"
-
-	"github.com/go-park-mail-ru/2025_1_404/utils"
 )
 
 // GetOffersHandler Получение списка объявлений
@@ -13,6 +13,6 @@ func GetOffersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	offers := GetOffers()
+	offers := usecase.GetOffers()
 	utils.SendJSONResponse(w, offers, http.StatusOK)
 }
