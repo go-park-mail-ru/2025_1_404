@@ -1,4 +1,3 @@
-DROP SCHEMA kvartirum CASCADE;
 CREATE SCHEMA kvartirum;
 
 -- Указываем схему
