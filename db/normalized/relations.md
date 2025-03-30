@@ -1,3 +1,5 @@
+# [Код Go](https://github.com/go-park-mail-ru/2025_1_404/tree/dev_db)
+
 # ER диаграмма
 ```mermaid
 erDiagram
