@@ -5,19 +5,27 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
 
 type OfferUsecase struct {
-	repo repository.Repository
+	repo   repository.Repository
+	logger logger.Logger
 }
 
-func NewOfferUsecase(repo repository.Repository) *OfferUsecase {
-	return &OfferUsecase{repo: repo}
+func NewOfferUsecase(repo repository.Repository, logger logger.Logger) *OfferUsecase {
+	return &OfferUsecase{repo: repo, logger: logger}
 }
 
 func (u *OfferUsecase) GetOffers(ctx context.Context) ([]domain.Offer, error) {
 	repoOffers, err := u.repo.GetAllOffers(ctx)
+	requestID := ctx.Value(utils.RequestIDKey)
 	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"err":       err.Error(),
+		}).Error("get offers failed")
 		return nil, err
 	}
 
@@ -47,6 +55,11 @@ func (u *OfferUsecase) GetOffers(ctx context.Context) ([]domain.Offer, error) {
 			UpdatedAt:      o.UpdatedAt,
 		})
 	}
+
+	u.logger.WithFields(logger.LoggerFields{
+		"requestID":   requestID,
+		"offers_size": len(repoOffers),
+	}).Info("Offers usecase: get offers completed")
 
 	return offers, nil
 }

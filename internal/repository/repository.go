@@ -5,6 +5,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -64,10 +66,11 @@ type Repository interface {
 
 type repository struct {
 	db *pgxpool.Pool
+	logger logger.Logger
 }
 
-func NewRepository(db *pgxpool.Pool) Repository {
-	return &repository{db: db}
+func NewRepository(db *pgxpool.Pool, logger logger.Logger) Repository {
+	return &repository{db: db, logger: logger}
 }
 
 // region --- USERS ---
@@ -108,39 +111,92 @@ const (
 
 func (r *repository) CreateUser(ctx context.Context, u User) (int64, error) {
 	var id int64
+	requestID := ctx.Value(utils.RequestIDKey)
 	err := r.db.QueryRow(ctx, createUserSQL,
 		u.ImageID, u.FirstName, u.LastName, u.Email, u.Password, u.TokenVersion,
 	).Scan(&id)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query": createUserSQL,
+		"params": logger.LoggerFields{
+			"name": u.FirstName,
+			"last_name": u.LastName,
+			"email": u.Email,
+			"token_version": u.TokenVersion,
+			"image_id": u.ImageID,
+		},
+		"success": err == nil,
+	}).Info("SQL query CreateUser")
 	return id, err
 }
 
 func (r *repository) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	var u User
+	requestID := ctx.Value(utils.RequestIDKey)
 	err := r.db.QueryRow(ctx, getUserByEmailSQL, email).Scan(
 		&u.ID, &u.ImageID, &u.FirstName, &u.LastName, &u.Email, &u.Password,
 		&u.LastNotificationID, &u.TokenVersion, &u.CreatedAt, &u.UpdatedAt,
 	)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query": getUserByEmailSQL,
+		"params": logger.LoggerFields{
+			"email": email,
+		},
+		"success": err == nil,
+	}).Info("SQL query GetUserByEmail")
 	return u, err
 }
 
 func (r *repository) GetUserByID(ctx context.Context, id int64) (User, error) {
 	var u User
+	requestID := ctx.Value(utils.RequestIDKey)
 	err := r.db.QueryRow(ctx, getUserByIDSQL, id).Scan(
 		&u.ID, &u.ImageID, &u.FirstName, &u.LastName, &u.Email, &u.Password,
 		&u.LastNotificationID, &u.TokenVersion, &u.CreatedAt, &u.UpdatedAt,
 	)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query": getUserByEmailSQL,
+		"params": logger.LoggerFields{
+			"id": id,
+		},
+		"success": err == nil,
+	}).Info("SQL query GetUserByID")
 	return u, err
 }
 
 func (r *repository) UpdateUser(ctx context.Context, u User) error {
+	requestID := ctx.Value(utils.RequestIDKey)
 	_, err := r.db.Exec(ctx, updateUserSQL,
 		u.ImageID, u.FirstName, u.LastName, u.Email, u.Password, u.TokenVersion, u.ID,
 	)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query": updateUserSQL,
+		"params": logger.LoggerFields{
+			"name": u.FirstName,
+			"last_name": u.LastName,
+			"email": u.Email,
+			"token_version": u.TokenVersion,
+			"image_id": u.ImageID,
+		},
+		"success": err == nil,
+	}).Info("SQL query UpdateUser")
 	return err
 }
 
 func (r *repository) DeleteUser(ctx context.Context, id int64) error {
+	requestID := ctx.Value(utils.RequestIDKey)
 	_, err := r.db.Exec(ctx, deleteUserSQL, id)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query": deleteUserSQL,
+		"params": logger.LoggerFields{
+			"id":id,
+		},
+		"success": err == nil,
+	})
 	return err
 }
 
