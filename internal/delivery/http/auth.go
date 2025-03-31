@@ -130,19 +130,13 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("token")
-	if err != nil {
-		utils.SendErrorResponse(w, "Учётные данные не предоставлены", http.StatusUnauthorized)
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest)
 		return
 	}
 
-	claims, err := utils.ParseJWT(cookie.Value)
-	if err != nil {
-		utils.SendErrorResponse(w, "Неверный токен", http.StatusUnauthorized)
-		return
-	}
-
-	user, err := h.UC.GetUserByID(r.Context(), claims.UserID)
+	user, err := h.UC.GetUserByID(r.Context(), userID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Пользователь не найден", http.StatusUnauthorized)
 		return

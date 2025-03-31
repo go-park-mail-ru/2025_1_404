@@ -58,8 +58,10 @@ func main() {
 	// Авторизация
 	mux.HandleFunc("/api/v1/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
-	mux.HandleFunc("/api/v1/auth/me", authHandler.Me)
 	mux.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
+
+	// Профиль, требующий авторизацию
+	mux.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me)))
 
 	// Объявления
 	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler)
