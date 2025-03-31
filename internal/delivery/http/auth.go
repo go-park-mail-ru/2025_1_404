@@ -32,18 +32,12 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.ValidateRegisterRequest(req); err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	// Валидация email, пароля и имени/фамилии
+	validate := validation.GetValidator();
 
-	if err := validation.ValidateUser(domain.User{
-		Email:     req.Email,
-		Password:  req.Password,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-	}); err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+	err := validate.Struct(req)
+	if err != nil {
+		utils.SendErrorResponse(w, validation.GetError(err), http.StatusBadRequest)
 		return
 	}
 
@@ -89,12 +83,18 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validation.ValidateLoginRequest(req); err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+	// Проверка полей запроса
+	validate := validation.GetValidator();
+
+	err := validate.Struct(req)
+	if err != nil {
+		utils.SendErrorResponse(w, validation.GetError(err), http.StatusBadRequest)
 		return
 	}
+	
+	// Ищем юзера по почте
+	user, err := usecase.GetUserByEmail(req.Email)
 
-	user, err := h.UC.GetUserByEmail(r.Context(), req.Email)
 	if err != nil {
 		utils.SendErrorResponse(w, "Неверная почта или пароль", http.StatusUnauthorized)
 		return
