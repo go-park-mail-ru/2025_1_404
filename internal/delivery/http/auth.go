@@ -12,8 +12,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// RegisterHandler Регистрация пользователя
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+type AuthHandler struct {
+	UC *usecase.AuthUsecase
+}
+
+func NewAuthHandler(uc *usecase.AuthUsecase) *AuthHandler {
+	return &AuthHandler{UC: uc}
+}
+
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -34,16 +41,15 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Проверка уникальности email
-	if usecase.IsEmailTaken(req.Email) {
+	if h.UC.IsEmailTaken(r.Context(), req.Email) {
 		utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
 		return
 	}
 
-	// Создаём пользователя
-	user, err := usecase.CreateUser(req.Email, req.Password, req.FirstName, req.LastName)
+	user, err := h.UC.CreateUser(r.Context(), req.Email, req.Password, req.FirstName, req.LastName)
 	if err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+		utils.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	token, err := utils.GenerateJWT(user.ID)
@@ -51,6 +57,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		utils.SendErrorResponse(w, "Ошибка при создании токена", http.StatusInternalServerError)
 		return
 	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Value:    token,
@@ -61,16 +68,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now().Add(24 * time.Hour),
 	})
 
-	utils.SendJSONResponse(w, map[string]interface{}{
-		"id":         user.ID,
-		"email":      user.Email,
-		"first_name": user.FirstName,
-		"last_name":  user.LastName,
-	}, http.StatusCreated)
+	utils.SendJSONResponse(w, user, http.StatusCreated)
 }
 
-// LoginHandler Авторизация пользователя
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -93,25 +94,23 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	
 	// Ищем юзера по почте
 	user, err := usecase.GetUserByEmail(req.Email)
+
 	if err != nil {
 		utils.SendErrorResponse(w, "Неверная почта или пароль", http.StatusUnauthorized)
 		return
 	}
 
-	// Проверяем пароль
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		utils.SendErrorResponse(w, "Неверная почта или пароль", http.StatusUnauthorized)
 		return
 	}
 
-	// Генерируем JWT
 	token, err := utils.GenerateJWT(user.ID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Ошибка при создании токена", http.StatusInternalServerError)
 		return
 	}
 
-	// Устанавливаем JWT в куки
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
 		Value:    token,
@@ -122,16 +121,10 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now().Add(24 * time.Hour),
 	})
 
-	utils.SendJSONResponse(w, map[string]interface{}{
-		"id":         user.ID,
-		"email":      user.Email,
-		"first_name": user.FirstName,
-		"last_name":  user.LastName,
-	}, http.StatusOK)
+	utils.SendJSONResponse(w, user, http.StatusOK)
 }
 
-// MeHandler Получение текущего пользователя
-func MeHandler(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -149,22 +142,16 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := usecase.GetUserByID(claims.UserID)
+	user, err := h.UC.GetUserByID(r.Context(), claims.UserID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Пользователь не найден", http.StatusUnauthorized)
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]interface{}{
-		"id":         user.ID,
-		"email":      user.Email,
-		"first_name": user.FirstName,
-		"last_name":  user.LastName,
-	}, http.StatusOK)
+	utils.SendJSONResponse(w, user, http.StatusOK)
 }
 
-// LogoutHandler Логаут пользователя (удаление куки с JWT)
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -172,12 +159,12 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
-		Value:    "", // Пустой токен
+		Value:    "",
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
-		Expires:  time.Now().Add(-time.Hour), // Кука сразу "просроченная"
+		Expires:  time.Now().Add(-time.Hour),
 	})
 
 	utils.SendJSONResponse(w, map[string]string{"message": "Успешный выход"}, http.StatusOK)
