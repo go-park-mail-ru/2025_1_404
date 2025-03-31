@@ -9,6 +9,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
 	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/joho/godotenv"
@@ -33,12 +34,16 @@ func main() {
 	}
 	defer dbpool.Close()
 
+	// Логгер
+	l, _ := logger.NewZapLogger()
+	defer l.Close()
+
 	// Репозиторий
-	repo := repository.NewRepository(dbpool)
+	repo := repository.NewRepository(dbpool, l)
 
 	// Юзкейсы
-	authUC := usecase.NewAuthUsecase(repo)
-	offerUC := usecase.NewOfferUsecase(repo)
+	authUC := usecase.NewAuthUsecase(repo, l)
+	offerUC := usecase.NewOfferUsecase(repo, l)
 
 	// Хендлеры
 	authHandler := delivery.NewAuthHandler(authUC)
@@ -59,8 +64,10 @@ func main() {
 	// Объявления
 	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler)
 
+	// AccessLog middleware
+	logMux := middleware.AccessLog(l, mux)
 	// CORS middleware
-	corsMux := middleware.CORSHandler(mux)
+	corsMux := middleware.CORSHandler(logMux)
 
 	// Запуск сервера
 	if err := http.ListenAndServe(":8001", corsMux); err != nil {
