@@ -2,13 +2,14 @@ package http
 
 import (
 	"encoding/json"
+	"net/http"
+	"time"
+
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/validation"
 	"golang.org/x/crypto/bcrypt"
-	"net/http"
-	"time"
 )
 
 // RegisterHandler Регистрация пользователя
@@ -24,21 +25,12 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Проверка полей запроса
-	if err := validation.ValidateRegisterRequest(req); err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	// Валидация email, пароля и имени/фамилии
-	if err := validation.ValidateUser(domain.User{
-		0,
-		req.Email,
-		req.Password,
-		req.FirstName,
-		req.LastName,
-	}); err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+	validate := validation.GetValidator();
+
+	err := validate.Struct(req)
+	if err != nil {
+		utils.SendErrorResponse(w, validation.GetError(err), http.StatusBadRequest)
 		return
 	}
 
@@ -91,11 +83,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверка полей запроса
-	if err := validation.ValidateLoginRequest(req); err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+	validate := validation.GetValidator();
+
+	err := validate.Struct(req)
+	if err != nil {
+		utils.SendErrorResponse(w, validation.GetError(err), http.StatusBadRequest)
 		return
 	}
-
+	
 	// Ищем юзера по почте
 	user, err := usecase.GetUserByEmail(req.Email)
 	if err != nil {
