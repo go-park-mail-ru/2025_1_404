@@ -3,8 +3,10 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -14,10 +16,11 @@ import (
 type AuthUsecase struct {
 	repo repository.Repository
 	logger logger.Logger
+	fs filestorage.FileStorage
 }
 
-func NewAuthUsecase(repo repository.Repository, logger logger.Logger) *AuthUsecase {
-	return &AuthUsecase{repo: repo, logger: logger}
+func NewAuthUsecase(repo repository.Repository, logger logger.Logger, fs filestorage.FileStorage) *AuthUsecase {
+	return &AuthUsecase{repo: repo, logger: logger, fs: fs}
 }
 
 func (u *AuthUsecase) IsEmailTaken(ctx context.Context, email string) bool {
@@ -94,7 +97,6 @@ func (u *AuthUsecase) GetUserByID(ctx context.Context, id int) (domain.User, err
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{
 			"requestID": requestID,
-			"err": err.Error(),
 		}).Error("User usecase: get user by id failed")
 		return domain.User{}, err
 	}
@@ -111,4 +113,96 @@ func (u *AuthUsecase) GetUserByID(ctx context.Context, id int) (domain.User, err
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 	}, nil
+}
+
+func (u *AuthUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.User, error){
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	currentUser, err := u.GetUserByID(ctx, user.ID)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"id": user.ID,
+		}).Warn("user id not found")
+		return domain.User{}, fmt.Errorf("failed to find user")
+	}
+
+	// Заполняем непереданные поля уже имеющимися
+	if user.Email != "" {
+		currentUser.Email = user.Email
+	}
+	if user.FirstName != "" {
+		currentUser.FirstName = user.FirstName
+	}
+	if user.LastName != "" {
+		currentUser.LastName = user.LastName
+	}
+	if user.Password != "" {
+		currentUser.Password = user.Password
+	}
+	if user.Image != "" {
+		currentUser.Image = user.Image
+	}
+
+	// Обновляем в БД
+	updatedUser, err := u.repo.UpdateUser(ctx, currentUser);
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"err": err.Error(),
+		})
+		return domain.User{}, err
+	}
+
+	return updatedUser, nil
+}
+
+func (u *AuthUsecase) UploadImage(ctx context.Context, id int, file filestorage.FileUpload) (domain.User, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	user, err := u.GetUserByID(ctx, id)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"id": id,
+			"err": err.Error(),
+		}).Warn("user id not found")
+		return domain.User{}, fmt.Errorf("failed to find user")
+	}
+
+	// Загружаем в файловое хранилище фото
+	err = u.fs.Add(file)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"err": err.Error(),
+		}).Warn("upload image failed")
+		return domain.User{}, err
+	}
+
+	// Создаем запись в БД
+	err = u.repo.CreateImage(ctx, file)
+	if err != nil {	
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"err": err,
+		}).Warn("failed to load user image")
+		return domain.User{}, err
+	}
+
+	// Обновляем пользователя с новым именем аватарки
+	updatedUser, err := u.UpdateUser(ctx, domain.User{
+		ID: user.ID,
+		Image: file.Name,
+	})
+
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+		}).Warn("failed to update user")
+		return domain.User{}, err
+	}
+
+	return updatedUser, nil
+
 }

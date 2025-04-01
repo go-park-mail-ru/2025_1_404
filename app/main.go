@@ -6,12 +6,14 @@ import (
 	"net/http"
 
 	delivery "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http"
+	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
 	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	
 	"github.com/joho/godotenv"
 )
 
@@ -38,11 +40,15 @@ func main() {
 	l, _ := logger.NewZapLogger()
 	defer l.Close()
 
+	// Хранилище файлов
+	basePath := "./../internal/static/upload"
+	fs := filestorage.NewLocalStorage(basePath)
+
 	// Репозиторий
 	repo := repository.NewRepository(dbpool, l)
 
 	// Юзкейсы
-	authUC := usecase.NewAuthUsecase(repo, l)
+	authUC := usecase.NewAuthUsecase(repo, l, fs)
 	offerUC := usecase.NewOfferUsecase(repo, l)
 
 	// Хендлеры
@@ -52,6 +58,11 @@ func main() {
 	// Маршруты
 	mux := http.NewServeMux()
 
+	// Static
+	mux.HandleFunc("/static/", func(w http.ResponseWriter, r *http.Request) {
+		filestorage.ServeFile(w, r, basePath)
+	})
+	
 	// Not Found
 	mux.HandleFunc("/", utils.NotFoundHandler)
 
@@ -62,6 +73,8 @@ func main() {
 
 	// Профиль, требующий авторизацию
 	mux.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me)))
+	mux.Handle("/api/v1/users/update", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Update)))
+	mux.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.UploadImage)))
 
 	// Объявления
 	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler)
