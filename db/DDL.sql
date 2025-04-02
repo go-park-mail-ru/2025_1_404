@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS Users (
     CONSTRAINT last_name_length CHECK (char_length(last_name) <= 32),
     email TEXT NOT NULL
     CONSTRAINT email_length CHECK (char_length(email) <= 32),
+    CONSTRAINT email_unique UNIQUE (email),
     password TEXT NOT NULL
     CONSTRAINT password_length CHECK (char_length(password) <= 64),
     last_notification_id INTEGER

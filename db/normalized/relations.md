@@ -220,6 +220,7 @@ erDiagram
 Содержит информацию о изображениях предложений недвижимости.
 
 {id} -> {offer_id, image_id}
+{offer_id, image_id} -> {id}
 
 ### 3. Таблица OfferPriceHistory
 Содержит информацию о истории цен предложений недвижимости.
@@ -230,51 +231,61 @@ erDiagram
 Содержит информацию о типах аренды (посуточно, долгосрочно).
 
 {id} -> {name}
+{name} -> {id}
 
 ### 5. Таблица OfferType
 Содержит информацию о типах предложений (продажа, аренда).
 
 {id} -> {name}
+{name} -> {id}
 
 ### 6. Таблица PropertyType
 Содержит информацию о типах недвижимости (квартира, дом, апартаменты).
 
 {id} -> {name}
+{name} -> {id}
 
 ### 7. Таблица PurchaseType
 Содержит информацию о типах недвижимости (новостройка, вторичное жилье).
 
 {id} -> {name}
+{name} -> {id}
 
 ### 8. Таблица OfferStatus
 Содержит информацию о статусах предложений (активно, снято с продажи, черновик).
 
 {id} -> {name}
+{name} -> {id}
 
 ### 9. Таблица OfferRenovation
 Содержит информацию о типах ремонта (без ремонта, косметический, евро).
 
 {id} -> {name}
+{name} -> {id}
 
 ### 10. Таблица MetroStation
 Содержит информацию о станциях метро.
 
 {id} -> {metro_line_id, name}
+{metro_line_id, name} -> {id}
 
 ### 11. Таблица MetroLine
 Содержит информацию о ветках метро.
 
 {id} -> {name, color}
+{name} -> {id, color}
 
 ### 12. Таблица User
 Содержит информацию о пользователях.
 
 {id} -> {image_id, first_name, last_name, email, password, last_notification_id, created_at, updated_at}
+{email} -> {id, image_id, first_name, last_name, password, last_notification_id, created_at, updated_at}
 
 ### 13. Таблица Image
 Содержит информацию о изображениях.
 
 {id} -> {uuid, created_at, updated_at}
+{uuid} -> {id, created_at, updated_at}
 
 ### 14. Таблица UserNotification
 Содержит информацию о уведомлениях пользователей.
@@ -290,11 +301,13 @@ erDiagram
 Содержит информацию о избранных предложениях пользователей.
 
 {id} -> {user_id, offer_id, created_at}
+{user_id, offer_id} -> {id, created_at}
 
 ### 17. Таблица Chat
 Содержит информацию о чатах.
 
 {id} -> {offer_id, customer_id, created_at, updated_at}
+{offer_id, customer_id} -> {id, created_at, updated_at}
 
 ### 18. Таблица ChatMessage
 Содержит информацию о сообщениях в чатах.
@@ -310,6 +323,7 @@ erDiagram
 Содержит информацию о классах жилых комплексов (комфорт, бизнес, элит, ...).
 
 {id} -> {name}
+{name} -> {id}
 
 ### 21. Таблица HousingComplexReview
 Содержит информацию об отзывах о жилых комплексах.
@@ -320,6 +334,7 @@ erDiagram
 Содержит информацию о изображениях жилых комплексов.
 
 {id} -> {housing_complex_id, image_id, created_at, updated_at}
+{housing_complex_id, image_id} -> {id, image_id, created_at, updated_at}
 
 ## БД находится в 3-ей нормальной форме Бойса-Кодда
 Для доказательства того, что БД находится в 3-ей нормальной форме Бойса-Кодда, рассмотрим функциональные зависимости в таблицах БД. Они расписаны в предыдущем блоке для каждой таблицы.
