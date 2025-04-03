@@ -4,15 +4,17 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+//go:generate mockgen -source repository.go -destination=mocks/mock_repository.go -package=mocks
 
 type User struct {
 	ID                 int64
@@ -69,12 +71,19 @@ type Repository interface {
 	DeleteOffer(ctx context.Context, id int64) error
 }
 
+type DB interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	Close()
+}
+
 type repository struct {
-	db     *pgxpool.Pool
+	db     DB
 	logger logger.Logger
 }
 
-func NewRepository(db *pgxpool.Pool, logger logger.Logger) Repository {
+func NewRepository(db DB, logger logger.Logger) Repository {
 	return &repository{db: db, logger: logger}
 }
 
@@ -132,6 +141,7 @@ func (r *repository) CreateUser(ctx context.Context, u User) (int64, error) {
 	err := r.db.QueryRow(ctx, createUserSQL,
 		u.ImageID, u.FirstName, u.LastName, u.Email, u.Password, u.TokenVersion,
 	).Scan(&id)
+
 	r.logger.WithFields(logger.LoggerFields{
 		"requestID": requestID,
 		"query":     createUserSQL,
@@ -144,16 +154,19 @@ func (r *repository) CreateUser(ctx context.Context, u User) (int64, error) {
 		},
 		"success": err == nil,
 	}).Info("SQL query CreateUser")
+
 	return id, err
 }
 
 func (r *repository) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	var u User
+
 	requestID := ctx.Value(utils.RequestIDKey)
 	err := r.db.QueryRow(ctx, getUserByEmailSQL, email).Scan(
 		&u.ID, &u.ImageID, &u.FirstName, &u.LastName, &u.Email, &u.Password,
 		&u.LastNotificationID, &u.TokenVersion, &u.CreatedAt, &u.UpdatedAt,
 	)
+
 	r.logger.WithFields(logger.LoggerFields{
 		"requestID": requestID,
 		"query":     getUserByEmailSQL,
@@ -162,16 +175,19 @@ func (r *repository) GetUserByEmail(ctx context.Context, email string) (User, er
 		},
 		"success": err == nil,
 	}).Info("SQL query GetUserByEmail")
+
 	return u, err
 }
 
 func (r *repository) GetUserByID(ctx context.Context, id int64) (User, error) {
 	var u User
+
 	requestID := ctx.Value(utils.RequestIDKey)
 	err := r.db.QueryRow(ctx, getUserByIDSQL, id).Scan(
 		&u.ID, &u.ImageID, &u.FirstName, &u.LastName, &u.Email, &u.Password,
 		&u.LastNotificationID, &u.TokenVersion, &u.CreatedAt, &u.UpdatedAt,
 	)
+
 	r.logger.WithFields(logger.LoggerFields{
 		"requestID": requestID,
 		"query":     getUserByEmailSQL,
@@ -180,6 +196,7 @@ func (r *repository) GetUserByID(ctx context.Context, id int64) (User, error) {
 		},
 		"success": err == nil,
 	}).Info("SQL query GetUserByID")
+
 	return u, err
 }
 
@@ -188,28 +205,24 @@ func (r *repository) UpdateUser(ctx context.Context, u domain.User) (domain.User
 
 	// По имени картинки ищем id в БД
 	var imageID interface{}
-	if u.Image == "" {
-		imageID = nil
+	imgID, err := r.GetImageByUUID(ctx, u.Image)
+	if imgID.Valid {
+		imageID = imgID.Int64
 	} else {
-		var id int64
-		id, err := r.GetImageByUUID(ctx, u.Image)
-		if err != nil {
-			return updatedUser, fmt.Errorf("image not found")
-		}
-		imageID = id
+		imageID = nil
 	}
 
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	// Обновляем юзера
 	var id sql.NullInt64
-	err := r.db.QueryRow(ctx, updateUserSQL,
+	err = r.db.QueryRow(ctx, updateUserSQL,
 		imageID, u.FirstName, u.LastName, u.Email, u.Password, u.ID,
 	).Scan(&updatedUser.ID, &updatedUser.FirstName, &updatedUser.LastName,
 		&updatedUser.Email, &id)
 
 	// Получаем имя картинки по id картинки
-	fileName, _:= r.GetImageByID(ctx, id)
+	fileName, _ := r.GetImageByID(ctx, id)
 	updatedUser.Image = fileName
 
 	r.logger.WithFields(logger.LoggerFields{
@@ -257,10 +270,10 @@ func (r *repository) CreateImage(ctx context.Context, file filestorage.FileUploa
 	return err
 }
 
-func (r *repository) GetImageByUUID (ctx context.Context, uuid string) (int64, error) {
+func (r *repository) GetImageByUUID(ctx context.Context, uuid string) (sql.NullInt64, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
-	var id int64
+	var id sql.NullInt64
 	err := r.db.QueryRow(ctx, getImageByUUIDSQL, uuid).Scan(&id)
 
 	r.logger.WithFields(logger.LoggerFields{
@@ -275,7 +288,7 @@ func (r *repository) GetImageByUUID (ctx context.Context, uuid string) (int64, e
 	return id, err
 }
 
-func (r *repository) GetImageByID (ctx context.Context, id sql.NullInt64) (string, error) {
+func (r *repository) GetImageByID(ctx context.Context, id sql.NullInt64) (string, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var fileName string

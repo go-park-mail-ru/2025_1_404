@@ -13,7 +13,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
-	
+
 	"github.com/joho/godotenv"
 )
 

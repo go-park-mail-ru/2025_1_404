@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 )
 
+//go:generate mockgen -source filestorage.go -destination=mocks/mock_filestorage.go -package=mocks
+
 func ServeFile(w http.ResponseWriter, r *http.Request, baseDir string) {
 	filePath := filepath.Join(baseDir, r.URL.Path[len("/static/"):])
 	http.ServeFile(w, r, filePath)
