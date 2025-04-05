@@ -70,7 +70,7 @@ func main() {
 	// Авторизация
 	r.HandleFunc("/api/v1/auth/register", authHandler.Register).Methods("POST")
 	r.HandleFunc("/api/v1/auth/login", authHandler.Login).Methods("POST")
-	r.HandleFunc("/api/v1/auth/logout", authHandler.Logout).Methods("POSt")
+	r.HandleFunc("/api/v1/auth/logout", authHandler.Logout).Methods("POST")
 
 	// Профиль
 	r.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me))).Methods("POST")
