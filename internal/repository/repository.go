@@ -61,6 +61,7 @@ type Repository interface {
 	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)
 	DeleteUser(ctx context.Context, id int64) error
 	CreateImage(ctx context.Context, file filestorage.FileUpload) error
+	GetImageByID(ctx context.Context, id sql.NullInt64) (string, error)
 
 	// --- Offers ---
 	CreateOffer(ctx context.Context, offer Offer) (int64, error)
@@ -195,7 +196,7 @@ func (r *repository) GetUserByID(ctx context.Context, id int64) (User, error) {
 			"id": id,
 		},
 		"success": err == nil,
-	}).Info("SQL query GetUserByID")
+	}).Info("SQL query GetUserByID") 
 
 	return u, err
 }

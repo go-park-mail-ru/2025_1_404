@@ -1,16 +1,31 @@
 package filestorage
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
 
 //go:generate mockgen -source filestorage.go -destination=mocks/mock_filestorage.go -package=mocks
 
 func ServeFile(w http.ResponseWriter, r *http.Request, baseDir string) {
-	filePath := filepath.Join(baseDir, r.URL.Path[len("/static/"):])
+	filePath := filepath.Join(baseDir, r.URL.Path[len("/images/"):])
+
+	info, err := os.Stat(filePath)
+	if err != nil {
+		utils.NotFoundHandler(w, r)
+		return
+	}
+	if info.IsDir() {
+		http.Error(w, "доступ к  ресурсу запрещён", http.StatusForbidden)
+		return
+	}
+
+	fmt.Println("FILEPATH !!! ", filePath)
 	http.ServeFile(w, r, filePath)
 }
 
@@ -39,7 +54,7 @@ func NewLocalStorage(basePath string) *LocalStorage {
 
 func (s *LocalStorage) Add(fileUpload FileUpload) error {
 
-	filePath := filepath.Join(s.BasePath, fileUpload.Name+"."+fileUpload.ContentType)
+	filePath := filepath.Join(s.BasePath, fileUpload.Name)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err

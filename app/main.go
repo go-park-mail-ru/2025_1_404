@@ -13,6 +13,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	"github.com/gorilla/mux"
 
 	"github.com/joho/godotenv"
 )
@@ -56,31 +57,31 @@ func main() {
 	offerHandler := delivery.NewOfferHandler(offerUC)
 
 	// Маршруты
-	mux := http.NewServeMux()
+	r := mux.NewRouter()
 
 	// Static
-	mux.HandleFunc("/static/", func(w http.ResponseWriter, r *http.Request) {
+	r.PathPrefix("/images/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		filestorage.ServeFile(w, r, basePath)
-	})
-	
+	}))
+
 	// Not Found
-	mux.HandleFunc("/", utils.NotFoundHandler)
+	r.NotFoundHandler = http.HandlerFunc(utils.NotFoundHandler)
 
 	// Авторизация
-	mux.HandleFunc("/api/v1/auth/register", authHandler.Register)
-	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)
-	mux.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
+	r.HandleFunc("/api/v1/auth/register", authHandler.Register).Methods("POST")
+	r.HandleFunc("/api/v1/auth/login", authHandler.Login).Methods("POST")
+	r.HandleFunc("/api/v1/auth/logout", authHandler.Logout).Methods("POSt")
 
-	// Профиль, требующий авторизацию
-	mux.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me)))
-	mux.Handle("/api/v1/users/update", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Update)))
-	mux.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.UploadImage)))
+	// Профиль
+	r.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me))).Methods("POST")
+	r.Handle("/api/v1/users/update", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Update))).Methods("PUT")
+	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.UploadImage))).Methods("PUT")
 
 	// Объявления
-	mux.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler)
+	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).Methods("GET")
 
 	// AccessLog middleware
-	logMux := middleware.AccessLog(l, mux)
+	logMux := middleware.AccessLog(l, r)
 	// CORS middleware
 	corsMux := middleware.CORSHandler(logMux)
 

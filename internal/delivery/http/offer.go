@@ -17,10 +17,6 @@ func NewOfferHandler(uc *usecase.OfferUsecase) *OfferHandler {
 
 // GetOffersHandler — получение списка объявлений
 func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	offers, err := h.OfferUC.GetOffers(r.Context())
 	if err != nil {

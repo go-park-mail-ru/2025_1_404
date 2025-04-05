@@ -26,10 +26,6 @@ func NewAuthHandler(uc *usecase.AuthUsecase) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req domain.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -77,10 +73,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req domain.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -130,10 +122,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
@@ -151,10 +139,6 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
@@ -170,10 +154,6 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut || r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	// Достаем из контекста от Auth middleware id юзера
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
@@ -212,10 +192,6 @@ func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	// Достаем из контекста от Auth middleware id юзера
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
@@ -246,7 +222,7 @@ func (h *AuthHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	upload := filestorage.FileUpload{
-		Name:        uuid.New().String(),
+		Name:        uuid.New().String()+"."+contentType,
 		Size:        header.Size,
 		File:        bytes.NewReader(fileBytes),
 		ContentType: contentType,

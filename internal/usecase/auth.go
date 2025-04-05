@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -106,12 +107,30 @@ func (u *AuthUsecase) GetUserByID(ctx context.Context, id int) (domain.User, err
 		"user_id": user.ID,
 	}).Info("User usecase: get user by id")
 
+	var image string
+	if user.ImageID == nil {
+		image = ""
+	} else {
+		image, err = u.repo.GetImageByID(ctx, sql.NullInt64 {
+			Int64: *user.ImageID,
+			Valid: true,
+		})
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{
+				"requestID": requestID,
+			}).Error("User usecase: get image by id failed")
+			return domain.User{}, err
+		}
+		image = "http://localhost:8001/images/" + image
+	}
+
 	return domain.User{
 		ID:        int(user.ID),
 		Email:     user.Email,
 		Password:  user.Password,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
+		Image:     image,
 	}, nil
 }
 
@@ -152,6 +171,10 @@ func (u *AuthUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 			"err": err.Error(),
 		})
 		return domain.User{}, err
+	}
+
+	if updatedUser.Image != "" {
+		updatedUser.Image = "http://localhost:8001/images/" + updatedUser.Image
 	}
 
 	return updatedUser, nil

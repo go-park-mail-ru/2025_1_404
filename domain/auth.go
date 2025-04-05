@@ -2,12 +2,12 @@ package domain
 
 // User Структура пользователя
 type User struct {
-	ID        int
-	Email     string
-	Password  string
-	FirstName string
-	LastName  string
-	Image     string
+	ID        int		`json:"id"`
+	Email     string	`json:"email"`
+	Password  string	`json:"-"`
+	FirstName string	`json:"first_name"`
+	LastName  string	`json:"last_name"`
+	Image     string	`json:"image"`
 }
 
 // RegisterRequest Запрос на регистрацию
