@@ -25,7 +25,6 @@ func ServeFile(w http.ResponseWriter, r *http.Request, baseDir string) {
 		return
 	}
 
-	fmt.Println("FILEPATH !!! ", filePath)
 	http.ServeFile(w, r, filePath)
 }
 
