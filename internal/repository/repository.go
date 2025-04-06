@@ -196,7 +196,7 @@ func (r *repository) GetUserByID(ctx context.Context, id int64) (User, error) {
 			"id": id,
 		},
 		"success": err == nil,
-	}).Info("SQL query GetUserByID") 
+	}).Info("SQL query GetUserByID")
 
 	return u, err
 }
@@ -370,6 +370,7 @@ const (
 )
 
 func (r *repository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
 	var id int64
 	err := r.db.QueryRow(ctx, createOfferSQL,
 		o.SellerID, o.OfferTypeID, o.MetroStationID, o.RentTypeID,
@@ -377,10 +378,29 @@ func (r *repository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
 		o.ComplexID, o.Price, o.Description, o.Floor, o.TotalFloors,
 		o.Rooms, o.Address, o.Flat, o.Area, o.CeilingHeight,
 	).Scan(&id)
+
+	logFields := logger.LoggerFields{
+		"requestID": requestID,
+		"query":     createOfferSQL,
+		"params": logger.LoggerFields{
+			"seller_id": o.SellerID,
+			"price":     o.Price,
+			"rooms":     o.Rooms,
+		},
+		"success": err == nil,
+	}
+
+	if err != nil {
+		r.logger.WithFields(logFields).Error("SQL query CreateOffer failed")
+	} else {
+		r.logger.WithFields(logFields).Info("SQL query CreateOffer succeeded")
+	}
+
 	return id, err
 }
 
 func (r *repository) GetOfferByID(ctx context.Context, id int64) (Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
 	var o Offer
 	err := r.db.QueryRow(ctx, getOfferByIDSQL, id).Scan(
 		&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
@@ -389,12 +409,34 @@ func (r *repository) GetOfferByID(ctx context.Context, id int64) (Offer, error) 
 		&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
 		&o.CreatedAt, &o.UpdatedAt,
 	)
+
+	logFields := logger.LoggerFields{
+		"requestID": requestID,
+		"query":     getOfferByIDSQL,
+		"params":    logger.LoggerFields{"id": id},
+		"success":   err == nil,
+	}
+
+	if err != nil {
+		r.logger.WithFields(logFields).Error("SQL query GetOfferByID failed")
+	} else {
+		r.logger.WithFields(logFields).Info("SQL query GetOfferByID succeeded")
+	}
+
 	return o, err
 }
 
 func (r *repository) GetOffersBySellerID(ctx context.Context, sellerID int64) ([]Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
 	rows, err := r.db.Query(ctx, getOffersBySellerSQL, sellerID)
 	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"query":     getOffersBySellerSQL,
+			"params":    logger.LoggerFields{"seller_id": sellerID},
+			"success":   false,
+			"err":       err.Error(),
+		}).Error("SQL query GetOffersBySellerID failed")
 		return nil, err
 	}
 	defer rows.Close()
@@ -414,12 +456,28 @@ func (r *repository) GetOffersBySellerID(ctx context.Context, sellerID int64) ([
 		}
 		offers = append(offers, o)
 	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query":     getOffersBySellerSQL,
+		"params":    logger.LoggerFields{"seller_id": sellerID},
+		"success":   true,
+		"count":     len(offers),
+	}).Info("SQL query GetOffersBySellerID succeeded")
+
 	return offers, nil
 }
 
 func (r *repository) GetAllOffers(ctx context.Context) ([]Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
 	rows, err := r.db.Query(ctx, getAllOffersSQL)
 	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"query":     getAllOffersSQL,
+			"success":   false,
+			"err":       err.Error(),
+		}).Error("SQL query GetAllOffers failed")
 		return nil, err
 	}
 	defer rows.Close()
@@ -439,21 +497,62 @@ func (r *repository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 		}
 		offers = append(offers, o)
 	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query":     getAllOffersSQL,
+		"success":   true,
+		"count":     len(offers),
+	}).Info("SQL query GetAllOffers succeeded")
+
 	return offers, nil
 }
 
 func (r *repository) UpdateOffer(ctx context.Context, o Offer) error {
+	requestID := ctx.Value(utils.RequestIDKey)
 	_, err := r.db.Exec(ctx, updateOfferSQL,
 		o.OfferTypeID, o.MetroStationID, o.RentTypeID, o.PurchaseTypeID,
 		o.PropertyTypeID, o.StatusID, o.RenovationID, o.ComplexID,
 		o.Price, o.Description, o.Floor, o.TotalFloors, o.Rooms,
 		o.Address, o.Flat, o.Area, o.CeilingHeight, o.ID,
 	)
+
+	logFields := logger.LoggerFields{
+		"requestID": requestID,
+		"query":     updateOfferSQL,
+		"params": logger.LoggerFields{
+			"id":    o.ID,
+			"price": o.Price,
+		},
+		"success": err == nil,
+	}
+
+	if err != nil {
+		r.logger.WithFields(logFields).Error("SQL query UpdateOffer failed")
+	} else {
+		r.logger.WithFields(logFields).Info("SQL query UpdateOffer succeeded")
+	}
+
 	return err
 }
 
 func (r *repository) DeleteOffer(ctx context.Context, id int64) error {
+	requestID := ctx.Value(utils.RequestIDKey)
 	_, err := r.db.Exec(ctx, deleteOfferSQL, id)
+
+	logFields := logger.LoggerFields{
+		"requestID": requestID,
+		"query":     deleteOfferSQL,
+		"params":    logger.LoggerFields{"id": id},
+		"success":   err == nil,
+	}
+
+	if err != nil {
+		r.logger.WithFields(logFields).Error("SQL query DeleteOffer failed")
+	} else {
+		r.logger.WithFields(logFields).Info("SQL query DeleteOffer succeeded")
+	}
+
 	return err
 }
 
