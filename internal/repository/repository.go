@@ -57,12 +57,13 @@ type Offer struct {
 type Repository interface {
 	// --- Users ---
 	CreateUser(ctx context.Context, user User) (int64, error)
-	GetUserByEmail(ctx context.Context, email string) (User, error)
-	GetUserByID(ctx context.Context, id int64) (User, error)
+	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
+	GetUserByID(ctx context.Context, id int64) (domain.User, error)
 	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)
 	DeleteUser(ctx context.Context, id int64) error
 	CreateImage(ctx context.Context, file filestorage.FileUpload) error
 	GetImageByID(ctx context.Context, id sql.NullInt64) (string, error)
+	DeleteUserImage(ctx context.Context, id int64) (error)
 
 	// --- Offers ---
 	CreateOffer(ctx context.Context, offer Offer) (int64, error)
@@ -108,25 +109,34 @@ const (
 	`
 
 	getUserByEmailSQL = `
-		SELECT id, image_id, first_name, last_name, email, password,
-			last_notification_id, token_version, created_at, updated_at
-		FROM kvartirum.Users
-		WHERE email = $1;
+		SELECT
+			u.id, 
+			COALESCE(i.uuid, '') as image,
+			u.first_name, u.last_name, u.email, u.password
+		FROM kvartirum.Users u
+		LEFT JOIN kvartirum.Image i on u.image_id = i.id
+		WHERE u.email = $1;
 	`
 
 	getUserByIDSQL = `
-		SELECT id, image_id, first_name, last_name, email, password,
-			last_notification_id, token_version, created_at, updated_at
-		FROM kvartirum.Users
-		WHERE id = $1;
+		SELECT
+			u.id, 
+			COALESCE(i.uuid, '') as image, 
+			u.first_name, u.last_name, u.email, u.password
+		FROM kvartirum.Users u
+		LEFT JOIN kvartirum.Image i on u.image_id = i.id
+		WHERE u.id = $1;
 	`
 
 	updateUserSQL = `
 		UPDATE kvartirum.Users
-		SET image_id = $1, first_name = $2, last_name = $3, email = $4,
-			password = $5
-		WHERE id = $6
-		RETURNING id, first_name, last_name, email, image_id;
+		SET
+			image_id = (SELECT id FROM kvartirum.Image WHERE uuid = $1),
+			first_name = $2, last_name = $3, email = $4
+		WHERE id = $5
+		RETURNING 
+			id, first_name, last_name, email,
+		 	COALESCE ((SELECT uuid FROM kvartirum.Image WHERE id = image_id), '') as image_uuid;
 	`
 
 	deleteUserSQL = `
@@ -143,6 +153,12 @@ const (
 	getImageByIDSQL = `
 		SELECT uuid from kvartirum.Image WHERE id = $1;
 	`
+
+	deleteUserImageSQL = `
+		DELETE FROM kvartirum.Image where id = (
+			SELECT image_id from kvartirum.Users where id = $1
+		);
+	`
 )
 
 func (r *repository) CreateUser(ctx context.Context, u User) (int64, error) {
@@ -153,105 +169,70 @@ func (r *repository) CreateUser(ctx context.Context, u User) (int64, error) {
 	).Scan(&id)
 
 	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     createUserSQL,
+		"requestID": requestID,"query": createUserSQL,
 		"params": logger.LoggerFields{
 			"name":          u.FirstName,
 			"last_name":     u.LastName,
 			"email":         u.Email,
 			"token_version": u.TokenVersion,
 			"image_id":      u.ImageID,
-		},
-		"success": err == nil,
-	}).Info("SQL query CreateUser")
+		},"success": err == nil,}).Info("SQL query CreateUser")
 
 	return id, err
 }
 
-func (r *repository) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	var u User
-
+func (r *repository) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
+	
+	var u domain.User
 	err := r.db.QueryRow(ctx, getUserByEmailSQL, email).Scan(
-		&u.ID, &u.ImageID, &u.FirstName, &u.LastName, &u.Email, &u.Password,
-		&u.LastNotificationID, &u.TokenVersion, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password,	
 	)
 
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     getUserByEmailSQL,
-		"params": logger.LoggerFields{
-			"email": email,
-		},
-		"success": err == nil,
-	}).Info("SQL query GetUserByEmail")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID,	"query": getUserByEmailSQL,
+						"params": logger.LoggerFields{"email": email,},"success": err == nil,}).Info("SQL query GetUserByEmail")
 
 	return u, err
 }
 
-func (r *repository) GetUserByID(ctx context.Context, id int64) (User, error) {
-	var u User
-
+func (r *repository) GetUserByID(ctx context.Context, id int64) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
+	
+	var u domain.User
 	err := r.db.QueryRow(ctx, getUserByIDSQL, id).Scan(
-		&u.ID, &u.ImageID, &u.FirstName, &u.LastName, &u.Email, &u.Password,
-		&u.LastNotificationID, &u.TokenVersion, &u.CreatedAt, &u.UpdatedAt,
+		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password,	
 	)
 
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     getUserByEmailSQL,
-		"params": logger.LoggerFields{
-			"id": id,
-		},
-		"success": err == nil,
-	}).Info("SQL query GetUserByID")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID,"query": getUserByEmailSQL,
+						"params": logger.LoggerFields{"id": id,},"success": err == nil,}).Info("SQL query GetUserByID")
 
 	return u, err
 }
 
 func (r *repository) UpdateUser(ctx context.Context, u domain.User) (domain.User, error) {
-	var updatedUser domain.User
-
-	// По имени картинки ищем id в БД
-	var imageID interface{}
-	imgID, err := r.GetImageByUUID(ctx, u.Image)
-	if imgID.Valid {
-		imageID = imgID.Int64
-	} else {
-		imageID = nil
-	}
-
 	requestID := ctx.Value(utils.RequestIDKey)
 
-	// Обновляем юзера
-	var id sql.NullInt64
-	err = r.db.QueryRow(ctx, updateUserSQL,
-		imageID, u.FirstName, u.LastName, u.Email, u.Password, u.ID,
+	var updatedUser domain.User
+	err := r.db.QueryRow(ctx, updateUserSQL,
+		u.Image, u.FirstName, u.LastName, u.Email, u.ID,
 	).Scan(&updatedUser.ID, &updatedUser.FirstName, &updatedUser.LastName,
-		&updatedUser.Email, &id)
-
-	// Получаем имя картинки по id картинки
-	fileName, _ := r.GetImageByID(ctx, id)
-	updatedUser.Image = fileName
+		&updatedUser.Email, &updatedUser.Image)
 
 	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     updateUserSQL,
+		"requestID": requestID, "query": updateUserSQL,
 		"params": logger.LoggerFields{
 			"name":       u.FirstName,
 			"last_name":  u.LastName,
 			"email":      u.Email,
 			"image_path": u.Image,
-		},
-		"success": err == nil,
-	}).Info("SQL query UpdateUser")
+		}, "success": err == nil,}).Info("SQL query UpdateUser")
 
 	return updatedUser, err
 }
 
 func (r *repository) DeleteUser(ctx context.Context, id int64) error {
 	requestID := ctx.Value(utils.RequestIDKey)
+
 	_, err := r.db.Exec(ctx, deleteUserSQL, id)
 	r.logger.WithFields(logger.LoggerFields{
 		"requestID": requestID,
@@ -308,16 +289,21 @@ func (r *repository) GetImageByID(ctx context.Context, id sql.NullInt64) (string
 	err := r.db.QueryRow(ctx, getImageByIDSQL, id.Int64).Scan(&fileName)
 
 	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     getImageByIDSQL,
-		"params": logger.LoggerFields{
-			"id": id,
-		},
-		"success": err == nil,
-	})
+		"requestID": requestID,"query":getImageByIDSQL,
+		"params": logger.LoggerFields{"id": id,},"success": err == nil,}).Info("SQL GetIMageByID")
 
 	return fileName, err
 
+}
+
+func (r *repository) DeleteUserImage(ctx context.Context, id int64) (error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, deleteUserImageSQL, id)
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID,"query":deleteUserSQL,
+		"params": logger.LoggerFields{"id": id,},"success": err == nil,}).Info("SQL DeleteImage")
+
+	return err
 }
 
 // endregion

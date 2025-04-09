@@ -237,3 +237,20 @@ func (h *AuthHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 
 	utils.SendJSONResponse(w, updatedUser, http.StatusOK)
 }
+
+func (h *AuthHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
+
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "Не удалось удалить фотографию", http.StatusBadRequest)
+		return
+	}
+
+	updatedUser, err := h.UC.DeleteImage(r.Context(), userID)
+	if err != nil {
+		utils.SendErrorResponse(w, "Не удалось удалить фотографию", http.StatusInternalServerError)
+		return
+	}
+
+	utils.SendJSONResponse(w, updatedUser, http.StatusOK)
+}

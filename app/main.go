@@ -78,6 +78,7 @@ func main() {
 	r.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me))).Methods("POST")
 	r.Handle("/api/v1/users/update", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Update))).Methods("PUT")
 	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.UploadImage))).Methods("PUT")
+	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.DeleteImage))).Methods("DELETE")
 
 	// Объявления
 	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).Methods("GET")
