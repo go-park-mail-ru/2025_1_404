@@ -4,6 +4,8 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
@@ -504,6 +506,115 @@ func (r *repository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 		"success":   true,
 		"count":     len(offers),
 	}).Info("SQL query GetAllOffers succeeded")
+
+	return offers, nil
+}
+
+func (r *repository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter) ([]Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var (
+		whereParts []string
+		args       []any
+		idx        = 1
+	)
+
+	addFilter := func(condition string, value any) {
+		whereParts = append(whereParts, fmt.Sprintf(condition, idx))
+		args = append(args, value)
+		idx++
+	}
+
+	// Фильтры
+	if f.MinArea != nil {
+		addFilter("area >= $%d", *f.MinArea)
+	}
+	if f.MaxArea != nil {
+		addFilter("area <= $%d", *f.MaxArea)
+	}
+	if f.MinPrice != nil {
+		addFilter("price >= $%d", *f.MinPrice)
+	}
+	if f.MaxPrice != nil {
+		addFilter("price <= $%d", *f.MaxPrice)
+	}
+	if f.Floor != nil {
+		addFilter("floor = $%d", *f.Floor)
+	}
+	if f.Rooms != nil {
+		addFilter("rooms = $%d", *f.Rooms)
+	}
+	if f.Address != nil {
+		addFilter("address ILIKE $%d", "%"+*f.Address+"%")
+	}
+	if f.RenovationID != nil {
+		addFilter("renovation_id = $%d", *f.RenovationID)
+	}
+	if f.PropertyTypeID != nil {
+		addFilter("property_type_id = $%d", *f.PropertyTypeID)
+	}
+	if f.PurchaseTypeID != nil {
+		addFilter("purchase_type_id = $%d", *f.PurchaseTypeID)
+	}
+	if f.RentTypeID != nil {
+		addFilter("rent_type_id = $%d", *f.RentTypeID)
+	}
+	if f.OfferTypeID != nil {
+		addFilter("offer_type_id = $%d", *f.OfferTypeID)
+	}
+	if f.SellerID != nil {
+		addFilter("seller_id = $%d", *f.SellerID)
+	}
+	if f.NewBuilding != nil {
+		if *f.NewBuilding {
+			whereParts = append(whereParts, "complex_id IS NOT NULL")
+		} else {
+			whereParts = append(whereParts, "complex_id IS NULL")
+		}
+	}
+
+	query := getAllOffersSQL
+
+	if len(whereParts) > 0 {
+		query += " WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"query":     query,
+			"params":    args,
+			"success":   false,
+			"err":       err.Error(),
+		}).Error("SQL query GetOffersByFilter failed")
+		return nil, err
+	}
+	defer rows.Close()
+
+	var offers []Offer
+	for rows.Next() {
+		var o Offer
+		err = rows.Scan(
+			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
+			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
+			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.CreatedAt, &o.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		offers = append(offers, o)
+	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query":     query,
+		"params":    args,
+		"success":   true,
+		"count":     len(offers),
+	}).Info("SQL query GetOffersByFilter succeeded")
 
 	return offers, nil
 }
