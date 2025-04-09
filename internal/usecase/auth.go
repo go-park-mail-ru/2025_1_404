@@ -2,9 +2,9 @@ package usecase
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
+	"path"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
@@ -46,16 +46,11 @@ func (u *AuthUsecase) CreateUser(ctx context.Context, email, password, firstName
 	requestID := ctx.Value(utils.RequestIDKey)
 	id, err := u.repo.CreateUser(ctx, user)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"err": err.Error(),
-		}).Error("User usecase: create user failed")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"err": err.Error(),}).Error("User usecase: create user failed")
 		return domain.User{}, err
 	}
-	u.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"user_id": id,
-	}).Info("User usecase: user created succesfully")
+	u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"user_id": id,}).Info("User usecase: user created succesfully")
+
 	user.ID = id
 
 	return domain.User{
@@ -68,70 +63,35 @@ func (u *AuthUsecase) CreateUser(ctx context.Context, email, password, firstName
 }
 
 func (u *AuthUsecase) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
-	user, err := u.repo.GetUserByEmail(ctx, email)
 	requestID := ctx.Value(utils.RequestIDKey)
+	
+	user, err := u.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"err": err.Error(),
-		}).Error("User usecase: get user by email failed")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"err": err.Error(),}).Error("User usecase: get user by email failed")
 		return domain.User{}, err
 	}
 
-	u.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"user_id": user.ID,
-	}).Info("User usecase: get user by email")
+	u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"user_id": user.ID,}).Info("User usecase: get user by email")
 
-	return domain.User{
-		ID:        int(user.ID),
-		Email:     user.Email,
-		Password:  user.Password,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-	}, nil
+	return user, nil
 }
 
 func (u *AuthUsecase) GetUserByID(ctx context.Context, id int) (domain.User, error) {
-	user, err := u.repo.GetUserByID(ctx, int64(id))
 	requestID := ctx.Value(utils.RequestIDKey)
+	
+	user, err := u.repo.GetUserByID(ctx, int64(id))
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-		}).Error("User usecase: get user by id failed")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("User usecase: get user by id failed")
 		return domain.User{}, err
 	}
 
-	u.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"user_id": user.ID,
-	}).Info("User usecase: get user by id")
+	u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"user_id": user.ID,}).Info("User usecase: get user by id")
 
-	var image string
-	if user.ImageID == nil {
-		image = ""
-	} else {
-		image, err = u.repo.GetImageByID(ctx, sql.NullInt64 {
-			Int64: *user.ImageID,
-			Valid: true,
-		})
-		if err != nil {
-			u.logger.WithFields(logger.LoggerFields{
-				"requestID": requestID,
-			}).Error("User usecase: get image by id failed")
-			return domain.User{}, err
-		}
-		image = "http://localhost:8001/images/" + image
+	if user.Image != "" {
+		user.Image = "http://localhost:8001/images/" + user.Image
 	}
 
-	return domain.User{
-		ID:        int(user.ID),
-		Email:     user.Email,
-		Password:  user.Password,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Image:     image,
-	}, nil
+	return user, nil
 }
 
 func (u *AuthUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.User, error){
@@ -139,13 +99,14 @@ func (u *AuthUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 
 	currentUser, err := u.GetUserByID(ctx, user.ID)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"id": user.ID,
-		}).Warn("user id not found")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"id": user.ID,}).Warn("user id not found")
 		return domain.User{}, fmt.Errorf("failed to find user")
 	}
 
+	if currentUser.Image != "" {
+		currentUser.Image = path.Base(currentUser.Image)
+	}
+	
 	// Заполняем непереданные поля уже имеющимися
 	if user.Email != "" {
 		currentUser.Email = user.Email
@@ -156,9 +117,6 @@ func (u *AuthUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 	if user.LastName != "" {
 		currentUser.LastName = user.LastName
 	}
-	if user.Password != "" {
-		currentUser.Password = user.Password
-	}
 	if user.Image != "" {
 		currentUser.Image = user.Image
 	}
@@ -166,10 +124,7 @@ func (u *AuthUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 	// Обновляем в БД
 	updatedUser, err := u.repo.UpdateUser(ctx, currentUser);
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"err": err.Error(),
-		})
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"err": err.Error(),})
 		return domain.User{}, err
 	}
 
@@ -185,32 +140,36 @@ func (u *AuthUsecase) UploadImage(ctx context.Context, id int, file filestorage.
 
 	user, err := u.GetUserByID(ctx, id)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"id": id,
-			"err": err.Error(),
-		}).Warn("user id not found")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"id": id,"err": err.Error(),}).Warn("user id not found")
 		return domain.User{}, fmt.Errorf("failed to find user")
 	}
+
+	fmt.Println("GEEEET USER", user)
+
+	previousImage := user.Image
+
+	fmt.Println("prevIMAGEEEEEE", previousImage)
 
 	// Загружаем в файловое хранилище фото
 	err = u.fs.Add(file)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"err": err.Error(),
-		}).Warn("upload image failed")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"err": err.Error(),}).Warn("upload image failed")
 		return domain.User{}, err
 	}
 
 	// Создаем запись в БД
 	err = u.repo.CreateImage(ctx, file)
 	if err != nil {	
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"err": err,
-		}).Warn("failed to load user image")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"err": err.Error(),}).Warn("failed to load user image")
 		return domain.User{}, err
+	}
+
+	if previousImage != "" {
+		_, err := u.DeleteImage(ctx, id)
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("failed to delete old image")
+			return domain.User{}, err
+		}
 	}
 
 	// Обновляем пользователя с новым именем аватарки
@@ -219,13 +178,48 @@ func (u *AuthUsecase) UploadImage(ctx context.Context, id int, file filestorage.
 		Image: file.Name,
 	})
 
+	fmt.Println("UPDATEEEEEEEEEEEE USER", updatedUser)
+
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-		}).Warn("failed to update user")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(),}).Warn("failed to update user")
 		return domain.User{}, err
 	}
 
 	return updatedUser, nil
+}
 
+func (u *AuthUsecase) DeleteImage(ctx context.Context, id int) (domain.User, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	user, err := u.GetUserByID(ctx, id)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"id": id,"err": err.Error(),}).Warn("user id not found")
+		return domain.User{}, fmt.Errorf("failed to find user")
+	}	
+
+	err = u.fs.Delete(path.Base(user.Image))
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"err": err.Error(),}).Error("delete image failed")
+		return domain.User{}, err
+	}
+
+	fmt.Println("DEEEEELETE IMAGE", path.Base(user.Image))
+
+	err = u.repo.DeleteUserImage(ctx, int64(id))
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"err": err.Error(),}).Error("failed to delete user image")
+		return domain.User{}, err
+	}
+
+	updatedUser, err := u.UpdateUser(ctx, domain.User{
+		ID: id,
+		Image: "",
+	})
+
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("failed to update user")
+		return domain.User{}, err
+	}
+
+	return updatedUser, nil
 }
