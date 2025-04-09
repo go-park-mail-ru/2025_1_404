@@ -144,11 +144,7 @@ func (u *AuthUsecase) UploadImage(ctx context.Context, id int, file filestorage.
 		return domain.User{}, fmt.Errorf("failed to find user")
 	}
 
-	fmt.Println("GEEEET USER", user)
-
 	previousImage := user.Image
-
-	fmt.Println("prevIMAGEEEEEE", previousImage)
 
 	// Загружаем в файловое хранилище фото
 	err = u.fs.Add(file)
@@ -178,8 +174,6 @@ func (u *AuthUsecase) UploadImage(ctx context.Context, id int, file filestorage.
 		Image: file.Name,
 	})
 
-	fmt.Println("UPDATEEEEEEEEEEEE USER", updatedUser)
-
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(),}).Warn("failed to update user")
 		return domain.User{}, err
@@ -202,8 +196,6 @@ func (u *AuthUsecase) DeleteImage(ctx context.Context, id int) (domain.User, err
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"err": err.Error(),}).Error("delete image failed")
 		return domain.User{}, err
 	}
-
-	fmt.Println("DEEEEELETE IMAGE", path.Base(user.Image))
 
 	err = u.repo.DeleteUserImage(ctx, int64(id))
 	if err != nil {
