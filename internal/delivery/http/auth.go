@@ -179,6 +179,11 @@ func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.UC.IsEmailTaken(r.Context(), updateUser.Email) {
+		utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
+		return
+	}
+
 	// Возвращает User вместо UserUpdate
 	user := domain.UserFromUpdated(updateUser)
 	// Пытаемся обновить данные
