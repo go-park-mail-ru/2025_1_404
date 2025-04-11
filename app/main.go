@@ -50,7 +50,7 @@ func main() {
 
 	// Юзкейсы
 	authUC := usecase.NewAuthUsecase(repo, l, fs)
-	offerUC := usecase.NewOfferUsecase(repo, l)
+	offerUC := usecase.NewOfferUsecase(repo, l, fs)
 
 	// Хендлеры
 	authHandler := delivery.NewAuthHandler(authUC)
@@ -94,6 +94,10 @@ func main() {
 		Methods(http.MethodPut)
 	r.Handle("/api/v1/offers/{id:[0-9]+}", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.DeleteOffer))).
 		Methods(http.MethodDelete)
+	r.Handle("/api/v1/offers/{id:[0-9]+}/publish", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.PublishOffer))).
+		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/{id:[0-9]+}/image", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.UploadOfferImage))).
+		Methods(http.MethodPost)
 
 	// AccessLog middleware
 	logMux := middleware.AccessLog(l, r)

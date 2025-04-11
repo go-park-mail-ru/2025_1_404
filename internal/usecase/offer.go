@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
@@ -119,6 +120,28 @@ func (u *OfferUsecase) SaveOfferImage(ctx context.Context, offerID int, upload f
 	}
 
 	return u.repo.CreateImageAndBindToOffer(ctx, offerID, upload.Name)
+}
+
+func (u *OfferUsecase) PublishOffer(ctx context.Context, offerID int, userID int) error {
+	offer, err := u.repo.GetOfferByID(ctx, int64(offerID))
+	if err != nil {
+		return fmt.Errorf("объявление не найдено")
+	}
+	if int(offer.SellerID) != userID {
+		return fmt.Errorf("нет доступа к публикации этого объявления")
+	}
+	if offer.StatusID != 2 { // 2 = Черновик
+		return fmt.Errorf("объявление уже активно или завершено")
+	}
+
+	// Проверка обязательных полей
+	if offer.Price <= 0 || offer.Area <= 0 || offer.Floor <= 0 ||
+		offer.TotalFloors <= 0 || offer.Rooms <= 0 || offer.PropertyTypeID == 0 ||
+		offer.RenovationID == 0 || offer.OfferTypeID == 0 || offer.StatusID == 0 {
+		return fmt.Errorf("не все обязательные поля заполнены")
+	}
+
+	return u.repo.UpdateOfferStatus(ctx, offerID, 1)
 }
 
 func mapOffer(o repository.Offer) domain.Offer {

@@ -70,8 +70,11 @@ type Repository interface {
 	GetOfferByID(ctx context.Context, id int64) (Offer, error)
 	GetOffersBySellerID(ctx context.Context, sellerID int64) ([]Offer, error)
 	GetAllOffers(ctx context.Context) ([]Offer, error)
+	GetOffersByFilter(ctx context.Context, f domain.OfferFilter) ([]Offer, error)
 	UpdateOffer(ctx context.Context, offer Offer) error
 	DeleteOffer(ctx context.Context, id int64) error
+	CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error)
+	UpdateOfferStatus(ctx context.Context, offerID int, statusID int) error
 }
 
 type DB interface {
@@ -709,6 +712,25 @@ func (r *repository) CreateImageAndBindToOffer(ctx context.Context, offerID int,
 	}).Info("Изображение добавлено и связано с оффером")
 
 	return imageID, nil
+}
+
+func (r *repository) UpdateOfferStatus(ctx context.Context, offerID int, statusID int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, `
+		UPDATE kvartirum.Offer
+		SET offer_status_id = $1
+		WHERE id = $2;
+	`, statusID, offerID)
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"offer_id":  offerID,
+		"status_id": statusID,
+		"success":   err == nil,
+	}).Info("SQL query UpdateOfferStatus")
+
+	return err
 }
 
 // endregion
