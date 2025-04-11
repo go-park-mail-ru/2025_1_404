@@ -25,3 +25,20 @@ type Offer struct {
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
+
+type OfferFilter struct {
+	MinArea        *int
+	MaxArea        *int
+	MinPrice       *int
+	MaxPrice       *int
+	Floor          *int
+	Rooms          *int
+	Address        *string
+	RenovationID   *int
+	PropertyTypeID *int
+	PurchaseTypeID *int
+	RentTypeID     *int
+	OfferTypeID    *int
+	NewBuilding    *bool
+	SellerID       *int
+}

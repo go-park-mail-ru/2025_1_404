@@ -50,8 +50,8 @@ func main() {
 
 	// Юзкейсы
 	authUC := usecase.NewAuthUsecase(repo, l, fs)
-	offerUC := usecase.NewOfferUsecase(repo, l)
 	zhkUC := usecase.NewZhkUsecase(repo, l)
+	offerUC := usecase.NewOfferUsecase(repo, l, fs)
 
 	// Хендлеры
 	authHandler := delivery.NewAuthHandler(authUC)
@@ -70,18 +70,36 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(utils.NotFoundHandler)
 
 	// Авторизация
-	r.HandleFunc("/api/v1/auth/register", authHandler.Register).Methods("POST")
-	r.HandleFunc("/api/v1/auth/login", authHandler.Login).Methods("POST")
-	r.HandleFunc("/api/v1/auth/logout", authHandler.Logout).Methods("POST")
+	r.HandleFunc("/api/v1/auth/register", authHandler.Register).
+		Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/auth/login", authHandler.Login).
+		Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/auth/logout", authHandler.Logout).
+		Methods(http.MethodPost)
 
 	// Профиль
-	r.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me))).Methods("POST")
-	r.Handle("/api/v1/users/update", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Update))).Methods("PUT")
-	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.UploadImage))).Methods("PUT")
-	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.DeleteImage))).Methods("DELETE")
-
+	r.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me))).
+		Methods(http.MethodPost)
+	r.Handle("/api/v1/users/update", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Update))).
+		Methods(http.MethodPut)
+	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.UploadImage))).
+		Methods(http.MethodPut)
+  
 	// Объявления
-	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).Methods("GET")
+	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).
+		Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/offers/{id:[0-9]+}", offerHandler.GetOfferByID).
+		Methods(http.MethodGet)
+	r.Handle("/api/v1/offers", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.CreateOffer))).
+		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/{id:[0-9]+}", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.UpdateOffer))).
+		Methods(http.MethodPut)
+	r.Handle("/api/v1/offers/{id:[0-9]+}", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.DeleteOffer))).
+		Methods(http.MethodDelete)
+	r.Handle("/api/v1/offers/{id:[0-9]+}/publish", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.PublishOffer))).
+		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/{id:[0-9]+}/image", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.UploadOfferImage))).
+		Methods(http.MethodPost)
 
 	// ЖК
 	r.HandleFunc("/api/v1/zhk/{id}", zhkHandler.GetZhkInfo).Methods("GET")
