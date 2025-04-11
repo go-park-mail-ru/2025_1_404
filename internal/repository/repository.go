@@ -4,6 +4,8 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
@@ -68,8 +70,11 @@ type Repository interface {
 	GetOfferByID(ctx context.Context, id int64) (Offer, error)
 	GetOffersBySellerID(ctx context.Context, sellerID int64) ([]Offer, error)
 	GetAllOffers(ctx context.Context) ([]Offer, error)
+	GetOffersByFilter(ctx context.Context, f domain.OfferFilter) ([]Offer, error)
 	UpdateOffer(ctx context.Context, offer Offer) error
 	DeleteOffer(ctx context.Context, id int64) error
+	CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error)
+	UpdateOfferStatus(ctx context.Context, offerID int, statusID int) error
 }
 
 type DB interface {
@@ -196,7 +201,7 @@ func (r *repository) GetUserByID(ctx context.Context, id int64) (User, error) {
 			"id": id,
 		},
 		"success": err == nil,
-	}).Info("SQL query GetUserByID") 
+	}).Info("SQL query GetUserByID")
 
 	return u, err
 }
@@ -370,6 +375,7 @@ const (
 )
 
 func (r *repository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
 	var id int64
 	err := r.db.QueryRow(ctx, createOfferSQL,
 		o.SellerID, o.OfferTypeID, o.MetroStationID, o.RentTypeID,
@@ -377,10 +383,29 @@ func (r *repository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
 		o.ComplexID, o.Price, o.Description, o.Floor, o.TotalFloors,
 		o.Rooms, o.Address, o.Flat, o.Area, o.CeilingHeight,
 	).Scan(&id)
+
+	logFields := logger.LoggerFields{
+		"requestID": requestID,
+		"query":     createOfferSQL,
+		"params": logger.LoggerFields{
+			"seller_id": o.SellerID,
+			"price":     o.Price,
+			"rooms":     o.Rooms,
+		},
+		"success": err == nil,
+	}
+
+	if err != nil {
+		r.logger.WithFields(logFields).Error("SQL query CreateOffer failed")
+	} else {
+		r.logger.WithFields(logFields).Info("SQL query CreateOffer succeeded")
+	}
+
 	return id, err
 }
 
 func (r *repository) GetOfferByID(ctx context.Context, id int64) (Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
 	var o Offer
 	err := r.db.QueryRow(ctx, getOfferByIDSQL, id).Scan(
 		&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
@@ -389,12 +414,34 @@ func (r *repository) GetOfferByID(ctx context.Context, id int64) (Offer, error) 
 		&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
 		&o.CreatedAt, &o.UpdatedAt,
 	)
+
+	logFields := logger.LoggerFields{
+		"requestID": requestID,
+		"query":     getOfferByIDSQL,
+		"params":    logger.LoggerFields{"id": id},
+		"success":   err == nil,
+	}
+
+	if err != nil {
+		r.logger.WithFields(logFields).Error("SQL query GetOfferByID failed")
+	} else {
+		r.logger.WithFields(logFields).Info("SQL query GetOfferByID succeeded")
+	}
+
 	return o, err
 }
 
 func (r *repository) GetOffersBySellerID(ctx context.Context, sellerID int64) ([]Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
 	rows, err := r.db.Query(ctx, getOffersBySellerSQL, sellerID)
 	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"query":     getOffersBySellerSQL,
+			"params":    logger.LoggerFields{"seller_id": sellerID},
+			"success":   false,
+			"err":       err.Error(),
+		}).Error("SQL query GetOffersBySellerID failed")
 		return nil, err
 	}
 	defer rows.Close()
@@ -414,12 +461,28 @@ func (r *repository) GetOffersBySellerID(ctx context.Context, sellerID int64) ([
 		}
 		offers = append(offers, o)
 	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query":     getOffersBySellerSQL,
+		"params":    logger.LoggerFields{"seller_id": sellerID},
+		"success":   true,
+		"count":     len(offers),
+	}).Info("SQL query GetOffersBySellerID succeeded")
+
 	return offers, nil
 }
 
 func (r *repository) GetAllOffers(ctx context.Context) ([]Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
 	rows, err := r.db.Query(ctx, getAllOffersSQL)
 	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"query":     getAllOffersSQL,
+			"success":   false,
+			"err":       err.Error(),
+		}).Error("SQL query GetAllOffers failed")
 		return nil, err
 	}
 	defer rows.Close()
@@ -439,21 +502,234 @@ func (r *repository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 		}
 		offers = append(offers, o)
 	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query":     getAllOffersSQL,
+		"success":   true,
+		"count":     len(offers),
+	}).Info("SQL query GetAllOffers succeeded")
+
+	return offers, nil
+}
+
+func (r *repository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter) ([]Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var (
+		whereParts []string
+		args       []any
+		idx        = 1
+	)
+
+	addFilter := func(condition string, value any) {
+		whereParts = append(whereParts, fmt.Sprintf(condition, idx))
+		args = append(args, value)
+		idx++
+	}
+
+	// Фильтры
+	if f.MinArea != nil {
+		addFilter("area >= $%d", *f.MinArea)
+	}
+	if f.MaxArea != nil {
+		addFilter("area <= $%d", *f.MaxArea)
+	}
+	if f.MinPrice != nil {
+		addFilter("price >= $%d", *f.MinPrice)
+	}
+	if f.MaxPrice != nil {
+		addFilter("price <= $%d", *f.MaxPrice)
+	}
+	if f.Floor != nil {
+		addFilter("floor = $%d", *f.Floor)
+	}
+	if f.Rooms != nil {
+		addFilter("rooms = $%d", *f.Rooms)
+	}
+	if f.Address != nil {
+		addFilter("address ILIKE $%d", "%"+*f.Address+"%")
+	}
+	if f.RenovationID != nil {
+		addFilter("renovation_id = $%d", *f.RenovationID)
+	}
+	if f.PropertyTypeID != nil {
+		addFilter("property_type_id = $%d", *f.PropertyTypeID)
+	}
+	if f.PurchaseTypeID != nil {
+		addFilter("purchase_type_id = $%d", *f.PurchaseTypeID)
+	}
+	if f.RentTypeID != nil {
+		addFilter("rent_type_id = $%d", *f.RentTypeID)
+	}
+	if f.OfferTypeID != nil {
+		addFilter("offer_type_id = $%d", *f.OfferTypeID)
+	}
+	if f.SellerID != nil {
+		addFilter("seller_id = $%d", *f.SellerID)
+	}
+	if f.NewBuilding != nil {
+		if *f.NewBuilding {
+			whereParts = append(whereParts, "complex_id IS NOT NULL")
+		} else {
+			whereParts = append(whereParts, "complex_id IS NULL")
+		}
+	}
+
+	query := getAllOffersSQL
+
+	if len(whereParts) > 0 {
+		query += " WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"query":     query,
+			"params":    args,
+			"success":   false,
+			"err":       err.Error(),
+		}).Error("SQL query GetOffersByFilter failed")
+		return nil, err
+	}
+	defer rows.Close()
+
+	var offers []Offer
+	for rows.Next() {
+		var o Offer
+		err = rows.Scan(
+			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
+			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
+			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.CreatedAt, &o.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		offers = append(offers, o)
+	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"query":     query,
+		"params":    args,
+		"success":   true,
+		"count":     len(offers),
+	}).Info("SQL query GetOffersByFilter succeeded")
+
 	return offers, nil
 }
 
 func (r *repository) UpdateOffer(ctx context.Context, o Offer) error {
+	requestID := ctx.Value(utils.RequestIDKey)
 	_, err := r.db.Exec(ctx, updateOfferSQL,
 		o.OfferTypeID, o.MetroStationID, o.RentTypeID, o.PurchaseTypeID,
 		o.PropertyTypeID, o.StatusID, o.RenovationID, o.ComplexID,
 		o.Price, o.Description, o.Floor, o.TotalFloors, o.Rooms,
 		o.Address, o.Flat, o.Area, o.CeilingHeight, o.ID,
 	)
+
+	logFields := logger.LoggerFields{
+		"requestID": requestID,
+		"query":     updateOfferSQL,
+		"params": logger.LoggerFields{
+			"id":    o.ID,
+			"price": o.Price,
+		},
+		"success": err == nil,
+	}
+
+	if err != nil {
+		r.logger.WithFields(logFields).Error("SQL query UpdateOffer failed")
+	} else {
+		r.logger.WithFields(logFields).Info("SQL query UpdateOffer succeeded")
+	}
+
 	return err
 }
 
 func (r *repository) DeleteOffer(ctx context.Context, id int64) error {
+	requestID := ctx.Value(utils.RequestIDKey)
 	_, err := r.db.Exec(ctx, deleteOfferSQL, id)
+
+	logFields := logger.LoggerFields{
+		"requestID": requestID,
+		"query":     deleteOfferSQL,
+		"params":    logger.LoggerFields{"id": id},
+		"success":   err == nil,
+	}
+
+	if err != nil {
+		r.logger.WithFields(logFields).Error("SQL query DeleteOffer failed")
+	} else {
+		r.logger.WithFields(logFields).Info("SQL query DeleteOffer succeeded")
+	}
+
+	return err
+}
+
+func (r *repository) CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var imageID int64
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO kvartirum.Image (uuid)
+		VALUES ($1)
+		RETURNING id;
+	`, uuid).Scan(&imageID)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"step":      "insert image",
+			"uuid":      uuid,
+			"err":       err.Error(),
+		}).Error("Ошибка при вставке Image")
+		return 0, err
+	}
+
+	_, err = r.db.Exec(ctx, `
+		INSERT INTO kvartirum.OfferImages (offer_id, image_id)
+		VALUES ($1, $2);
+	`, offerID, imageID)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"step":      "bind to offer",
+			"offer_id":  offerID,
+			"image_id":  imageID,
+			"err":       err.Error(),
+		}).Error("Ошибка при вставке в OfferImages")
+		return 0, err
+	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"offer_id":  offerID,
+		"image_id":  imageID,
+		"success":   true,
+	}).Info("Изображение добавлено и связано с оффером")
+
+	return imageID, nil
+}
+
+func (r *repository) UpdateOfferStatus(ctx context.Context, offerID int, statusID int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, `
+		UPDATE kvartirum.Offer
+		SET offer_status_id = $1
+		WHERE id = $2;
+	`, statusID, offerID)
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"offer_id":  offerID,
+		"status_id": statusID,
+		"success":   err == nil,
+	}).Info("SQL query UpdateOfferStatus")
+
 	return err
 }
 
