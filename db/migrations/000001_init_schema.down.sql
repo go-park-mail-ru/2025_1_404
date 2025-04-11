@@ -1,3 +1,5 @@
+SET SEARCH_PATH = kvartirum;
+
 DROP TABLE IF EXISTS ChatMessage;
 DROP TABLE IF EXISTS Chat;
 DROP TABLE IF EXISTS OfferImages;

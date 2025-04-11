@@ -50,11 +50,13 @@ func main() {
 
 	// Юзкейсы
 	authUC := usecase.NewAuthUsecase(repo, l, fs)
+	zhkUC := usecase.NewZhkUsecase(repo, l)
 	offerUC := usecase.NewOfferUsecase(repo, l, fs)
 
 	// Хендлеры
 	authHandler := delivery.NewAuthHandler(authUC)
 	offerHandler := delivery.NewOfferHandler(offerUC)
+	zhkHandler := delivery.NewZhkHandler(zhkUC)
 
 	// Маршруты
 	r := mux.NewRouter()
@@ -82,7 +84,7 @@ func main() {
 		Methods(http.MethodPut)
 	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.UploadImage))).
 		Methods(http.MethodPut)
-
+  
 	// Объявления
 	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).
 		Methods(http.MethodGet)
@@ -98,6 +100,10 @@ func main() {
 		Methods(http.MethodPost)
 	r.Handle("/api/v1/offers/{id:[0-9]+}/image", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.UploadOfferImage))).
 		Methods(http.MethodPost)
+
+	// ЖК
+	r.HandleFunc("/api/v1/zhk/{id}", zhkHandler.GetZhkInfo).Methods("GET")
+	r.HandleFunc("/api/v1/zhks", zhkHandler.GetAllZhk).Methods("GET")
 
 	// AccessLog middleware
 	logMux := middleware.AccessLog(l, r)

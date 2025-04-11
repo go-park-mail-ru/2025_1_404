@@ -34,7 +34,7 @@ migrate-drop:
 	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" drop -f
 
 migrate-force:
-	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" force
+	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" force $(version)
 
 migrate-version:
 	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" version
