@@ -1,14 +1,19 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/validation"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,10 +26,6 @@ func NewAuthHandler(uc *usecase.AuthUsecase) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req domain.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -33,7 +34,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Валидация email, пароля и имени/фамилии
-	validate := validation.GetValidator();
+	validate := validation.GetValidator()
 
 	err := validate.Struct(req)
 	if err != nil {
@@ -72,10 +73,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req domain.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -84,16 +81,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Проверка полей запроса
-	validate := validation.GetValidator();
+	validate := validation.GetValidator()
 
 	err := validate.Struct(req)
 	if err != nil {
 		utils.SendErrorResponse(w, validation.GetError(err), http.StatusBadRequest)
 		return
 	}
-	
+
 	// Ищем юзера по почте
-	user, err := usecase.GetUserByEmail(req.Email)
+	user, err := h.UC.GetUserByEmail(r.Context(), req.Email)
 
 	if err != nil {
 		utils.SendErrorResponse(w, "Неверная почта или пароль", http.StatusUnauthorized)
@@ -125,24 +122,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest)
 		return
 	}
 
-	cookie, err := r.Cookie("token")
-	if err != nil {
-		utils.SendErrorResponse(w, "Учётные данные не предоставлены", http.StatusUnauthorized)
-		return
-	}
-
-	claims, err := utils.ParseJWT(cookie.Value)
-	if err != nil {
-		utils.SendErrorResponse(w, "Неверный токен", http.StatusUnauthorized)
-		return
-	}
-
-	user, err := h.UC.GetUserByID(r.Context(), claims.UserID)
+	user, err := h.UC.GetUserByID(r.Context(), userID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Пользователь не найден", http.StatusUnauthorized)
 		return
@@ -152,10 +139,6 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "token",
@@ -168,4 +151,89 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	})
 
 	utils.SendJSONResponse(w, map[string]string{"message": "Успешный выход"}, http.StatusOK)
+}
+
+func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
+
+	// Достаем из контекста от Auth middleware id юзера
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest)
+		return
+	}
+
+	var updateUser domain.UpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&updateUser); err != nil {
+		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest)
+		return
+	}
+
+	updateUser.ID = userID
+
+	// Валидируем те поля, которые передали
+	validate := validation.GetValidator()
+
+	err := validate.Struct(updateUser)
+	if err != nil {
+		utils.SendErrorResponse(w, validation.GetError(err), http.StatusBadRequest)
+		return
+	}
+
+	// Возвращает User вместо UserUpdate
+	user := domain.UserFromUpdated(updateUser)
+	// Пытаемся обновить данные
+	userUpdated, err := h.UC.UpdateUser(r.Context(), user)
+	if err != nil {
+		utils.SendErrorResponse(w, "не удалось обновить данные о пользователе", http.StatusInternalServerError)
+		return
+	}
+
+	utils.SendJSONResponse(w, userUpdated, http.StatusOK)
+}
+
+func (h *AuthHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
+
+	// Достаем из контекста от Auth middleware id юзера
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "Upload image failed", http.StatusBadRequest)
+		return
+	}
+
+	// Достаем file по name="avatar"
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		utils.SendErrorResponse(w, "Failed to get image from request", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		utils.SendErrorResponse(w, "invalid content type", http.StatusBadRequest)
+		return
+	}
+
+	// Проверяем подходит ли файл под условия и получаем его расширение
+	contentType, err := content.CheckImage(fileBytes)
+	if err != nil {
+		utils.SendErrorResponse(w, "invalid file type or size", http.StatusBadRequest)
+		return
+	}
+
+	upload := filestorage.FileUpload{
+		Name:        uuid.New().String()+"."+contentType,
+		Size:        header.Size,
+		File:        bytes.NewReader(fileBytes),
+		ContentType: contentType,
+	}
+
+	// Пытаемся загрузить картинку
+	updatedUser, err := h.UC.UploadImage(r.Context(), userID, upload)
+	if err != nil {
+		utils.SendErrorResponse(w, "failed to upload image", http.StatusBadRequest)
+		return
+	}
+
+	utils.SendJSONResponse(w, updatedUser, http.StatusOK)
 }
