@@ -4,8 +4,6 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:generate mockgen -source logger.go -destination=mocks/mock_logger.go -package=mocks
-
 type LoggerFields map[string]interface{}
 
 type Logger interface {

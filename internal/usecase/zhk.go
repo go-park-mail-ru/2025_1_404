@@ -10,16 +10,24 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
 
-type ZhkUsecase struct {
+//go:generate mockgen -source zhk.go -destination=mocks/mock_zhk.go -package=mocks
+
+type ZhkUsecase interface {
+	GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error)
+	GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.ZhkInfo, error)
+	GetAllZhk(ctx context.Context) ([]domain.ZhkInfo, error)
+}
+
+type zhkUsecase struct {
 	repo   repository.Repository
 	logger logger.Logger
 }
 
-func NewZhkUsecase(repo repository.Repository, logger logger.Logger) *ZhkUsecase {
-	return &ZhkUsecase{repo: repo, logger: logger}
+func NewZhkUsecase(repo repository.Repository, logger logger.Logger) ZhkUsecase {
+	return &zhkUsecase{repo: repo, logger: logger}
 }
 
-func (u *ZhkUsecase) GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error) {
+func (u *zhkUsecase) GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	zhk, err := u.repo.GetZhkByID(ctx, id)
@@ -30,7 +38,7 @@ func (u *ZhkUsecase) GetZhkByID(ctx context.Context, id int64) (domain.Zhk, erro
 	return zhk, nil
 }
 
-func (u *ZhkUsecase) GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.ZhkInfo, error) {
+func (u *zhkUsecase) GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.ZhkInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	log.Println(zhk)
@@ -82,7 +90,7 @@ func (u *ZhkUsecase) GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.Zhk
 
 }
 
-func (u *ZhkUsecase) GetAllZhk(ctx context.Context) ([]domain.ZhkInfo, error) {
+func (u *zhkUsecase) GetAllZhk(ctx context.Context) ([]domain.ZhkInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	zhks, err := u.repo.GetAllZhk(ctx)
