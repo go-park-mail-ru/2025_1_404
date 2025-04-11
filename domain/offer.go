@@ -44,25 +44,3 @@ type OfferFilter struct {
 	NewBuilding    *bool
 	SellerID       *int
 }
-
-type OfferInfo struct {
-	OfferID        int
-	Seller         User
-	OfferType    string     `json:"offer_type_id"`
-	MetroStation string    `json:"metro_station_id,omitempty"`
-	RentTypeID     *int    `json:"rent_type_id,omitempty"`
-	PurchaseTypeID *int    `json:"purchase_type_id,omitempty"`
-	PropertyTypeID int     `json:"property_type_id"`
-	StatusID       int     `json:"status_id"`
-	RenovationID   int     `json:"renovation_id"`
-	ComplexID      *int    `json:"complex_id,omitempty"`
-	Price          int     `json:"price"`
-	Description    *string `json:"description,omitempty"`
-	Floor          int     `json:"floor"`
-	TotalFloors    int     `json:"total_floors"`
-	Rooms          int     `json:"rooms"`
-	Address        *string `json:"address,omitempty"`
-	Flat           int     `json:"flat"`
-	Area           int     `json:"area"`
-	CeilingHeight  int     `json:"ceiling_height"`
-}
