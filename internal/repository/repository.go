@@ -667,4 +667,48 @@ func (r *repository) DeleteOffer(ctx context.Context, id int64) error {
 	return err
 }
 
+func (r *repository) CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var imageID int64
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO kvartirum.Image (uuid)
+		VALUES ($1)
+		RETURNING id;
+	`, uuid).Scan(&imageID)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"step":      "insert image",
+			"uuid":      uuid,
+			"err":       err.Error(),
+		}).Error("Ошибка при вставке Image")
+		return 0, err
+	}
+
+	_, err = r.db.Exec(ctx, `
+		INSERT INTO kvartirum.OfferImages (offer_id, image_id)
+		VALUES ($1, $2);
+	`, offerID, imageID)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"step":      "bind to offer",
+			"offer_id":  offerID,
+			"image_id":  imageID,
+			"err":       err.Error(),
+		}).Error("Ошибка при вставке в OfferImages")
+		return 0, err
+	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"offer_id":  offerID,
+		"image_id":  imageID,
+		"success":   true,
+	}).Info("Изображение добавлено и связано с оффером")
+
+	return imageID, nil
+}
+
 // endregion

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
@@ -12,10 +13,11 @@ import (
 type OfferUsecase struct {
 	repo   repository.Repository
 	logger logger.Logger
+	fs     filestorage.FileStorage
 }
 
-func NewOfferUsecase(repo repository.Repository, logger logger.Logger) *OfferUsecase {
-	return &OfferUsecase{repo: repo, logger: logger}
+func NewOfferUsecase(repo repository.Repository, logger logger.Logger, fs filestorage.FileStorage) *OfferUsecase {
+	return &OfferUsecase{repo: repo, logger: logger, fs: fs}
 }
 
 func (u *OfferUsecase) GetOffers(ctx context.Context) ([]domain.Offer, error) {
@@ -108,6 +110,15 @@ func (u *OfferUsecase) DeleteOffer(ctx context.Context, id int) error {
 	}
 	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": id}).Info("Offer usecase: offer deleted")
 	return nil
+}
+
+func (u *OfferUsecase) SaveOfferImage(ctx context.Context, offerID int, upload filestorage.FileUpload) (int64, error) {
+	err := u.fs.Add(upload)
+	if err != nil {
+		return 0, err
+	}
+
+	return u.repo.CreateImageAndBindToOffer(ctx, offerID, upload.Name)
 }
 
 func mapOffer(o repository.Offer) domain.Offer {

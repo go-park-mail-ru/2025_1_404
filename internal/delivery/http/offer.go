@@ -1,7 +1,12 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
+	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
+	"github.com/google/uuid"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -219,4 +224,61 @@ func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONResponse(w, map[string]string{"message": "Удалено"}, http.StatusOK)
+}
+
+func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest)
+		return
+	}
+
+	vars := mux.Vars(r)
+	offerID, err := strconv.Atoi(vars["id"])
+	if err != nil || offerID <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
+		return
+	}
+
+	offer, err := h.OfferUC.GetOfferByID(r.Context(), offerID)
+	if err != nil || offer.SellerID != userID {
+		utils.SendErrorResponse(w, "Доступ запрещён", http.StatusForbidden)
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		utils.SendErrorResponse(w, "Файл не найден", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		utils.SendErrorResponse(w, "Не удалось прочитать файл", http.StatusBadRequest)
+		return
+	}
+
+	contentType, err := content.CheckImage(fileBytes)
+	if err != nil {
+		utils.SendErrorResponse(w, "Недопустимый формат изображения", http.StatusBadRequest)
+		return
+	}
+
+	upload := filestorage.FileUpload{
+		Name:        uuid.New().String() + "." + contentType,
+		Size:        header.Size,
+		File:        bytes.NewReader(fileBytes),
+		ContentType: contentType,
+	}
+
+	imageID, err := h.OfferUC.SaveOfferImage(r.Context(), offerID, upload)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при сохранении", http.StatusInternalServerError)
+		return
+	}
+
+	utils.SendJSONResponse(w, map[string]any{
+		"image_id": imageID,
+	}, http.StatusCreated)
 }
