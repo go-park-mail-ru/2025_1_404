@@ -762,9 +762,16 @@ func (r *repository) GetOfferData(ctx context.Context, offer domain.Offer) (doma
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferImages")
 
-	err = r.db.QueryRow(ctx, getUserByIDSQL, offer.SellerID).Scan(
-		new(int64), &offerData.Seller.Avatar, &offerData.Seller.FirstName,
-		&offerData.Seller.LastName, new(string), new(string))
+	err = r.db.QueryRow(ctx, `
+	SELECT
+		COALESCE(i.uuid, '') as image,
+		u.first_name, u.last_name, u.created_at
+	FROM kvartirum.Users u
+	LEFT JOIN kvartirum.Image i on u.image_id = i.id
+	WHERE u.id = $1;
+	`, offer.SellerID).Scan(
+	&offerData.Seller.Avatar, &offerData.Seller.FirstName,
+	&offerData.Seller.LastName, &offerData.Seller.CreatedAt,)
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferSeller")
 

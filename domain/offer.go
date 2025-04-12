@@ -67,7 +67,8 @@ type OfferImage struct {
 }
 
 type OfferSeller struct {
-	FirstName string `json:"seller_name"`
-	LastName  string `json:"seller_last_name"`
-	Avatar    string `json:"avatar"`
+	FirstName string    `json:"seller_name"`
+	LastName  string    `json:"seller_last_name"`
+	Avatar    string    `json:"avatar"`
+	CreatedAt time.Time `json:"created_at"`
 }
