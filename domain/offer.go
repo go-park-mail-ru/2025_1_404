@@ -40,20 +40,20 @@ type Offer struct {
 }
 
 type OfferFilter struct {
-	MinArea        *int
-	MaxArea        *int
-	MinPrice       *int
-	MaxPrice       *int
-	Floor          *int
-	Rooms          *int
-	Address        *string
-	RenovationID   *int
-	PropertyTypeID *int
-	PurchaseTypeID *int
-	RentTypeID     *int
-	OfferTypeID    *int
-	NewBuilding    *bool
-	SellerID       *int
+	MinArea        *int    `json:"min_area"`
+	MaxArea        *int    `json:"max_area"`
+	MinPrice       *int    `json:"min_price"`
+	MaxPrice       *int    `json:"max_price"`
+	Floor          *int    `json:"floor"`
+	Rooms          *int    `json:"rooms"`
+	Address        *string `json:"address"`
+	RenovationID   *int    `json:"renovation_id"`
+	PropertyTypeID *int    `json:"property_type_id"`
+	PurchaseTypeID *int    `json:"purchase_type_id"`
+	RentTypeID     *int    `json:"rent_type_id"`
+	OfferTypeID    *int    `json:"offer_type_id"`
+	NewBuilding    *bool   `json:"new_building"`
+	SellerID       *int    `json:"seller_id"`
 }
 
 type Metro struct {
