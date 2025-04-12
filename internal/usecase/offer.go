@@ -214,11 +214,6 @@ func (u *OfferUsecase) prepareOfferInfo (ctx context.Context, offer domain.Offer
 		return domain.OfferInfo{}, fmt.Errorf("offer data get failed")
 	}
 	
-	offerInfo := domain.OfferInfo {
-		Offer: offer,
-		OfferData: offerData,
-	}
-	
 	if offerData.Seller.Avatar != "" {
 		offerData.Seller.Avatar = utils.BasePath + utils.ImagesPath + offerData.Seller.Avatar
 	}
@@ -227,6 +222,13 @@ func (u *OfferUsecase) prepareOfferInfo (ctx context.Context, offer domain.Offer
 		offerData.Images[i].Image = utils.BasePath + utils.ImagesPath + img.Image
 	}
 
+
+	offerInfo := domain.OfferInfo {
+		Offer: offer,
+		OfferData: offerData,
+	}
+	
+	
 	return offerInfo, nil
 }
 
