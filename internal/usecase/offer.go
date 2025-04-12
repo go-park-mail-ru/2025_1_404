@@ -219,8 +219,8 @@ func (u *OfferUsecase) prepareOfferInfo (ctx context.Context, offer domain.Offer
 		OfferData: offerData,
 	}
 	
-	if offerData.Seller.Image != "" {
-		offerData.Seller.Image = utils.BasePath + utils.ImagesPath + offerData.Seller.Image
+	if offerData.Seller.Avatar != "" {
+		offerData.Seller.Avatar = utils.BasePath + utils.ImagesPath + offerData.Seller.Avatar
 	}
 
 	for i, img := range offerData.Images {
