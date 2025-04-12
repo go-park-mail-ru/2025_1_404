@@ -5,14 +5,14 @@ import (
 )
 
 type OfferInfo struct {
-	Offer     Offer
-	OfferData OfferData
+	Offer     Offer     `json:"offer"`
+	OfferData OfferData `json:"offer_data"`
 }
 
 type OfferData struct {
-	Images []OfferImage
-	Seller User
-	Metro  Metro
+	Images []OfferImage `json:"offer_images"`
+	Seller OfferSeller  `json:"seller"`
+	Metro  Metro        `json:"metro"`
 }
 
 type Offer struct {
@@ -57,11 +57,17 @@ type OfferFilter struct {
 }
 
 type Metro struct {
-	Line    string
-	Station string
+	Line    string `json:"line"`
+	Station string `json:"station"`
 }
 
 type OfferImage struct {
-	ID int
-	Image string
+	ID    int    `json:"id"`
+	Image string `json:"image"`
+}
+
+type OfferSeller struct {
+	FirstName string `json:"seller_name"`
+	LastName  string `json:"seller_last_name"`
+	Avatar    string `json:"avatar"`
 }

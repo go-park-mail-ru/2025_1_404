@@ -743,7 +743,7 @@ func (r *repository) GetOfferData(ctx context.Context, offer domain.Offer) (doma
 
 	rows, err := r.db.Query(ctx, `
 	SELECT
-		i.id
+		i.id,
 		i.uuid
 	FROM kvartirum.OfferImages oi
 	LEFT JOIN kvartirum.Image i ON oi.image_id = i.id
@@ -763,8 +763,8 @@ func (r *repository) GetOfferData(ctx context.Context, offer domain.Offer) (doma
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferImages")
 
 	err = r.db.QueryRow(ctx, getUserByIDSQL, offer.SellerID).Scan(
-		&offerData.Seller.ID, &offerData.Seller.Image, &offerData.Seller.FirstName,
-		&offerData.Seller.FirstName, &offerData.Seller.LastName, offerData.Seller.Password)
+		new(int64), &offerData.Seller.Avatar, &offerData.Seller.FirstName,
+		&offerData.Seller.LastName, new(string), new(string))
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferSeller")
 
