@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"log"
-	"os"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
@@ -50,8 +49,7 @@ func (u *zhkUsecase) GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.Zhk
 		return domain.ZhkInfo{}, err
 	}
 	for i, img := range zhkHeader.Images {
-		host := os.Getenv("HOST")
-		zhkHeader.Images[i] = "http://" + host + ":8001/images/" + img
+		zhkHeader.Images[i] = utils.BasePath + utils.ImagesPath + img
 	}
 
 	zhkContacts := domain.ZhkContacts{Developer: zhk.Developer, Phone: zhk.Phone}
@@ -75,8 +73,7 @@ func (u *zhkUsecase) GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.Zhk
 	}
 	for i, review := range zhkReviews.Reviews {
 		if review.Avatar != "" {
-			host := os.Getenv("HOST")
-			zhkReviews.Reviews[i].Avatar = "http://" + host + ":8001/images/" + review.Avatar
+			zhkReviews.Reviews[i].Avatar = utils.BasePath + utils.ImagesPath + review.Avatar
 		}
 	}
 
