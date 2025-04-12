@@ -86,7 +86,7 @@ func (u *authUsecase) GetUserByEmail(ctx context.Context, email string) (domain.
 	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": user.ID}).Info("User usecase: get user by email")
 
 	if user.Image != "" {
-		user.Image = "http://localhost:8001/images/" + user.Image
+		user.Image = utils.BasePath + utils.ImagesPath + user.Image
 	}
 
 	return user, nil
@@ -104,7 +104,7 @@ func (u *authUsecase) GetUserByID(ctx context.Context, id int) (domain.User, err
 	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": user.ID}).Info("User usecase: get user by id")
 
 	if user.Image != "" {
-		user.Image = "http://localhost:8001/images/" + user.Image
+		user.Image = utils.BasePath + utils.ImagesPath + user.Image
 	}
 
 	return user, nil
@@ -144,8 +144,9 @@ func (u *authUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 		return domain.User{}, err
 	}
 
+	fmt.Println(utils.BasePath)
 	if updatedUser.Image != "" {
-		updatedUser.Image = "http://localhost:8001/images/" + updatedUser.Image
+		updatedUser.Image = utils.BasePath + utils.ImagesPath + updatedUser.Image
 	}
 
 	return updatedUser, nil

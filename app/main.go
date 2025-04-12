@@ -84,6 +84,8 @@ func main() {
 		Methods(http.MethodPut)
 	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.UploadImage))).
 		Methods(http.MethodPut)
+	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.DeleteImage))).
+		Methods("DELETE")
   
 	// Объявления
 	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).
