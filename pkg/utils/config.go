@@ -9,6 +9,7 @@ import (
 
 var BasePath string
 var BaseFrontendPath string
+var Salt string
 var ImagesPath string = "/images/"
 
 func init() {
@@ -25,5 +26,10 @@ func init() {
 	BaseFrontendPath = os.Getenv("BASE_FRONTEND_DIR")
 	if BaseFrontendPath == "" {
 		BaseFrontendPath = "http://localhost:8000"
+	}
+
+	Salt = os.Getenv("CSRF_SALT")
+	if Salt == "" {
+		Salt = "SomeSalt"
 	}
 }

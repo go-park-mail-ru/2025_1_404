@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/csrf"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/validation"
 	"github.com/google/uuid"
@@ -258,4 +260,13 @@ func (h *AuthHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONResponse(w, updatedUser, http.StatusOK)
+}
+
+func (h *AuthHandler) GetCSRFToken (w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(utils.UserIDKey).(int)
+	
+	token := csrf.GenerateCSRF(strconv.Itoa(userID), utils.Salt)
+
+	response := csrf.GetCSRFResponse(token)
+	utils.SendJSONResponse(w, response, http.StatusOK)
 }
