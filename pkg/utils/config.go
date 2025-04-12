@@ -26,5 +26,4 @@ func init() {
 	if BaseFrontendPath == "" {
 		BaseFrontendPath = "http://localhost:8000"
 	}
-
 }

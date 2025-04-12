@@ -23,7 +23,7 @@ func SendErrorResponse(w http.ResponseWriter, message string, statusCode int) {
 
 // EnableCORS CORS Middleware (чтобы фронтенд мог обращаться к API)
 func EnableCORS(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8000")
+	w.Header().Set("Access-Control-Allow-Origin", BaseFrontendPath)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
