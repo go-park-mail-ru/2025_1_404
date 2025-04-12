@@ -10,16 +10,16 @@ import (
 )
 
 type ZhkHandler struct {
-	UC *usecase.ZhkUsecase
+	UC usecase.ZhkUsecase
 }
 
-func NewZhkHandler (uc *usecase.ZhkUsecase) *ZhkHandler {
+func NewZhkHandler (uc usecase.ZhkUsecase) *ZhkHandler {
 	return &ZhkHandler{UC: uc}
 }
 
 func (h *ZhkHandler) GetZhkInfo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	idStr := vars["id"]
+	idStr := vars["id"] 
 
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {

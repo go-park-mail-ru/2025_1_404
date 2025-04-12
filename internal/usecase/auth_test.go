@@ -108,11 +108,7 @@ func TestUploadImage(t *testing.T) {
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 	logger, _ := logger.NewZapLogger()
 
-	usecase := &AuthUsecase{
-		repo: mockRepo,
-		fs: mockFS,
-		logger: logger,
-	}
+	usecase := NewAuthUsecase(mockRepo, logger, mockFS)
 
 	file := filestorage.FileUpload {
 		Name: "avatar.png",

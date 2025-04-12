@@ -1,175 +1,498 @@
 package http
 
-// // Тест на регистрацию (успешный)
-// func TestRegisterHandler_Success(t *testing.T) {
-// 	//t.Cleanup(func() { usecase.Users = []domain.User{} })
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
-// 	reqBody, _ := json.Marshal(domain.RegisterRequest{
-// 		Email:     "test@example.com",
-// 		Password:  "Password123",
-// 		FirstName: "Иван",
-// 		LastName:  "Петров",
-// 	})
+	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/bcrypt"
+)
 
-// 	req := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewReader(reqBody))
-// 	req.Header.Set("Content-Type", "application/json")
-// 	rr := httptest.NewRecorder()
+// Тест на регистрацию
+func TestRegisterHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-// 	RegisterHandler(rr, req)
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
 
-// 	if rr.Code != http.StatusCreated {
-// 		t.Errorf("Ожидался статус 201, получен %d", rr.Code)
-// 	}
-// }
+	userHandlers := NewAuthHandler(mockUS)
+	t.Run("registration ok", func(t *testing.T) {
+		req := domain.RegisterRequest{
+			Email:     "email@mail.ru",
+			FirstName: "Ivan",
+			LastName:  "Ivanov",
+			Password:  "GoodPassword123",
+		}
 
-// // Тест на регистрацию (неправильный метод)
-// func TestRegisterHandler_MethodNotAllowed(t *testing.T) {
-// 	req := httptest.NewRequest(http.MethodGet, "/auth/register", nil)
-// 	rr := httptest.NewRecorder()
+		user := domain.User{
+			ID:        0,
+			Email:     req.Email,
+			FirstName: req.FirstName,
+			LastName:  req.LastName,
+			Password:  "hashedPassword",
+			Image:     "",
+		}
 
-// 	RegisterHandler(rr, req)
+		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
+		mockUS.EXPECT().CreateUser(gomock.Any(), req.Email, req.Password, req.FirstName, req.LastName).Return(user, nil)
 
-// 	if rr.Code != http.StatusMethodNotAllowed {
-// 		t.Errorf("Ожидался статус 405, получен %d", rr.Code)
-// 	}
-// }
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
 
-// // Тест на регистрацию (пустое тело запроса)
-// func TestRegisterHandler_InvalidBody(t *testing.T) {
-// 	req := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBufferString("{invalid_json}"))
-// 	rr := httptest.NewRecorder()
+		userHandlers.Register(response, request)
 
-// 	RegisterHandler(rr, req)
+		res := response.Result()
 
-// 	if rr.Code != http.StatusBadRequest {
-// 		t.Errorf("Ожидался статус 400, получен %d", rr.Code)
-// 	}
-// }
+		assert.Equal(t, http.StatusCreated, res.StatusCode)
 
-// // Тест успешного входа
-// func TestLoginHandler_Success(t *testing.T) {
-// 	t.Cleanup(func() { usecase.Users = []domain.User{} })
+		cookie := res.Cookies()[0]
+		assert.Equal(t, "token", cookie.Name)
+		assert.Equal(t, cookie.SameSite, http.SameSiteStrictMode)
+		assert.True(t, cookie.HttpOnly)
+		assert.False(t, cookie.Secure)
 
-// 	user, _ := usecase.CreateUser("user@example.com", "password", "Иван", "Петров")
+		user.Password = ""
+		var responseBody domain.User
+		err := json.NewDecoder(response.Body).Decode(&responseBody)
+		assert.NoError(t, err)
+		assert.Equal(t, user, responseBody)
+	})
 
-// 	reqBody, _ := json.Marshal(domain.LoginRequest{
-// 		Email:    user.Email,
-// 		Password: "password",
-// 	})
+	t.Run("invalid json", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBufferString("bad json"))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
 
-// 	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewReader(reqBody))
-// 	req.Header.Set("Content-Type", "application/json")
-// 	rr := httptest.NewRecorder()
+		userHandlers.Register(response, request)
 
-// 	LoginHandler(rr, req)
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
 
-// 	if rr.Code != http.StatusOK {
-// 		t.Errorf("Ожидался статус 200, получен %d", rr.Code)
-// 	}
-// }
+	t.Run("invalid request fields", func(t *testing.T) {
+		req := domain.RegisterRequest{
+			Email:     "badEmail",
+			FirstName: "Ivan",
+			LastName:  "Ivanov",
+			Password:  "GoodPassword123",
+		}
 
-// // Тест на вход (неверный пароль)
-// func TestLoginHandler_InvalidPassword(t *testing.T) {
-// 	t.Cleanup(func() { usecase.Users = []domain.User{} })
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
 
-// 	usecase.CreateUser("user@example.com", "password", "Иван", "Петров") // Обычный пароль
+		userHandlers.Register(response, request)
 
-// 	reqBody, _ := json.Marshal(domain.LoginRequest{
-// 		Email:    "user@example.com",
-// 		Password: "wrongpassword",
-// 	})
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
 
-// 	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewReader(reqBody))
-// 	req.Header.Set("Content-Type", "application/json")
-// 	rr := httptest.NewRecorder()
+	t.Run("email is taken", func(t *testing.T) {
+		req := domain.RegisterRequest{
+			Email:     "email@taken.ru",
+			FirstName: "Ivan",
+			LastName:  "Ivanov",
+			Password:  "GoodPassword123",
+		}
 
-// 	LoginHandler(rr, req)
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
 
-// 	if rr.Code != http.StatusUnauthorized {
-// 		t.Errorf("Ожидался статус 401, получен %d", rr.Code)
-// 	}
-// }
+		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(true)
 
-// // Тест на вход (неверный метод)
-// func TestLoginHandler_MethodNotAllowed(t *testing.T) {
-// 	req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
-// 	rr := httptest.NewRecorder()
+		userHandlers.Register(response, request)
 
-// 	LoginHandler(rr, req)
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
 
-// 	if rr.Code != http.StatusMethodNotAllowed {
-// 		t.Errorf("Ожидался статус 405, получен %d", rr.Code)
-// 	}
-// }
+	t.Run("usecase CreateUser failed", func(t *testing.T) {
+		req := domain.RegisterRequest{
+			Email:     "email@mail.ru",
+			FirstName: "Ivan",
+			LastName:  "Ivanov",
+			Password:  "GoodPassword123",
+		}
 
-// // Тест получения пользователя (/auth/me с валидным токеном)
-// func TestMeHandler_Success(t *testing.T) {
-// 	t.Cleanup(func() { usecase.Users = []domain.User{} })
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
 
-// 	user, _ := usecase.CreateUser("me@example.com", "securepassword", "Анна", "Сидорова")
-// 	token, _ := utils.GenerateJWT(user.ID)
+		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
+		mockUS.EXPECT().CreateUser(gomock.Any(), req.Email, req.Password, req.FirstName, req.LastName).Return(domain.User{}, fmt.Errorf("create user fail"))
 
-// 	req := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
-// 	req.AddCookie(&http.Cookie{Name: "token", Value: token})
-// 	rr := httptest.NewRecorder()
+		userHandlers.Register(response, request)
 
-// 	MeHandler(rr, req)
+		assert.Equal(t, http.StatusInternalServerError, response.Result().StatusCode)
+	})
+}
 
-// 	if rr.Code != http.StatusOK {
-// 		t.Errorf("Ожидался статус 200, получен %d", rr.Code)
-// 	}
-// }
+func TestLoginHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-// // Тест /auth/me (нет токена)
-// func TestMeHandler_NoToken(t *testing.T) {
-// 	req := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
-// 	rr := httptest.NewRecorder()
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
 
-// 	MeHandler(rr, req)
+	userHandlers := NewAuthHandler(mockUS)
 
-// 	if rr.Code != http.StatusUnauthorized {
-// 		t.Errorf("Ожидался статус 401, получен %d", rr.Code)
-// 	}
-// }
+	t.Run("login ok", func(t *testing.T) {
+		req := domain.LoginRequest{
+			Email:    "email@mail.ru",
+			Password: "GoodPassword123",
+		}
 
-// // Тест /auth/me (неверный токен)
-// func TestMeHandler_InvalidToken(t *testing.T) {
-// 	req := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
-// 	req.AddCookie(&http.Cookie{Name: "token", Value: "invalid_token"})
-// 	rr := httptest.NewRecorder()
+		hashPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
-// 	MeHandler(rr, req)
+		user := domain.User{
+			ID:        0,
+			Email:     req.Email,
+			Password:  string(hashPassword),
+			FirstName: "Name",
+			LastName:  "LastName",
+			Image:     "",
+		}
 
-// 	if rr.Code != http.StatusUnauthorized {
-// 		t.Errorf("Ожидался статус 401, получен %d", rr.Code)
-// 	}
-// }
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
 
-// // Тест логаута (/auth/logout)
-// func TestLogoutHandler_Success(t *testing.T) {
-// 	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-// 	rr := httptest.NewRecorder()
+		mockUS.EXPECT().GetUserByEmail(gomock.Any(), req.Email).Return(user, nil)
 
-// 	LogoutHandler(rr, req)
+		userHandlers.Login(response, request)
 
-// 	if rr.Code != http.StatusOK {
-// 		t.Errorf("Ожидался статус 200, получен %d", rr.Code)
-// 	}
+		res := response.Result()
 
-// 	cookie := rr.Result().Cookies()
-// 	if len(cookie) == 0 || cookie[0].Value != "" {
-// 		t.Errorf("Ожидалось удаление токена, но он остался")
-// 	}
-// }
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 
-// // Тест /auth/logout (неверный метод)
-// func TestLogoutHandler_MethodNotAllowed(t *testing.T) {
-// 	req := httptest.NewRequest(http.MethodGet, "/auth/logout", nil)
-// 	rr := httptest.NewRecorder()
+		cookie := res.Cookies()[0]
+		assert.Equal(t, "token", cookie.Name)
+		assert.Equal(t, cookie.SameSite, http.SameSiteStrictMode)
+		assert.True(t, cookie.HttpOnly)
+		assert.False(t, cookie.Secure)
 
-// 	LogoutHandler(rr, req)
+		user.Password = ""
+		var responseBody domain.User
+		err := json.NewDecoder(response.Body).Decode(&responseBody)
+		assert.NoError(t, err)
+		assert.Equal(t, user, responseBody)
+	})
 
-// 	if rr.Code != http.StatusMethodNotAllowed {
-// 		t.Errorf("Ожидался статус 405, получен %d", rr.Code)
-// 	}
-// }
+	t.Run("invalid json", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString("bad json"))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+
+		userHandlers.Login(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+
+	t.Run("invalid request fields", func(t *testing.T) {
+		req := domain.LoginRequest{
+			Email:    "",
+			Password: "pass",
+		}
+
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+
+		userHandlers.Login(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+
+	t.Run("usecase GetUserByEmail failed", func(t *testing.T) {
+		req := domain.LoginRequest{
+			Email:    "email@mail.ru",
+			Password: "Password123",
+		}
+
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+
+		mockUS.EXPECT().GetUserByEmail(gomock.Any(), req.Email).Return(domain.User{}, fmt.Errorf("usecase GetUserByEmail failed"))
+
+		userHandlers.Login(response, request)
+
+		assert.Equal(t, http.StatusUnauthorized, response.Result().StatusCode)
+	})
+
+	t.Run("mismatched passwords", func(t *testing.T) {
+		req := domain.LoginRequest{
+			Email:    "email@mail.ru",
+			Password: "Password123",
+		}
+
+		user := domain.User{
+			Email:    req.Email,
+			Password: "differentHash",
+		}
+
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+
+		mockUS.EXPECT().GetUserByEmail(gomock.Any(), req.Email).Return(user, nil)
+
+		userHandlers.Login(response, request)
+
+		assert.Equal(t, http.StatusUnauthorized, response.Result().StatusCode)
+	})
+}
+
+func TestMeHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+
+	userHandlers := NewAuthHandler(mockUS)
+
+	t.Run("me ok", func(t *testing.T) {
+		user := domain.User{
+			Email:     "email@mail.ru",
+			FirstName: "Ivan",
+		}
+
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
+		requestWithCtx := request.WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		mockUS.EXPECT().GetUserByID(gomock.Any(), 1).Return(user, nil)
+
+		userHandlers.Me(response, requestWithCtx)
+
+		assert.Equal(t, http.StatusOK, response.Result().StatusCode)
+	})
+
+	t.Run("userID not found", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
+		response := httptest.NewRecorder()
+
+		userHandlers.Me(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+
+	t.Run("usecase GetUserByID failed", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
+		requestWithCtx := request.WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		mockUS.EXPECT().GetUserByID(gomock.Any(), 1).Return(domain.User{}, fmt.Errorf("usecase GetUserByID failed"))
+
+		userHandlers.Me(response, requestWithCtx)
+
+		assert.Equal(t, http.StatusUnauthorized, response.Result().StatusCode)
+	})
+}
+
+func TestLogoutHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+
+	userHandlers := NewAuthHandler(mockUS)
+
+	t.Run("logout ok", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+		response := httptest.NewRecorder()
+
+		userHandlers.Logout(response, request)
+
+		assert.Equal(t, http.StatusOK, response.Result().StatusCode)
+	})
+}
+
+func TestUpdateHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+
+	userHandlers := NewAuthHandler(mockUS)
+
+	t.Run("update ok", func(t *testing.T) {
+		req := domain.UpdateRequest{
+			Email:     "newmail@mail.ru",
+			FirstName: "NewName",
+			LastName:  "NewLastName",
+		}
+
+		updatedUser := domain.User{
+			ID:        1,
+			Email:     req.Email,
+			FirstName: req.FirstName,
+			LastName:  req.LastName,
+		}
+
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		requestWithCtx := request.WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		req.ID = 1
+		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
+		mockUS.EXPECT().UpdateUser(gomock.Any(), domain.UserFromUpdated(req)).Return(updatedUser, nil)
+
+		userHandlers.Update(response, requestWithCtx)
+
+		assert.Equal(t, http.StatusOK, response.Result().StatusCode)
+	})
+
+	t.Run("userID not found", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
+		response := httptest.NewRecorder()
+
+		userHandlers.Update(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+
+	t.Run("invalid json", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/auth/update", bytes.NewBufferString("bad json"))
+		response := httptest.NewRecorder()
+
+		userHandlers.Update(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+
+	})
+
+	t.Run("invalid request fields", func(t *testing.T) {
+		req := domain.UpdateRequest{
+			Email:     "BadEmail",
+			FirstName: "NewName",
+			LastName:  "NewLastName",
+		}
+
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		requestWithCtx := request.WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		userHandlers.Update(response, requestWithCtx)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+
+	t.Run("email taken", func(t *testing.T) {
+		req := domain.UpdateRequest{
+			Email:     "email@taken.ru",
+			FirstName: "NewName",
+			LastName:  "NewLastName",
+		}
+
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body))
+		request.Header.Set("Content-Type", "application/json")
+		requestWithCtx := request.WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(true)
+
+		userHandlers.Update(response, requestWithCtx)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+
+	t.Run("usecase UpdateUser failed", func(t *testing.T) {
+		req := domain.UpdateRequest{
+			Email:     "email@mail.ru",
+			FirstName: "NewName",
+			LastName:  "NewLastName",
+		}
+
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body)).WithContext(ctx)
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+
+		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
+		req.ID = 1
+		mockUS.EXPECT().UpdateUser(gomock.Any(), domain.UserFromUpdated(req)).Return(domain.User{}, fmt.Errorf("usecase UserUpdate failed"))
+
+		userHandlers.Update(response, request)
+
+		assert.Equal(t, http.StatusInternalServerError, response.Result().StatusCode)
+	})
+}
+
+func TestDeleteImage(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+
+	userHandlers := NewAuthHandler(mockUS)
+
+	t.Run("DeleteImage ok", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", nil).WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		mockUS.EXPECT().DeleteImage(gomock.Any(), 1).Return(domain.User{
+			Email: "email@mail.ru",
+			Image: "",
+		},nil)
+
+		userHandlers.DeleteImage(response, request)
+
+		assert.Equal(t, http.StatusOK, response.Result().StatusCode)
+	})
+
+	t.Run("userId not found", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
+		response := httptest.NewRecorder()
+
+		userHandlers.DeleteImage(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+	t.Run("usecase DeleteImage failed", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", nil).WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		mockUS.EXPECT().DeleteImage(gomock.Any(), 1).Return(domain.User{}, fmt.Errorf("usecase DeleteImage failed"))
+
+		userHandlers.DeleteImage(response, request)
+
+		assert.Equal(t, http.StatusInternalServerError, response.Result().StatusCode)
+	})
+}

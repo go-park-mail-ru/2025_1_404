@@ -14,22 +14,34 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthUsecase struct {
+//go:generate mockgen -source auth.go -destination=mocks/mock_auth.go -package=mocks
+
+type AuthUsecase interface {
+	IsEmailTaken(ctx context.Context, email string) bool
+	CreateUser(ctx context.Context, email, password, firstName, lastName string) (domain.User, error)
+	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
+	GetUserByID(ctx context.Context, id int) (domain.User, error)
+	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)
+	UploadImage(ctx context.Context, id int, file filestorage.FileUpload) (domain.User, error)
+	DeleteImage(ctx context.Context, id int) (domain.User, error)
+}
+
+type authUsecase struct {
 	repo   repository.Repository
 	logger logger.Logger
 	fs     filestorage.FileStorage
 }
 
-func NewAuthUsecase(repo repository.Repository, logger logger.Logger, fs filestorage.FileStorage) *AuthUsecase {
-	return &AuthUsecase{repo: repo, logger: logger, fs: fs}
+func NewAuthUsecase(repo repository.Repository, logger logger.Logger, fs filestorage.FileStorage) AuthUsecase {
+	return &authUsecase{repo: repo, logger: logger, fs: fs}
 }
 
-func (u *AuthUsecase) IsEmailTaken(ctx context.Context, email string) bool {
+func (u *authUsecase) IsEmailTaken(ctx context.Context, email string) bool {
 	_, err := u.repo.GetUserByEmail(ctx, email)
 	return err == nil
 }
 
-func (u *AuthUsecase) CreateUser(ctx context.Context, email, password, firstName, lastName string) (domain.User, error) {
+func (u *authUsecase) CreateUser(ctx context.Context, email, password, firstName, lastName string) (domain.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return domain.User{}, errors.New("ошибка при хешировании пароля")
@@ -62,7 +74,7 @@ func (u *AuthUsecase) CreateUser(ctx context.Context, email, password, firstName
 	}, nil
 }
 
-func (u *AuthUsecase) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
+func (u *authUsecase) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	user, err := u.repo.GetUserByEmail(ctx, email)
@@ -80,7 +92,7 @@ func (u *AuthUsecase) GetUserByEmail(ctx context.Context, email string) (domain.
 	return user, nil
 }
 
-func (u *AuthUsecase) GetUserByID(ctx context.Context, id int) (domain.User, error) {
+func (u *authUsecase) GetUserByID(ctx context.Context, id int) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	user, err := u.repo.GetUserByID(ctx, int64(id))
@@ -98,7 +110,7 @@ func (u *AuthUsecase) GetUserByID(ctx context.Context, id int) (domain.User, err
 	return user, nil
 }
 
-func (u *AuthUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.User, error) {
+func (u *authUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	currentUser, err := u.GetUserByID(ctx, user.ID)
@@ -139,7 +151,7 @@ func (u *AuthUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 	return updatedUser, nil
 }
 
-func (u *AuthUsecase) UploadImage(ctx context.Context, id int, file filestorage.FileUpload) (domain.User, error) {
+func (u *authUsecase) UploadImage(ctx context.Context, id int, file filestorage.FileUpload) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	user, err := u.GetUserByID(ctx, id)
@@ -186,7 +198,7 @@ func (u *AuthUsecase) UploadImage(ctx context.Context, id int, file filestorage.
 	return updatedUser, nil
 }
 
-func (u *AuthUsecase) DeleteImage(ctx context.Context, id int) (domain.User, error) {
+func (u *authUsecase) DeleteImage(ctx context.Context, id int) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	user, err := u.GetUserByID(ctx, id)
