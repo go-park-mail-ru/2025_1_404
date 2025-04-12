@@ -4,6 +4,17 @@ import (
 	"time"
 )
 
+type OfferInfo struct {
+	Offer     Offer
+	OfferData OfferData
+}
+
+type OfferData struct {
+	Images []OfferImage
+	Seller User
+	Metro  Metro
+}
+
 type Offer struct {
 	ID             int       `json:"id"`
 	SellerID       int       `json:"seller_id"`
@@ -43,4 +54,14 @@ type OfferFilter struct {
 	OfferTypeID    *int
 	NewBuilding    *bool
 	SellerID       *int
+}
+
+type Metro struct {
+	Line    string
+	Station string
+}
+
+type OfferImage struct {
+	ID int
+	Image string
 }

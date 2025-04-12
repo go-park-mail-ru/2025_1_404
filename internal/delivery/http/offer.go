@@ -170,7 +170,7 @@ func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existingOffer.SellerID != userID {
+	if existingOffer.Offer.SellerID != userID {
 		utils.SendErrorResponse(w, "Нет доступа к обновлению этого объявления", http.StatusForbidden)
 		return
 	}
@@ -213,7 +213,7 @@ func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if existingOffer.SellerID != userID {
+	if existingOffer.Offer.SellerID != userID {
 		utils.SendErrorResponse(w, "Нет доступа к удалению этого объявления", http.StatusForbidden)
 		return
 	}
@@ -264,7 +264,7 @@ func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	offer, err := h.OfferUC.GetOfferByID(r.Context(), offerID)
-	if err != nil || offer.SellerID != userID {
+	if err != nil || offer.Offer.SellerID != userID {
 		utils.SendErrorResponse(w, "Доступ запрещён", http.StatusForbidden)
 		return
 	}
