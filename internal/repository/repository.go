@@ -64,7 +64,7 @@ type Repository interface {
 	DeleteUser(ctx context.Context, id int64) error
 	CreateImage(ctx context.Context, file filestorage.FileUpload) error
 	GetImageByID(ctx context.Context, id sql.NullInt64) (string, error)
-	DeleteUserImage(ctx context.Context, id int64) (error)
+	DeleteUserImage(ctx context.Context, id int64) error
 
 	// --- Offers ---
 	CreateOffer(ctx context.Context, offer Offer) (int64, error)
@@ -74,8 +74,11 @@ type Repository interface {
 	GetOffersByFilter(ctx context.Context, f domain.OfferFilter) ([]Offer, error)
 	UpdateOffer(ctx context.Context, offer Offer) error
 	DeleteOffer(ctx context.Context, id int64) error
-  CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error)
+	CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error)
 	UpdateOfferStatus(ctx context.Context, offerID int, statusID int) error
+	GetOfferImageWithUUID(ctx context.Context, imageID int64) (int64, string, error)
+	DeleteOfferImage(ctx context.Context, imageID int64) error
+
 	// --- Zhk ---
 	GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error)
 	GetZhkHeader(ctx context.Context, zhk domain.Zhk) (domain.ZhkHeader, error)
@@ -172,38 +175,38 @@ func (r *repository) CreateUser(ctx context.Context, u User) (int64, error) {
 	).Scan(&id)
 
 	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,"query": createUserSQL,
+		"requestID": requestID, "query": createUserSQL,
 		"params": logger.LoggerFields{
 			"name":          u.FirstName,
 			"last_name":     u.LastName,
 			"email":         u.Email,
 			"token_version": u.TokenVersion,
 			"image_id":      u.ImageID,
-		},"success": err == nil,}).Info("SQL query CreateUser")
+		}, "success": err == nil}).Info("SQL query CreateUser")
 
 	return id, err
 }
 
 func (r *repository) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
-	
+
 	var u domain.User
 	err := r.db.QueryRow(ctx, getUserByEmailSQL, email).Scan(
-		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password,	
+		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password,
 	)
 
-	r.logger.WithFields(logger.LoggerFields{"requestID": requestID,	"query": getUserByEmailSQL,
-						"params": logger.LoggerFields{"email": email,},"success": err == nil,}).Info("SQL query GetUserByEmail")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getUserByEmailSQL,
+		"params": logger.LoggerFields{"email": email}, "success": err == nil}).Info("SQL query GetUserByEmail")
 
 	return u, err
 }
 
 func (r *repository) GetUserByID(ctx context.Context, id int64) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
-	
+
 	var u domain.User
 	err := r.db.QueryRow(ctx, getUserByIDSQL, id).Scan(
-		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password,	
+		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password,
 	)
 
 	r.logger.WithFields(logger.LoggerFields{
@@ -234,7 +237,7 @@ func (r *repository) UpdateUser(ctx context.Context, u domain.User) (domain.User
 			"last_name":  u.LastName,
 			"email":      u.Email,
 			"image_path": u.Image,
-		}, "success": err == nil,}).Info("SQL query UpdateUser")
+		}, "success": err == nil}).Info("SQL query UpdateUser")
 
 	return updatedUser, err
 }
@@ -298,19 +301,19 @@ func (r *repository) GetImageByID(ctx context.Context, id sql.NullInt64) (string
 	err := r.db.QueryRow(ctx, getImageByIDSQL, id.Int64).Scan(&fileName)
 
 	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,"query":getImageByIDSQL,
-		"params": logger.LoggerFields{"id": id,},"success": err == nil,}).Info("SQL GetIMageByID")
+		"requestID": requestID, "query": getImageByIDSQL,
+		"params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL GetIMageByID")
 
 	return fileName, err
 
 }
 
-func (r *repository) DeleteUserImage(ctx context.Context, id int64) (error) {
+func (r *repository) DeleteUserImage(ctx context.Context, id int64) error {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	_, err := r.db.Exec(ctx, deleteUserImageSQL, id)
-	r.logger.WithFields(logger.LoggerFields{"requestID": requestID,"query":deleteUserSQL,
-		"params": logger.LoggerFields{"id": id,},"success": err == nil,}).Info("SQL DeleteImage")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": deleteUserSQL,
+		"params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL DeleteImage")
 
 	return err
 }
@@ -732,6 +735,50 @@ func (r *repository) UpdateOfferStatus(ctx context.Context, offerID int, statusI
 	return err
 }
 
+func (r *repository) GetOfferImageWithUUID(ctx context.Context, imageID int64) (int64, string, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var offerID int64
+	var uuid string
+
+	err := r.db.QueryRow(ctx, `
+		SELECT oi.offer_id, i.uuid
+		FROM kvartirum.OfferImages oi
+		JOIN kvartirum.Image i ON oi.image_id = i.id
+		WHERE oi.image_id = $1;
+	`, imageID).Scan(&offerID, &uuid)
+
+	if err != nil {
+		return 0, "", err
+	}
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"image_id":  imageID,
+		"offer_id":  offerID,
+		"uuid":      uuid,
+	}).Info("Получена связь offer-image")
+
+	return offerID, uuid, nil
+}
+
+func (r *repository) DeleteOfferImage(ctx context.Context, imageID int64) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, `
+		DELETE FROM kvartirum.OfferImages
+		WHERE image_id = $1;
+	`, imageID)
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"image_id":  imageID,
+		"success":   err == nil,
+	}).Info("SQL Delete OfferImage")
+
+	return err
+}
+
 // endregion
 
 // region --- ZHK ---
@@ -802,7 +849,7 @@ const (
 	WHERE r.housing_complex_id = $1
 	ORDER BY r.created_at DESC
 	`
-	
+
 	getZhkReviewsParamsSQL = `
 	SELECT 
 		COUNT(*) AS quantity,
@@ -829,7 +876,7 @@ func (r *repository) GetZhkByID(ctx context.Context, id int64) (domain.Zhk, erro
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getZhkByIDSQL,
 		"params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("GetZhkByID")
 
-	fmt.Println("REPO",zhk)
+	fmt.Println("REPO", zhk)
 
 	return zhk, err
 }
@@ -838,7 +885,7 @@ func (r *repository) GetZhkHeader(ctx context.Context, zhk domain.Zhk) (domain.Z
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	header := domain.ZhkHeader{Name: zhk.Name}
-	
+
 	err := r.db.QueryRow(ctx, getZhkHeaderSQL, zhk.ID).Scan(
 		&header.LowestPrice, &header.HighestPrice, &header.Images, &header.ImagesSize,
 	)
@@ -863,7 +910,7 @@ func (r *repository) GetZhkCharacteristics(ctx context.Context, zhk domain.Zhk) 
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var characteristics domain.ZhkCharacteristics
-	
+
 	err := r.db.QueryRow(ctx, getZhkCharacteristicsSQL, zhk.ID).Scan(
 		&characteristics.Class, &characteristics.Decoration,
 		&characteristics.CeilingHeight.HighestHeight, &characteristics.CeilingHeight.LowestHeight,
@@ -891,7 +938,7 @@ func (r *repository) GetZhkApartments(ctx context.Context, zhk domain.Zhk) (doma
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var apartments domain.ZhkApartments
-	
+
 	rows, err := r.db.Query(ctx, getZhkApartmentsSQL, zhk.ID)
 	if err != nil {
 		return apartments, err
@@ -930,7 +977,7 @@ func (r *repository) GetZhkReviews(ctx context.Context, zhk domain.Zhk) (domain.
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var reviews domain.ZhkReviews
-	
+
 	rows, err := r.db.Query(ctx, getZhkReviewsSQL, zhk.ID)
 	if err != nil {
 		return reviews, err
@@ -972,7 +1019,7 @@ func (r *repository) GetZhkReviews(ctx context.Context, zhk domain.Zhk) (domain.
 	return reviews, err
 }
 
-func (r *repository) GetAllZhk (ctx context.Context) ([]domain.Zhk, error) {
+func (r *repository) GetAllZhk(ctx context.Context) ([]domain.Zhk, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var zhks []domain.Zhk

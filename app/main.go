@@ -86,7 +86,7 @@ func main() {
 		Methods(http.MethodPut)
 	r.Handle("/api/v1/users/image", middleware.AuthHandler(l, http.HandlerFunc(authHandler.DeleteImage))).
 		Methods("DELETE")
-  
+
 	// Объявления
 	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).
 		Methods(http.MethodGet)
@@ -102,6 +102,8 @@ func main() {
 		Methods(http.MethodPost)
 	r.Handle("/api/v1/offers/{id:[0-9]+}/image", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.UploadOfferImage))).
 		Methods(http.MethodPost)
+	r.Handle("/api/v1/images/{id:[0-9]+}", middleware.AuthHandler(l, http.HandlerFunc(offerHandler.DeleteOfferImage))).
+		Methods(http.MethodDelete)
 
 	// ЖК
 	r.HandleFunc("/api/v1/zhk/{id}", zhkHandler.GetZhkInfo).Methods("GET")

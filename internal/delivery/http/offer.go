@@ -24,9 +24,6 @@ func NewOfferHandler(uc *usecase.OfferUsecase) *OfferHandler {
 	return &OfferHandler{OfferUC: uc}
 }
 
-const offerStatusDraft = 2
-const offerStatusPublished = 1
-
 func parseOfferFilter(r *http.Request) domain.OfferFilter {
 	q := r.URL.Query()
 
@@ -142,7 +139,6 @@ func (h *OfferHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	offer.SellerID = userID
-	offer.StatusID = offerStatusDraft
 
 	id, err := h.OfferUC.CreateOffer(r.Context(), offer)
 	if err != nil {
@@ -230,6 +226,29 @@ func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, map[string]string{"message": "Удалено"}, http.StatusOK)
 }
 
+func (h *OfferHandler) PublishOffer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized)
+		return
+	}
+
+	vars := mux.Vars(r)
+	offerID, err := strconv.Atoi(vars["id"])
+	if err != nil || offerID <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
+		return
+	}
+
+	err = h.OfferUC.PublishOffer(r.Context(), offerID, userID)
+	if err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	utils.SendJSONResponse(w, map[string]string{"message": "Объявление опубликовано"}, http.StatusOK)
+}
+
 func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
@@ -287,7 +306,7 @@ func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) 
 	}, http.StatusCreated)
 }
 
-func (h *OfferHandler) PublishOffer(w http.ResponseWriter, r *http.Request) {
+func (h *OfferHandler) DeleteOfferImage(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
 		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized)
@@ -295,17 +314,17 @@ func (h *OfferHandler) PublishOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	offerID, err := strconv.Atoi(vars["id"])
-	if err != nil || offerID <= 0 {
+	imageID, err := strconv.Atoi(vars["id"])
+	if err != nil || imageID <= 0 {
 		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
 		return
 	}
 
-	err = h.OfferUC.PublishOffer(r.Context(), offerID, userID)
+	err = h.OfferUC.DeleteOfferImage(r.Context(), imageID, userID)
 	if err != nil {
 		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Объявление опубликовано"}, http.StatusOK)
+	utils.SendJSONResponse(w, map[string]string{"message": "Изображение удалено"}, http.StatusOK)
 }

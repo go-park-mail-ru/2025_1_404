@@ -144,6 +144,37 @@ func (u *OfferUsecase) PublishOffer(ctx context.Context, offerID int, userID int
 	return u.repo.UpdateOfferStatus(ctx, offerID, 1)
 }
 
+func (u *OfferUsecase) DeleteOfferImage(ctx context.Context, imageID int, userID int) error {
+	offerID, uuid, err := u.repo.GetOfferImageWithUUID(ctx, int64(imageID))
+	if err != nil {
+		return fmt.Errorf("изображение не найдено")
+	}
+
+	offer, err := u.repo.GetOfferByID(ctx, offerID)
+	if err != nil {
+		return fmt.Errorf("объявление не найдено")
+	}
+	if int(offer.SellerID) != userID {
+		return fmt.Errorf("нет доступа к удалению этого изображения")
+	}
+
+	err = u.repo.DeleteOfferImage(ctx, int64(imageID))
+	if err != nil {
+		return fmt.Errorf("ошибка при удалении связи с изображением")
+	}
+
+	// удаляем физически файл
+	if err := u.fs.Delete(uuid); err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"image_id": imageID,
+			"uuid":     uuid,
+			"err":      err.Error(),
+		}).Warn("Ошибка при удалении файла")
+	}
+
+	return nil
+}
+
 func mapOffer(o repository.Offer) domain.Offer {
 	return domain.Offer{
 		ID:             int(o.ID),
