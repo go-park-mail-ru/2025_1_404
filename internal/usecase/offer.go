@@ -82,7 +82,7 @@ func (u *OfferUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	// всегда принудительно ставим статус Черновик
-	offer.StatusID = 2
+	offer.StatusID = 1
 
 	repoOffer := unmapOffer(offer)
 	id, err := u.repo.CreateOffer(ctx, repoOffer)
