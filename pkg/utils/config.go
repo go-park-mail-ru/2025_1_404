@@ -8,6 +8,7 @@ import (
 )
 
 var BasePath string
+var BaseFrontendPath string
 var ImagesPath string = "/images/"
 
 func init() {
@@ -19,5 +20,10 @@ func init() {
 	BasePath = os.Getenv("BASE_DIR")
 	if BasePath == "" {
 		BasePath = "http://localhost:8001"
+	}
+
+	BaseFrontendPath = os.Getenv("BASE_FRONTEND_DIR")
+	if BaseFrontendPath == "" {
+		BaseFrontendPath = "http://localhost:8000"
 	}
 }

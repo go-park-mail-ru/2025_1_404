@@ -74,8 +74,9 @@ type Repository interface {
 	GetOffersByFilter(ctx context.Context, f domain.OfferFilter) ([]Offer, error)
 	UpdateOffer(ctx context.Context, offer Offer) error
 	DeleteOffer(ctx context.Context, id int64) error
-	CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error)
+ 	CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error)
 	UpdateOfferStatus(ctx context.Context, offerID int, statusID int) error
+	GetOfferData(ctx context.Context, offer domain.Offer) (domain.OfferData, error)
 	GetOfferImageWithUUID(ctx context.Context, imageID int64) (int64, string, error)
 	DeleteOfferImage(ctx context.Context, imageID int64) error
 
@@ -578,11 +579,13 @@ func (r *repository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter
 		}
 	}
 
-	query := getAllOffersSQL
+	query := strings.TrimRight(getAllOffersSQL, "\t\n;")
 
 	if len(whereParts) > 0 {
 		query += " WHERE " + strings.Join(whereParts, " AND ")
 	}
+
+	query += ";"
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
@@ -733,6 +736,59 @@ func (r *repository) UpdateOfferStatus(ctx context.Context, offerID int, statusI
 	}).Info("SQL query UpdateOfferStatus")
 
 	return err
+}
+
+func (r *repository) GetOfferData(ctx context.Context, offer domain.Offer) (domain.OfferData, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var offerData domain.OfferData
+
+	rows, err := r.db.Query(ctx, `
+	SELECT
+		i.id,
+		i.uuid
+	FROM kvartirum.OfferImages oi
+	LEFT JOIN kvartirum.Image i ON oi.image_id = i.id
+	WHERE oi.offer_id = $1
+	ORDER BY oi.created_at;
+	`, offer.ID)
+	
+	for rows.Next() {
+		var offerImage domain.OfferImage
+		err := rows.Scan(&offerImage.ID, &offerImage.Image)
+		if err != nil {
+			return domain.OfferData{}, err
+		}
+		offerData.Images = append(offerData.Images, offerImage)
+	}
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferImages")
+
+	err = r.db.QueryRow(ctx, `
+	SELECT
+		COALESCE(i.uuid, '') as image,
+		u.first_name, u.last_name, u.created_at
+	FROM kvartirum.Users u
+	LEFT JOIN kvartirum.Image i on u.image_id = i.id
+	WHERE u.id = $1;
+	`, offer.SellerID).Scan(
+	&offerData.Seller.Avatar, &offerData.Seller.FirstName,
+	&offerData.Seller.LastName, &offerData.Seller.CreatedAt,)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferSeller")
+
+	err = r.db.QueryRow(ctx, `
+	SELECT
+		ms.name as station_name,
+		ml.name as line_name
+	FROM kvartirum.MetroStation ms
+	LEFT JOIN kvartirum.MetroLine ml ON ms.metro_line_id = ml.id
+	WHERE ms.id = $1;
+	`,offer.MetroStationID).Scan(&offerData.Metro.Station, &offerData.Metro.Line)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferStation")
+
+	return offerData, nil
 }
 
 func (r *repository) GetOfferImageWithUUID(ctx context.Context, imageID int64) (int64, string, error) {
