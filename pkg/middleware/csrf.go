@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/go-park-mail-ru/2025_1_404/pkg/csrf"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
@@ -13,18 +14,18 @@ func CSRFMiddleware(log logger.Logger, nextHandler http.Handler) http.Handler {
 		token := r.Header.Get("X-CSRF-TOKEN")
 		if token == "" {
 			log.Warn("CSRF token header missing")
-            utils.SendErrorResponse(w, "Необходим CSRF токен", http.StatusForbidden)
-            return
+			utils.SendErrorResponse(w, "Необходим CSRF токен", http.StatusForbidden)
+			return
 		}
 
-		userID, ok := r.Context().Value(utils.UserIDKey).(string)
+		userID, ok := r.Context().Value(utils.UserIDKey).(int)
 		if !ok {
 			log.Error("userID not found in context")
 			utils.SendErrorResponse(w, "user is not authorizes", http.StatusForbidden)
 			return
 		}
 
-		if !csrf.ValidateCSRF(token, userID, utils.Salt) {
+		if !csrf.ValidateCSRF(token, strconv.Itoa(userID), utils.Salt) {
 			log.Error("incorrect CSRF token")
 			utils.SendErrorResponse(w, "invalid csrf token", http.StatusForbidden)
 			return
