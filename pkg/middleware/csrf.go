@@ -21,7 +21,7 @@ func CSRFMiddleware(log logger.Logger, nextHandler http.Handler) http.Handler {
 		userID, ok := r.Context().Value(utils.UserIDKey).(int)
 		if !ok {
 			log.Error("userID not found in context")
-			utils.SendErrorResponse(w, "user is not authorizes", http.StatusForbidden)
+			utils.SendErrorResponse(w, "user is not authorized", http.StatusForbidden)
 			return
 		}
 

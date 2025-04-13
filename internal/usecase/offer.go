@@ -12,45 +12,60 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
 
-type OfferUsecase struct {
+//go:generate mockgen -source offer.go -destination=mocks/mock_offer.go -package=mocks
+
+type OfferUsecase interface {
+	GetOffers(ctx context.Context) ([]domain.OfferInfo, error)
+	GetOffersByFilter(ctx context.Context, filter domain.OfferFilter) ([]domain.OfferInfo, error) 
+	GetOfferByID(ctx context.Context, id int) (domain.OfferInfo, error)
+	GetOffersBySellerID(ctx context.Context, sellerID int) ([]domain.OfferInfo, error)
+	CreateOffer(ctx context.Context, offer domain.Offer) (int, error)
+	UpdateOffer(ctx context.Context, offer domain.Offer) error
+	DeleteOffer(ctx context.Context, id int) error
+	SaveOfferImage(ctx context.Context, offerID int, upload filestorage.FileUpload) (int64, error)
+	PublishOffer(ctx context.Context, offerID int, userID int) error
+	DeleteOfferImage(ctx context.Context, imageID int, userID int) error
+	PrepareOfferInfo (ctx context.Context, offer domain.Offer) (domain.OfferInfo, error)
+	PrepareOffersInfo (ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error)
+}
+
+type offerUsecase struct {
 	repo   repository.Repository
 	logger logger.Logger
 	fs     filestorage.FileStorage
 }
 
-func NewOfferUsecase(repo repository.Repository, logger logger.Logger, fs filestorage.FileStorage) *OfferUsecase {
-	return &OfferUsecase{repo: repo, logger: logger, fs: fs}
+func NewOfferUsecase(repo repository.Repository, logger logger.Logger, fs filestorage.FileStorage) OfferUsecase {
+	return &offerUsecase{repo: repo, logger: logger, fs: fs}
 }
 
-
-func (u *OfferUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	offers, err := u.repo.GetAllOffers(ctx)
-	requestID := ctx.Value(utils.RequestIDKey)
 	if err != nil {
-
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get all offers failed")
 		return nil, err
 	}
 	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "count": len(offers)}).Info("Offer usecase: offers fetched")
 
 	offersDTO := mapOffers(offers)
+	
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
 
-	offersInfo, err := u.prepareOffersInfo(ctx, offersDTO)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offers data failed")
 		return []domain.OfferInfo{}, err
 	}
 
 	return offersInfo, nil
-
 }
 
-func (u *OfferUsecase) GetOffersByFilter(ctx context.Context, filter domain.OfferFilter) ([]domain.Offer, error) {
+func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.OfferFilter) ([]domain.OfferInfo, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
 	rawOffers, err := u.repo.GetOffersByFilter(ctx, filter)
 	if err != nil {
-
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: filter offers failed")
 		return nil, err
 	}
@@ -58,41 +73,42 @@ func (u *OfferUsecase) GetOffersByFilter(ctx context.Context, filter domain.Offe
 	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "count": len(rawOffers)}).Info("Offer usecase: offers filtered successfully")
 
 	offersDTO := mapOffers(rawOffers)
-
-	offersInfo, err := u.prepareOffersInfo(ctx, offersDTO)
+	
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offers data failed")
 		return []domain.OfferInfo{}, err
 	}
 
-
-	return mapOffers(rawOffers), nil
+	return offersInfo, nil
 }
 
-func (u *OfferUsecase) GetOfferByID(ctx context.Context, id int) (domain.Offer, error) {
-	offer, err := u.repo.GetOfferByID(ctx, int64(id))
+func (u *offerUsecase) GetOfferByID(ctx context.Context, id int) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
+
+	offer, err := u.repo.GetOfferByID(ctx, int64(id))
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "id": id, "err": err.Error()}).Error("Offer usecase: get offer by id failed")
-		return domain.Offer{}, err
+		return domain.OfferInfo{}, err
 	}
 	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": id}).Info("Offer usecase: offer fetched")
 
 	offerDTO := mapOffer(offer)
+	
+	offerInfo, err := u.PrepareOfferInfo(ctx, offerDTO)
 
-	offerInfo, err := u.prepareOfferInfo(ctx, offerDTO)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offer data failed")
 		return domain.OfferInfo{}, err
 	}
 
 	return offerInfo, nil
-
 }
 
-func (u *OfferUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([]domain.Offer, error) {
-	offers, err := u.repo.GetOffersBySellerID(ctx, int64(sellerID))
+func (u *offerUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
+
+	offers, err := u.repo.GetOffersBySellerID(ctx, int64(sellerID))
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "seller_id": sellerID, "err": err.Error()}).Error("Offer usecase: get offers by seller failed")
 		return nil, err
@@ -100,18 +116,18 @@ func (u *OfferUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([
 	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "seller_id": sellerID, "count": len(offers)}).Info("Offer usecase: offers by seller fetched")
 
 	offersDTO := mapOffers(offers)
+	
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
 
-	offersInfo, err := u.prepareOffersInfo(ctx, offersDTO)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offers data failed")
 		return []domain.OfferInfo{}, err
 	}
 
 	return offersInfo, nil
-
 }
 
-func (u *OfferUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int, error) {
+func (u *offerUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	if offer.Description != nil {
@@ -129,23 +145,14 @@ func (u *OfferUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int
 	repoOffer := unmapOffer(offer)
 	id, err := u.repo.CreateOffer(ctx, repoOffer)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"err":       err.Error(),
-		}).Error("Offer usecase: create offer failed")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: create offer failed")
 		return 0, err
 	}
-
-	u.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"offer_id":  id,
-		"seller_id": offer.SellerID,
-	}).Info("Offer usecase: offer created successfully")
-
+	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": id}).Info("Offer usecase: offer created")
 	return int(id), nil
 }
 
-func (u *OfferUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) error {
+func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) error {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	// Получаем существующее объявление
@@ -175,7 +182,6 @@ func (u *OfferUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 	repoOffer := unmapOffer(offer)
 
 	err = u.repo.UpdateOffer(ctx, repoOffer)
-
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{
 			"requestID": requestID,
@@ -193,7 +199,7 @@ func (u *OfferUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 	return nil
 }
 
-func (u *OfferUsecase) DeleteOffer(ctx context.Context, id int) error {
+func (u *offerUsecase) DeleteOffer(ctx context.Context, id int) error {
 	err := u.repo.DeleteOffer(ctx, int64(id))
 	requestID := ctx.Value(utils.RequestIDKey)
 	if err != nil {
@@ -204,7 +210,7 @@ func (u *OfferUsecase) DeleteOffer(ctx context.Context, id int) error {
 	return nil
 }
 
-func (u *OfferUsecase) SaveOfferImage(ctx context.Context, offerID int, upload filestorage.FileUpload) (int64, error) {
+func (u *offerUsecase) SaveOfferImage(ctx context.Context, offerID int, upload filestorage.FileUpload) (int64, error) {
 	err := u.fs.Add(upload)
 	if err != nil {
 		return 0, err
@@ -213,7 +219,7 @@ func (u *OfferUsecase) SaveOfferImage(ctx context.Context, offerID int, upload f
 	return u.repo.CreateImageAndBindToOffer(ctx, offerID, upload.Name)
 }
 
-func (u *OfferUsecase) PublishOffer(ctx context.Context, offerID int, userID int) error {
+func (u *offerUsecase) PublishOffer(ctx context.Context, offerID int, userID int) error {
 	offer, err := u.repo.GetOfferByID(ctx, int64(offerID))
 	if err != nil {
 		return fmt.Errorf("объявление не найдено")
@@ -235,7 +241,7 @@ func (u *OfferUsecase) PublishOffer(ctx context.Context, offerID int, userID int
 	return u.repo.UpdateOfferStatus(ctx, offerID, 1)
 }
 
-func (u *OfferUsecase) DeleteOfferImage(ctx context.Context, imageID int, userID int) error {
+func (u *offerUsecase) DeleteOfferImage(ctx context.Context, imageID int, userID int) error {
 	offerID, uuid, err := u.repo.GetOfferImageWithUUID(ctx, int64(imageID))
 	if err != nil {
 		return fmt.Errorf("изображение не найдено")
@@ -266,8 +272,7 @@ func (u *OfferUsecase) DeleteOfferImage(ctx context.Context, imageID int, userID
 	return nil
 }
 
-
-func (u *OfferUsecase) prepareOfferInfo(ctx context.Context, offer domain.Offer) (domain.OfferInfo, error) {
+func (u *offerUsecase) PrepareOfferInfo (ctx context.Context, offer domain.Offer) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	offerData, err := u.repo.GetOfferData(ctx, offer)
@@ -292,12 +297,12 @@ func (u *OfferUsecase) prepareOfferInfo(ctx context.Context, offer domain.Offer)
 	return offerInfo, nil
 }
 
-func (u *OfferUsecase) prepareOffersInfo(ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) PrepareOffersInfo (ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	offersInfo := make([]domain.OfferInfo, 0, len(offers))
 	for _, offer := range offers {
-		offerInfo, err := u.prepareOfferInfo(ctx, offer)
+		offerInfo, err := u.PrepareOfferInfo(ctx, offer)
 		if err != nil {
 			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(), "offerID": offer.ID}).Error("Offer usecase: prepareOffersInfo failed")
 			return []domain.OfferInfo{}, err
