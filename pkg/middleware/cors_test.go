@@ -27,7 +27,7 @@ func TestCORSHandler_OptionsRequest(t *testing.T) {
 	expectedHeaders := map[string]string{
 		"Access-Control-Allow-Origin":      "http://localhost:8000",
 		"Access-Control-Allow-Methods":     "GET, POST, OPTIONS",
-		"Access-Control-Allow-Headers":     "Content-Type",
+		"Access-Control-Allow-Headers":     "Content-Type, x-csrf-token",
 		"Access-Control-Allow-Credentials": "true",
 	}
 
