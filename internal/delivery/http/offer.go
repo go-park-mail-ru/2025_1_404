@@ -3,12 +3,13 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
-	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
+	"github.com/google/uuid"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
@@ -17,10 +18,10 @@ import (
 )
 
 type OfferHandler struct {
-	OfferUC *usecase.OfferUsecase
+	OfferUC usecase.OfferUsecase
 }
 
-func NewOfferHandler(uc *usecase.OfferUsecase) *OfferHandler {
+func NewOfferHandler(uc usecase.OfferUsecase) *OfferHandler {
 	return &OfferHandler{OfferUC: uc}
 }
 
