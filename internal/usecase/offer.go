@@ -109,6 +109,8 @@ func (u *OfferUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([
 func (u *OfferUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
+	offer.StatusID = 2
+
 	repoOffer := unmapOffer(offer)
 	id, err := u.repo.CreateOffer(ctx, repoOffer)
 	if err != nil {

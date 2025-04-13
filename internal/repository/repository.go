@@ -579,11 +579,13 @@ func (r *repository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter
 		}
 	}
 
-	query := getAllOffersSQL
+	query := strings.TrimRight(getAllOffersSQL, "\t\n;")
 
 	if len(whereParts) > 0 {
 		query += " WHERE " + strings.Join(whereParts, " AND ")
 	}
+
+	query += ";"
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {

@@ -2,7 +2,7 @@ package domain
 
 // User Структура пользователя
 type User struct {
-	ID        int		`json:"-"`
+	ID        int		`json:"id"`
 	Email     string	`json:"email"`
 	Password  string	`json:"-"`
 	FirstName string	`json:"first_name"`
