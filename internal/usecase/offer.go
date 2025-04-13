@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
+	"html"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
@@ -109,6 +110,16 @@ func (u *OfferUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([
 func (u *OfferUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
+	if offer.Description != nil {
+		escaped := html.EscapeString(*offer.Description)
+		offer.Description = &escaped
+	}
+
+	if offer.Address != nil {
+		escaped := html.EscapeString(*offer.Address)
+		offer.Address = &escaped
+	}
+
 	offer.StatusID = 2
 
 	repoOffer := unmapOffer(offer)
@@ -133,6 +144,16 @@ func (u *OfferUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 			"err":       err.Error(),
 		}).Error("Offer usecase: get offer before update failed")
 		return fmt.Errorf("объявление не найдено")
+	}
+
+	if offer.Description != nil {
+		escaped := html.EscapeString(*offer.Description)
+		offer.Description = &escaped
+	}
+
+	if offer.Address != nil {
+		escaped := html.EscapeString(*offer.Address)
+		offer.Address = &escaped
 	}
 
 	// Оставляем прежний статус
