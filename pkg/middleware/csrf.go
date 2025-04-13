@@ -13,7 +13,7 @@ func CSRFMiddleware(log logger.Logger, nextHandler http.Handler) http.Handler {
 		token := r.Header.Get("X-CSRF-TOKEN")
 		if token == "" {
 			log.Warn("CSRF token header missing")
-            utils.SendErrorResponse(w, "Необходим CSRG токен", http.StatusForbidden)
+            utils.SendErrorResponse(w, "Необходим CSRF токен", http.StatusForbidden)
             return
 		}
 

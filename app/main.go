@@ -89,6 +89,8 @@ func main() {
 	r.Handle("/api/v1/users/image", 
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(authHandler.DeleteImage)))).
 		Methods(http.MethodDelete)
+	r.Handle("/api/v1/users/csrf", middleware.AuthHandler(l, http.HandlerFunc(authHandler.GetCSRFToken))).
+		Methods(http.MethodGet)
 
 	// Объявления
 	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).
