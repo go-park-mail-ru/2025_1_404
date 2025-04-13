@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/csrf"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/validation"
 	"github.com/google/uuid"
@@ -179,9 +181,17 @@ func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.UC.IsEmailTaken(r.Context(), updateUser.Email) {
-		utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
+	currentUser, err := h.UC.GetUserByID(r.Context(), userID)
+	if err != nil {
+		utils.SendErrorResponse(w, "Пользователь не найден", http.StatusUnauthorized)
 		return
+	}
+
+	if currentUser.Email != updateUser.Email {
+		if h.UC.IsEmailTaken(r.Context(), updateUser.Email) {
+			utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Возвращает User вместо UserUpdate
@@ -227,7 +237,7 @@ func (h *AuthHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	upload := filestorage.FileUpload{
-		Name:        uuid.New().String()+"."+contentType,
+		Name:        uuid.New().String() + "." + contentType,
 		Size:        header.Size,
 		File:        bytes.NewReader(fileBytes),
 		ContentType: contentType,
@@ -258,4 +268,13 @@ func (h *AuthHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONResponse(w, updatedUser, http.StatusOK)
+}
+
+func (h *AuthHandler) GetCSRFToken(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value(utils.UserIDKey).(int)
+
+	token := csrf.GenerateCSRF(strconv.Itoa(userID), utils.Salt)
+
+	response := csrf.GetCSRFResponse(token)
+	utils.SendJSONResponse(w, response, http.StatusOK)
 }
