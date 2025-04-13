@@ -1,0 +1,11 @@
+SET SEARCH_PATH = kvartirum;
+
+ALTER TABLE OFFER
+DROP COLUMN IF EXISTS area_fraction,
+DROP COLUMN IF EXISTS ceiling_height_fraction;
+
+ALTER TABLE HousingComplex
+DROP COLUMN IF EXISTS phone_number
+
+ALTER TABLE MetroLine
+ALTER COLUMN color TYPE INT;
