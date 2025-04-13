@@ -79,14 +79,27 @@ func (u *OfferUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([
 }
 
 func (u *OfferUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	// всегда принудительно ставим статус Черновик
+	offer.StatusID = 2
+
 	repoOffer := unmapOffer(offer)
 	id, err := u.repo.CreateOffer(ctx, repoOffer)
-	requestID := ctx.Value(utils.RequestIDKey)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: create offer failed")
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID,
+			"err":       err.Error(),
+		}).Error("Offer usecase: create offer failed")
 		return 0, err
 	}
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": id}).Info("Offer usecase: offer created")
+
+	u.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"offer_id":  id,
+		"seller_id": offer.SellerID,
+	}).Info("Offer usecase: offer created successfully")
+
 	return int(id), nil
 }
 
