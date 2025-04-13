@@ -342,6 +342,13 @@ func TestUpdateHandler(t *testing.T) {
 			LastName:  "NewLastName",
 		}
 
+		user := domain.User{
+			ID:    1,
+			Email: "old@mail.ru",
+			FirstName: "OldName",
+			LastName:  "OldLastName",
+		}
+
 		updatedUser := domain.User{
 			ID:        1,
 			Email:     req.Email,
@@ -358,6 +365,7 @@ func TestUpdateHandler(t *testing.T) {
 		response := httptest.NewRecorder()
 
 		req.ID = 1
+		mockUS.EXPECT().GetUserByID(gomock.Any(), 1).Return(user, nil)
 		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
 		mockUS.EXPECT().UpdateUser(gomock.Any(), domain.UserFromUpdated(req)).Return(updatedUser, nil)
 
@@ -407,9 +415,15 @@ func TestUpdateHandler(t *testing.T) {
 
 	t.Run("email taken", func(t *testing.T) {
 		req := domain.UpdateRequest{
-			Email:     "email@taken.ru",
+			Email:     "new@taken.ru",
 			FirstName: "NewName",
 			LastName:  "NewLastName",
+		}
+		user := domain.User{
+			ID:    1,
+			Email: "email@taken.ru",
+			FirstName: "OldName",
+			LastName:  "OldLastName",
 		}
 
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
@@ -420,6 +434,7 @@ func TestUpdateHandler(t *testing.T) {
 		requestWithCtx := request.WithContext(ctx)
 		response := httptest.NewRecorder()
 
+		mockUS.EXPECT().GetUserByID(gomock.Any(), 1).Return(user, nil)
 		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(true)
 
 		userHandlers.Update(response, requestWithCtx)
@@ -434,6 +449,13 @@ func TestUpdateHandler(t *testing.T) {
 			LastName:  "NewLastName",
 		}
 
+		user := domain.User{
+			ID:    1,
+			Email: "email@mail.ru",
+			FirstName: "OldName",
+			LastName:  "OldLastName",
+		}
+
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
 
 		body, _ := json.Marshal(req)
@@ -441,7 +463,7 @@ func TestUpdateHandler(t *testing.T) {
 		request.Header.Set("Content-Type", "application/json")
 		response := httptest.NewRecorder()
 
-		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
+		mockUS.EXPECT().GetUserByID(gomock.Any(), 1).Return(user, nil)
 		req.ID = 1
 		mockUS.EXPECT().UpdateUser(gomock.Any(), domain.UserFromUpdated(req)).Return(domain.User{}, fmt.Errorf("usecase UserUpdate failed"))
 
@@ -468,7 +490,7 @@ func TestDeleteImage(t *testing.T) {
 		mockUS.EXPECT().DeleteImage(gomock.Any(), 1).Return(domain.User{
 			Email: "email@mail.ru",
 			Image: "",
-		},nil)
+		}, nil)
 
 		userHandlers.DeleteImage(response, request)
 

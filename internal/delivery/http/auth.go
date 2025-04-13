@@ -181,9 +181,17 @@ func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.UC.IsEmailTaken(r.Context(), updateUser.Email) {
-		utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
+	currentUser, err := h.UC.GetUserByID(r.Context(), userID)
+	if err != nil {
+		utils.SendErrorResponse(w, "Пользователь не найден", http.StatusUnauthorized)
 		return
+	}
+
+	if currentUser.Email != updateUser.Email {
+		if h.UC.IsEmailTaken(r.Context(), updateUser.Email) {
+			utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Возвращает User вместо UserUpdate
@@ -229,7 +237,7 @@ func (h *AuthHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	upload := filestorage.FileUpload{
-		Name:        uuid.New().String()+"."+contentType,
+		Name:        uuid.New().String() + "." + contentType,
 		Size:        header.Size,
 		File:        bytes.NewReader(fileBytes),
 		ContentType: contentType,
@@ -262,9 +270,9 @@ func (h *AuthHandler) DeleteImage(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, updatedUser, http.StatusOK)
 }
 
-func (h *AuthHandler) GetCSRFToken (w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) GetCSRFToken(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(utils.UserIDKey).(int)
-	
+
 	token := csrf.GenerateCSRF(strconv.Itoa(userID), utils.Salt)
 
 	response := csrf.GetCSRFResponse(token)

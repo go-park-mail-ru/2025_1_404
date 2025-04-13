@@ -19,7 +19,7 @@ func userIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestAuthMiddleware_OK(t *testing.T) {
-	cookie := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJleHAiOjE3NDM3MTAwODR9.N91tDZhbByReYW_puVihHjIrUZfceYZ6EnM2Uk9Hi6A"
+	cookie, _ := utils.GenerateJWT(1)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Cookie", fmt.Sprintf(`token=%s`, cookie))

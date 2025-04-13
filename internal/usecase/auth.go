@@ -144,7 +144,6 @@ func (u *authUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 		return domain.User{}, err
 	}
 
-	fmt.Println(utils.BasePath)
 	if updatedUser.Image != "" {
 		updatedUser.Image = utils.BasePath + utils.ImagesPath + updatedUser.Image
 	}
