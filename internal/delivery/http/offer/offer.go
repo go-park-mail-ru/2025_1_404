@@ -165,14 +165,8 @@ func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingOffer, err := h.OfferUC.GetOfferByID(r.Context(), id)
-	if err != nil {
-		utils.SendErrorResponse(w, "Объявление не найдено", http.StatusNotFound)
-		return
-	}
-
-	if existingOffer.Offer.SellerID != userID {
-		utils.SendErrorResponse(w, "Нет доступа к обновлению этого объявления", http.StatusForbidden)
+	if err := h.OfferUC.CheckAccessToOffer(r.Context(), id, userID); err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
@@ -208,14 +202,8 @@ func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	existingOffer, err := h.OfferUC.GetOfferByID(r.Context(), id)
-	if err != nil {
-		utils.SendErrorResponse(w, "Объявление не найдено", http.StatusNotFound)
-		return
-	}
-
-	if existingOffer.Offer.SellerID != userID {
-		utils.SendErrorResponse(w, "Нет доступа к удалению этого объявления", http.StatusForbidden)
+	if err := h.OfferUC.CheckAccessToOffer(r.Context(), id, userID); err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
