@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
+	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/auth"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/csrf"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/zhk/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"

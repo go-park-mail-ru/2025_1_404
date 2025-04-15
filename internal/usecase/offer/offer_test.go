@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	mockFS "github.com/go-park-mail-ru/2025_1_404/internal/filestorage/mocks"
-	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
-	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/internal/repository/offer"
+	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/offer/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
@@ -19,8 +19,8 @@ func TestGetOffers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
-	mockLogger, _ := logger.NewZapLogger()
+	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
 	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockFS)
@@ -93,8 +93,8 @@ func TestGetOffersByFilter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
-	mockLogger, _ := logger.NewZapLogger()
+	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
 	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockFS)
@@ -173,8 +173,8 @@ func TestGetOfferByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
-	mockLogger, _ := logger.NewZapLogger()
+	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
 	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockFS)
@@ -237,8 +237,8 @@ func TestGetOffersBySellerID(t *testing.T) {
     ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
-	mockLogger, _ := logger.NewZapLogger()
+	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
 	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockFS)
@@ -319,8 +319,8 @@ func TestCreateOffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
-	mockLogger, _ := logger.NewZapLogger()
+	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
 	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockFS)
@@ -363,8 +363,8 @@ func TestDEleteOfferImage (t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
-	mockLogger, _ := logger.NewZapLogger()
+	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
 	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockFS)

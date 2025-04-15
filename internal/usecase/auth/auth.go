@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
-	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
+	authRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/auth"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
@@ -27,12 +27,12 @@ type AuthUsecase interface {
 }
 
 type authUsecase struct {
-	repo   repository.Repository
+	repo   authRepo.AuthRepository
 	logger logger.Logger
 	fs     filestorage.FileStorage
 }
 
-func NewAuthUsecase(repo repository.Repository, logger logger.Logger, fs filestorage.FileStorage) AuthUsecase {
+func NewAuthUsecase(repo authRepo.AuthRepository, logger logger.Logger, fs filestorage.FileStorage) AuthUsecase {
 	return &authUsecase{repo: repo, logger: logger, fs: fs}
 }
 
@@ -47,7 +47,7 @@ func (u *authUsecase) CreateUser(ctx context.Context, email, password, firstName
 		return domain.User{}, errors.New("ошибка при хешировании пароля")
 	}
 
-	user := repository.User{
+	user := authRepo.User{
 		Email:        email,
 		Password:     string(hashedPassword),
 		FirstName:    firstName,

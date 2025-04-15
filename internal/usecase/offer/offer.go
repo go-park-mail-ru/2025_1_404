@@ -7,7 +7,7 @@ import (
 	"html"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
+	offerRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/offer"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
@@ -30,12 +30,12 @@ type OfferUsecase interface {
 }
 
 type offerUsecase struct {
-	repo   repository.Repository
+	repo   offerRepo.OfferRepository
 	logger logger.Logger
 	fs     filestorage.FileStorage
 }
 
-func NewOfferUsecase(repo repository.Repository, logger logger.Logger, fs filestorage.FileStorage) OfferUsecase {
+func NewOfferUsecase(repo offerRepo.OfferRepository, logger logger.Logger, fs filestorage.FileStorage) OfferUsecase {
 	return &offerUsecase{repo: repo, logger: logger, fs: fs}
 }
 
@@ -312,7 +312,7 @@ func (u *offerUsecase) PrepareOffersInfo (ctx context.Context, offers []domain.O
 	return offersInfo, nil
 }
 
-func mapOffer(o repository.Offer) domain.Offer {
+func mapOffer(o offerRepo.Offer) domain.Offer {
 	return domain.Offer{
 		ID:             int(o.ID),
 		SellerID:       int(o.SellerID),
@@ -338,7 +338,7 @@ func mapOffer(o repository.Offer) domain.Offer {
 	}
 }
 
-func mapOffers(raw []repository.Offer) []domain.Offer {
+func mapOffers(raw []offerRepo.Offer) []domain.Offer {
 	offers := make([]domain.Offer, 0, len(raw))
 	for _, o := range raw {
 		offers = append(offers, mapOffer(o))
@@ -346,8 +346,8 @@ func mapOffers(raw []repository.Offer) []domain.Offer {
 	return offers
 }
 
-func unmapOffer(o domain.Offer) repository.Offer {
-	return repository.Offer{
+func unmapOffer(o domain.Offer) offerRepo.Offer {
+	return offerRepo.Offer{
 		ID:             int64(o.ID),
 		SellerID:       int64(o.SellerID),
 		OfferTypeID:    o.OfferTypeID,

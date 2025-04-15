@@ -13,7 +13,7 @@ import (
 )
 
 func TestCSRFMiddleware(t *testing.T) {
-	l, _ := logger.NewZapLogger()
+	l := logger.NewStub()
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTeapot)

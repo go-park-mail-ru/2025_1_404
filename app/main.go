@@ -5,10 +5,16 @@ import (
 	"log"
 	"net/http"
 
-	delivery "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http"
+	deliveryAuth "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/auth"
+	deliveryOffer "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/offer"
+	deliveryZhk "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/zhk"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
-	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
+	repoAuth "github.com/go-park-mail-ru/2025_1_404/internal/repository/auth"
+	repoOffer "github.com/go-park-mail-ru/2025_1_404/internal/repository/offer"
+	repoZhk "github.com/go-park-mail-ru/2025_1_404/internal/repository/zhk"
+	usecaseAuth "github.com/go-park-mail-ru/2025_1_404/internal/usecase/auth"
+	usecaseOffer "github.com/go-park-mail-ru/2025_1_404/internal/usecase/offer"
+	usecaseZhk "github.com/go-park-mail-ru/2025_1_404/internal/usecase/zhk"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
@@ -46,17 +52,19 @@ func main() {
 	fs := filestorage.NewLocalStorage(basePath)
 
 	// Репозиторий
-	repo := repository.NewRepository(dbpool, l)
+	authRepo := repoAuth.NewAuthRepository(dbpool, l)
+	offerRepo := repoOffer.NewOfferRepository(dbpool, l)
+	zhkRepo := repoZhk.NewZhkRepository(dbpool, l)
 
 	// Юзкейсы
-	authUC := usecase.NewAuthUsecase(repo, l, fs)
-	zhkUC := usecase.NewZhkUsecase(repo, l)
-	offerUC := usecase.NewOfferUsecase(repo, l, fs)
+	authUC := usecaseAuth.NewAuthUsecase(authRepo, l, fs)
+	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, fs)
+	zhkUC := usecaseZhk.NewZhkUsecase(zhkRepo, l)
 
 	// Хендлеры
-	authHandler := delivery.NewAuthHandler(authUC)
-	offerHandler := delivery.NewOfferHandler(offerUC)
-	zhkHandler := delivery.NewZhkHandler(zhkUC)
+	authHandler := deliveryAuth.NewAuthHandler(authUC)
+	offerHandler := deliveryOffer.NewOfferHandler(offerUC)
+	zhkHandler := deliveryZhk.NewZhkHandler(zhkUC)
 
 	// Маршруты
 	r := mux.NewRouter()
@@ -80,13 +88,13 @@ func main() {
 	// Профиль
 	r.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me))).
 		Methods(http.MethodPost)
-	r.Handle("/api/v1/users/update", 
+	r.Handle("/api/v1/users/update",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(authHandler.Update)))).
 		Methods(http.MethodPut)
-	r.Handle("/api/v1/users/image", 
+	r.Handle("/api/v1/users/image",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(authHandler.UploadImage)))).
 		Methods(http.MethodPut)
-	r.Handle("/api/v1/users/image", 
+	r.Handle("/api/v1/users/image",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(authHandler.DeleteImage)))).
 		Methods(http.MethodDelete)
 	r.Handle("/api/v1/users/csrf", middleware.AuthHandler(l, http.HandlerFunc(authHandler.GetCSRFToken))).
@@ -97,22 +105,22 @@ func main() {
 		Methods(http.MethodGet)
 	r.HandleFunc("/api/v1/offers/{id:[0-9]+}", offerHandler.GetOfferByID).
 		Methods(http.MethodGet)
-	r.Handle("/api/v1/offers", 
+	r.Handle("/api/v1/offers",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.CreateOffer)))).
 		Methods(http.MethodPost)
-	r.Handle("/api/v1/offers/{id:[0-9]+}", 
+	r.Handle("/api/v1/offers/{id:[0-9]+}",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.UpdateOffer)))).
 		Methods(http.MethodPut)
-	r.Handle("/api/v1/offers/{id:[0-9]+}", 
+	r.Handle("/api/v1/offers/{id:[0-9]+}",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.DeleteOffer)))).
 		Methods(http.MethodDelete)
-	r.Handle("/api/v1/offers/{id:[0-9]+}/publish", 
+	r.Handle("/api/v1/offers/{id:[0-9]+}/publish",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.PublishOffer)))).
 		Methods(http.MethodPost)
-	r.Handle("/api/v1/offers/{id:[0-9]+}/image", 
+	r.Handle("/api/v1/offers/{id:[0-9]+}/image",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.UploadOfferImage)))).
 		Methods(http.MethodPost)
-	r.Handle("/api/v1/images/{id:[0-9]+}", 
+	r.Handle("/api/v1/images/{id:[0-9]+}",
 		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.DeleteOfferImage)))).
 		Methods(http.MethodDelete)
 

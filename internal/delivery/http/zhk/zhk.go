@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase"
+	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/zhk"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/gorilla/mux"
 )

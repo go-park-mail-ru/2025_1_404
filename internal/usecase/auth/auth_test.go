@@ -9,8 +9,8 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	mockFS "github.com/go-park-mail-ru/2025_1_404/internal/filestorage/mocks"
-	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
-	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/internal/repository/auth"
+	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/auth/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
@@ -22,9 +22,9 @@ func TestUploadImage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
+	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
-	logger, _ := logger.NewZapLogger()
+	logger := logger.NewStub()
 
 	usecase := NewAuthUsecase(mockRepo, logger, mockFS)
 
@@ -54,9 +54,9 @@ func TestIsEmailTaken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
+	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
-	logger, _ := logger.NewZapLogger()
+	logger := logger.NewStub()
 
 	usecaseAuth := NewAuthUsecase(mockRepo, logger, mockFS)
 
@@ -79,9 +79,9 @@ func TestCreateUser(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
+	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
-	logger, _ := logger.NewZapLogger()
+	logger := logger.NewStub()
 
 	usecaseAuth := NewAuthUsecase(mockRepo, logger, mockFS)
 
@@ -114,24 +114,24 @@ func TestCreateUser(t *testing.T) {
 	})
 }
 
-func TestGetUserByEmail (t *testing.T) {
+func TestGetUserByEmail(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
+	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
-	logger, _ := logger.NewZapLogger()
+	logger := logger.NewStub()
 
 	usecaseAuth := NewAuthUsecase(mockRepo, logger, mockFS)
 
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "1")
 	t.Run("GetUserByEmail ok", func(t *testing.T) {
-		expectedUser := domain.User {
+		expectedUser := domain.User{
 			Email: "e@mail.ru",
 			Image: utils.BasePath + utils.ImagesPath + "avatar.png",
 		}
 
-		user := domain.User {
+		user := domain.User{
 			Email: "e@mail.ru",
 			Image: "avatar.png",
 		}
@@ -154,27 +154,27 @@ func TestGetUserByEmail (t *testing.T) {
 	})
 }
 
-func TestUpdateUser (t *testing.T) {
+func TestUpdateUser(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockRepository(ctrl)
+	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
-	logger, _ := logger.NewZapLogger()
+	logger := logger.NewStub()
 
 	usecaseAuth := NewAuthUsecase(mockRepo, logger, mockFS)
 
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "1")
 	t.Run("UpdateUser ok", func(t *testing.T) {
-		user := domain.User {
-			ID: 1,
-			Email: "new@mail.ru",
+		user := domain.User{
+			ID:        1,
+			Email:     "new@mail.ru",
 			FirstName: "Ivan",
-			LastName: "Ivanov",
+			LastName:  "Ivanov",
 		}
 
-		currentUser := domain.User {
-			ID: 1,
+		currentUser := domain.User{
+			ID:    1,
 			Email: "old@mail.ru",
 		}
 
@@ -184,7 +184,7 @@ func TestUpdateUser (t *testing.T) {
 		mockRepo.EXPECT().UpdateUser(ctx, user).Return(updatedUser, nil)
 
 		updatedUser, err := usecaseAuth.UpdateUser(ctx, user)
-	
+
 		assert.NoError(t, err)
 		assert.Equal(t, user, updatedUser)
 	})
@@ -209,103 +209,103 @@ func TestUpdateUser (t *testing.T) {
 }
 
 func TestDeleteImage(t *testing.T) {
-    ctrl := gomock.NewController(t)
-    defer ctrl.Finish()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-    mockRepo := mockRepo.NewMockRepository(ctrl)
-    mockFS := mockFS.NewMockFileStorage(ctrl)
-    mockLogger, _ := logger.NewZapLogger()
-    
-    usecaseAuth := NewAuthUsecase(mockRepo, mockLogger, mockFS)
+	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
+	mockFS := mockFS.NewMockFileStorage(ctrl)
+	mockLogger := logger.NewStub()
 
-    ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
-    userID := 1
-    imagePath := "path/to/image.jpg"
+	usecaseAuth := NewAuthUsecase(mockRepo, mockLogger, mockFS)
 
-    t.Run("DeleteImage ok", func(t *testing.T) {
-        existingUser := domain.User{
-            ID:    userID,
-            Image: imagePath,
-        }
-        updatedUser := domain.User{
-            ID:    userID,
-            Image: "",
-        }
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
+	userID := 1
+	imagePath := "path/to/image.jpg"
 
-        mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(existingUser, nil).Times(2)
-        mockFS.EXPECT().Delete(path.Base(imagePath)).Return(nil)
-        mockRepo.EXPECT().DeleteUserImage(ctx, int64(userID)).Return(nil)
-        mockRepo.EXPECT().UpdateUser(ctx, gomock.Any()).Return(updatedUser, nil)
+	t.Run("DeleteImage ok", func(t *testing.T) {
+		existingUser := domain.User{
+			ID:    userID,
+			Image: imagePath,
+		}
+		updatedUser := domain.User{
+			ID:    userID,
+			Image: "",
+		}
 
-        result, err := usecaseAuth.DeleteImage(ctx, userID)
+		mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(existingUser, nil).Times(2)
+		mockFS.EXPECT().Delete(path.Base(imagePath)).Return(nil)
+		mockRepo.EXPECT().DeleteUserImage(ctx, int64(userID)).Return(nil)
+		mockRepo.EXPECT().UpdateUser(ctx, gomock.Any()).Return(updatedUser, nil)
 
-        assert.NoError(t, err)
-        assert.Equal(t, updatedUser, result)
-    })
+		result, err := usecaseAuth.DeleteImage(ctx, userID)
 
-    t.Run("user not found", func(t *testing.T) {
-        expectedErr := fmt.Errorf("user not found")
+		assert.NoError(t, err)
+		assert.Equal(t, updatedUser, result)
+	})
 
-        mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(domain.User{}, expectedErr)
-        
-        result, err := usecaseAuth.DeleteImage(ctx, userID)
+	t.Run("user not found", func(t *testing.T) {
+		expectedErr := fmt.Errorf("user not found")
 
-        assert.Error(t, err)
-        assert.EqualError(t, err, "failed to find user")
-        assert.Equal(t, domain.User{}, result)
-    })
+		mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(domain.User{}, expectedErr)
 
-    t.Run("file storage deletion failed", func(t *testing.T) {
-        existingUser := domain.User{
-            ID:    userID,
-            Image: imagePath,
-        }
-        fsErr := fmt.Errorf("storage error")
+		result, err := usecaseAuth.DeleteImage(ctx, userID)
 
-        mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(existingUser, nil)
-        mockFS.EXPECT().Delete(path.Base(imagePath)).Return(fsErr)
-        
-        result, err := usecaseAuth.DeleteImage(ctx, userID)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "failed to find user")
+		assert.Equal(t, domain.User{}, result)
+	})
 
-        assert.Error(t, err)
-        assert.Equal(t, fsErr, err)
-        assert.Equal(t, domain.User{}, result)
-    })
+	t.Run("file storage deletion failed", func(t *testing.T) {
+		existingUser := domain.User{
+			ID:    userID,
+			Image: imagePath,
+		}
+		fsErr := fmt.Errorf("storage error")
 
-    t.Run("repository DeleteUserImage failed", func(t *testing.T) {
-        existingUser := domain.User{
-            ID:    userID,
-            Image: imagePath,
-        }
-        repoErr := fmt.Errorf("repository error")
+		mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(existingUser, nil)
+		mockFS.EXPECT().Delete(path.Base(imagePath)).Return(fsErr)
 
-        mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(existingUser, nil)
-        mockFS.EXPECT().Delete(path.Base(imagePath)).Return(nil)
-        mockRepo.EXPECT().DeleteUserImage(ctx, int64(userID)).Return(repoErr)
-        
-        result, err := usecaseAuth.DeleteImage(ctx, userID)
+		result, err := usecaseAuth.DeleteImage(ctx, userID)
 
-        assert.Error(t, err)
-        assert.Equal(t, repoErr, err)
-        assert.Equal(t, domain.User{}, result)
-    })
+		assert.Error(t, err)
+		assert.Equal(t, fsErr, err)
+		assert.Equal(t, domain.User{}, result)
+	})
 
-    t.Run("user update failed", func(t *testing.T) {
-        existingUser := domain.User{
-            ID:    userID,
-            Image: imagePath,
-        }
-        updateErr := fmt.Errorf("update error")
+	t.Run("repository DeleteUserImage failed", func(t *testing.T) {
+		existingUser := domain.User{
+			ID:    userID,
+			Image: imagePath,
+		}
+		repoErr := fmt.Errorf("repository error")
 
-        mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(existingUser, nil).Times(2)
-        mockFS.EXPECT().Delete(path.Base(imagePath)).Return(nil)
-        mockRepo.EXPECT().DeleteUserImage(ctx, int64(userID)).Return(nil)
-        mockRepo.EXPECT().UpdateUser(ctx, gomock.Any()).Return(domain.User{}, updateErr)
+		mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(existingUser, nil)
+		mockFS.EXPECT().Delete(path.Base(imagePath)).Return(nil)
+		mockRepo.EXPECT().DeleteUserImage(ctx, int64(userID)).Return(repoErr)
 
-        result, err := usecaseAuth.DeleteImage(ctx, userID)
+		result, err := usecaseAuth.DeleteImage(ctx, userID)
 
-        assert.Error(t, err)
-        assert.Equal(t, updateErr, err)
-        assert.Equal(t, domain.User{}, result)
-    })
+		assert.Error(t, err)
+		assert.Equal(t, repoErr, err)
+		assert.Equal(t, domain.User{}, result)
+	})
+
+	t.Run("user update failed", func(t *testing.T) {
+		existingUser := domain.User{
+			ID:    userID,
+			Image: imagePath,
+		}
+		updateErr := fmt.Errorf("update error")
+
+		mockRepo.EXPECT().GetUserByID(ctx, int64(userID)).Return(existingUser, nil).Times(2)
+		mockFS.EXPECT().Delete(path.Base(imagePath)).Return(nil)
+		mockRepo.EXPECT().DeleteUserImage(ctx, int64(userID)).Return(nil)
+		mockRepo.EXPECT().UpdateUser(ctx, gomock.Any()).Return(domain.User{}, updateErr)
+
+		result, err := usecaseAuth.DeleteImage(ctx, userID)
+
+		assert.Error(t, err)
+		assert.Equal(t, updateErr, err)
+		assert.Equal(t, domain.User{}, result)
+	})
 }

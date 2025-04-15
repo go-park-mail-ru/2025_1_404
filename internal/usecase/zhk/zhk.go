@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
+	zhkRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/zhk"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
@@ -19,11 +19,11 @@ type ZhkUsecase interface {
 }
 
 type zhkUsecase struct {
-	repo   repository.Repository
+	repo   zhkRepo.ZhkRepository
 	logger logger.Logger
 }
 
-func NewZhkUsecase(repo repository.Repository, logger logger.Logger) ZhkUsecase {
+func NewZhkUsecase(repo zhkRepo.ZhkRepository, logger logger.Logger) ZhkUsecase {
 	return &zhkUsecase{repo: repo, logger: logger}
 }
 
