@@ -31,8 +31,7 @@ func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get all offers failed")
 		return nil, err
 	}
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "count": len(offers)}).Info("Offer usecase: offers fetched")
-
+	
 	offersDTO := mapOffers(offers)
 
 	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
@@ -54,8 +53,6 @@ func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.Offe
 		return nil, err
 	}
 
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "count": len(rawOffers)}).Info("Offer usecase: offers filtered successfully")
-
 	offersDTO := mapOffers(rawOffers)
 
 	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
@@ -75,7 +72,6 @@ func (u *offerUsecase) GetOfferByID(ctx context.Context, id int) (domain.OfferIn
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "id": id, "err": err.Error()}).Error("Offer usecase: get offer by id failed")
 		return domain.OfferInfo{}, err
 	}
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": id}).Info("Offer usecase: offer fetched")
 
 	offerDTO := mapOffer(offer)
 
@@ -97,8 +93,7 @@ func (u *offerUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "seller_id": sellerID, "err": err.Error()}).Error("Offer usecase: get offers by seller failed")
 		return nil, err
 	}
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "seller_id": sellerID, "count": len(offers)}).Info("Offer usecase: offers by seller fetched")
-
+	
 	offersDTO := mapOffers(offers)
 
 	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
@@ -132,7 +127,6 @@ func (u *offerUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: create offer failed")
 		return 0, err
 	}
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": id}).Info("Offer usecase: offer created")
 	return int(id), nil
 }
 
@@ -175,11 +169,6 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 		return err
 	}
 
-	u.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"offer_id":  offer.ID,
-	}).Info("Offer usecase: offer updated")
-
 	return nil
 }
 
@@ -190,7 +179,6 @@ func (u *offerUsecase) DeleteOffer(ctx context.Context, id int) error {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": id, "err": err.Error()}).Error("Offer usecase: delete offer failed")
 		return err
 	}
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": id}).Info("Offer usecase: offer deleted")
 	return nil
 }
 

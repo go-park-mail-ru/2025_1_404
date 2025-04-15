@@ -53,8 +53,7 @@ func (u *authUsecase) CreateUser(ctx context.Context, email, password, firstName
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("User usecase: create user failed")
 		return domain.User{}, err
 	}
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": id}).Info("User usecase: user created succesfully")
-
+	
 	user.ID = id
 
 	return domain.User{
@@ -75,8 +74,6 @@ func (u *authUsecase) GetUserByEmail(ctx context.Context, email string) (domain.
 		return domain.User{}, err
 	}
 
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": user.ID}).Info("User usecase: get user by email")
-
 	if user.Image != "" {
 		user.Image = utils.BasePath + utils.ImagesPath + user.Image
 	}
@@ -92,8 +89,6 @@ func (u *authUsecase) GetUserByID(ctx context.Context, id int) (domain.User, err
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("User usecase: get user by id failed")
 		return domain.User{}, err
 	}
-
-	u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": user.ID}).Info("User usecase: get user by id")
 
 	if user.Image != "" {
 		user.Image = utils.BasePath + utils.ImagesPath + user.Image
