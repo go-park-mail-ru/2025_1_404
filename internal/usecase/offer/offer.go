@@ -124,7 +124,7 @@ func (u *offerUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int
 		offer.Address = &escaped
 	}
 
-	offer.StatusID = 2
+	offer.StatusID = domain.OfferStatusDraft
 
 	repoOffer := unmapOffer(offer)
 	id, err := u.repo.CreateOffer(ctx, repoOffer)
@@ -211,7 +211,7 @@ func (u *offerUsecase) PublishOffer(ctx context.Context, offerID int, userID int
 	if int(offer.SellerID) != userID {
 		return fmt.Errorf("нет доступа к публикации этого объявления")
 	}
-	if offer.StatusID != 2 { // 2 = Черновик
+	if offer.StatusID != domain.OfferStatusDraft { // 2 = Черновик
 		return fmt.Errorf("объявление уже активно или завершено")
 	}
 

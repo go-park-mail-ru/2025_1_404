@@ -72,3 +72,5 @@ type OfferSeller struct {
 	Avatar    string    `json:"avatar"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+const OfferStatusDraft = 2
