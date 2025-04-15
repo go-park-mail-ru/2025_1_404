@@ -91,12 +91,13 @@ func TestGetZhkInfo(t *testing.T) {
 	}
 
 	t.Run("GetZhkInfo ok", func(t *testing.T) {
+		mockRepo.EXPECT().GetZhkByID(ctx, zhk.ID).Return(zhk, nil)
 		mockRepo.EXPECT().GetZhkHeader(ctx, zhk).Return(header, nil)
 		mockRepo.EXPECT().GetZhkCharacteristics(ctx, zhk).Return(characteristics, nil)
 		mockRepo.EXPECT().GetZhkApartments(ctx, zhk).Return(apartments, nil)
 		mockRepo.EXPECT().GetZhkReviews(ctx, zhk).Return(reviews, nil)
 
-		result, err := zhkUsecase.GetZhkInfo(ctx, zhk)
+		result, err := zhkUsecase.GetZhkInfo(ctx, zhk.ID)
 
 		assert.NoError(t, err)
 		assert.Equal(t, zhk.ID, result.ID)
@@ -107,9 +108,10 @@ func TestGetZhkInfo(t *testing.T) {
 
 	t.Run("GetZhkHeader error", func(t *testing.T) {
 		expectedErr := fmt.Errorf("header error")
+		mockRepo.EXPECT().GetZhkByID(ctx, zhk.ID).Return(zhk, nil)
 		mockRepo.EXPECT().GetZhkHeader(ctx, zhk).Return(domain.ZhkHeader{}, expectedErr)
 
-		result, err := zhkUsecase.GetZhkInfo(ctx, zhk)
+		result, err := zhkUsecase.GetZhkInfo(ctx, zhk.ID)
 
 		assert.Error(t, err)
 		assert.Equal(t, expectedErr, err)
@@ -117,11 +119,12 @@ func TestGetZhkInfo(t *testing.T) {
 	})
 
 	t.Run("GetZhkCharacteristics error", func(t *testing.T) {
+		mockRepo.EXPECT().GetZhkByID(ctx, zhk.ID).Return(zhk, nil)
 		mockRepo.EXPECT().GetZhkHeader(ctx, zhk).Return(header, nil)
 		expectedErr := fmt.Errorf("char error")
 		mockRepo.EXPECT().GetZhkCharacteristics(ctx, zhk).Return(domain.ZhkCharacteristics{}, expectedErr)
 
-		result, err := zhkUsecase.GetZhkInfo(ctx, zhk)
+		result, err := zhkUsecase.GetZhkInfo(ctx, zhk.ID)
 
 		assert.Error(t, err)
 		assert.Equal(t, expectedErr, err)
@@ -129,12 +132,13 @@ func TestGetZhkInfo(t *testing.T) {
 	})
 
 	t.Run("GetZhkApartments error", func(t *testing.T) {
+		mockRepo.EXPECT().GetZhkByID(ctx, zhk.ID).Return(zhk, nil)
 		mockRepo.EXPECT().GetZhkHeader(ctx, zhk).Return(header, nil)
 		mockRepo.EXPECT().GetZhkCharacteristics(ctx, zhk).Return(characteristics, nil)
 		expectedErr := fmt.Errorf("apartments error")
 		mockRepo.EXPECT().GetZhkApartments(ctx, zhk).Return(domain.ZhkApartments{}, expectedErr)
 
-		result, err := zhkUsecase.GetZhkInfo(ctx, zhk)
+		result, err := zhkUsecase.GetZhkInfo(ctx, zhk.ID)
 
 		assert.Error(t, err)
 		assert.Equal(t, expectedErr, err)
@@ -142,13 +146,14 @@ func TestGetZhkInfo(t *testing.T) {
 	})
 
 	t.Run("GetZhkReviews error", func(t *testing.T) {
+		mockRepo.EXPECT().GetZhkByID(ctx, zhk.ID).Return(zhk, nil)
 		mockRepo.EXPECT().GetZhkHeader(ctx, zhk).Return(header, nil)
 		mockRepo.EXPECT().GetZhkCharacteristics(ctx, zhk).Return(characteristics, nil)
 		mockRepo.EXPECT().GetZhkApartments(ctx, zhk).Return(apartments, nil)
 		expectedErr := fmt.Errorf("reviews error")
 		mockRepo.EXPECT().GetZhkReviews(ctx, zhk).Return(domain.ZhkReviews{}, expectedErr)
 
-		result, err := zhkUsecase.GetZhkInfo(ctx, zhk)
+		result, err := zhkUsecase.GetZhkInfo(ctx, zhk.ID)
 
 		assert.Error(t, err)
 		assert.Equal(t, expectedErr, err)

@@ -30,8 +30,7 @@ func TestGetZhkInfoHandler(t *testing.T) {
 		response := httptest.NewRecorder()
 
 		zhk := domain.Zhk{ID: 1}
-		mockUS.EXPECT().GetZhkByID(gomock.Any(), int64(1)).Return(zhk, nil)
-		mockUS.EXPECT().GetZhkInfo(gomock.Any(), zhk).Return(domain.ZhkInfo{ID:1}, nil)
+		mockUS.EXPECT().GetZhkInfo(gomock.Any(), zhk.ID).Return(domain.ZhkInfo{ID:1}, nil)
 
 		zhkHandlers.GetZhkInfo(response, request)
 
@@ -68,11 +67,11 @@ func TestGetZhkInfoHandler(t *testing.T) {
 		request = mux.SetURLVars(request, vars)
 		response := httptest.NewRecorder()
 
-		mockUS.EXPECT().GetZhkByID(gomock.Any(), int64(1)).Return(domain.Zhk{}, fmt.Errorf("zhk not found"))
+		mockUS.EXPECT().GetZhkInfo(gomock.Any(), int64(1)).Return(domain.ZhkInfo{}, fmt.Errorf("ЖК с таким id не найден"))
 
 		zhkHandlers.GetZhkInfo(response, request)
 
-		assert.Equal(t, http.StatusNotFound, response.Result().StatusCode)
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
 	})
 
 	t.Run("usecase GetZhkInfo failed", func(t *testing.T) {
@@ -84,12 +83,11 @@ func TestGetZhkInfoHandler(t *testing.T) {
 		response := httptest.NewRecorder()
 
 		zhk := domain.Zhk{ID: 1}
-		mockUS.EXPECT().GetZhkByID(gomock.Any(), int64(1)).Return(zhk, nil)
-		mockUS.EXPECT().GetZhkInfo(gomock.Any(), zhk).Return(domain.ZhkInfo{}, fmt.Errorf("GetZhkInfo failed"))
+		mockUS.EXPECT().GetZhkInfo(gomock.Any(), int64(zhk.ID)).Return(domain.ZhkInfo{}, fmt.Errorf("GetZhkInfo failed"))
 
 		zhkHandlers.GetZhkInfo(response, request)
 
-		assert.Equal(t, http.StatusInternalServerError, response.Result().StatusCode)
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
 	})
 }
 

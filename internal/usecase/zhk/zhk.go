@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"log"
+	"errors"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
@@ -29,10 +29,13 @@ func (u *zhkUsecase) GetZhkByID(ctx context.Context, id int64) (domain.Zhk, erro
 	return zhk, nil
 }
 
-func (u *zhkUsecase) GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.ZhkInfo, error) {
+func (u *zhkUsecase) GetZhkInfo(ctx context.Context, id int64) (domain.ZhkInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
-	log.Println(zhk)
+	zhk, err := u.GetZhkByID(ctx, id)
+	if err != nil {
+		return domain.ZhkInfo{}, errors.New("ЖК с таким id не найден")
+	}
 
 	zhkHeader, err := u.repo.GetZhkHeader(ctx, zhk)
 	if err != nil {
@@ -92,7 +95,7 @@ func (u *zhkUsecase) GetAllZhk(ctx context.Context) ([]domain.ZhkInfo, error) {
 
 	var zhksInfo []domain.ZhkInfo
 	for _, zhk := range zhks {
-		zhkInfo, err := u.GetZhkInfo(ctx, zhk)
+		zhkInfo, err := u.GetZhkInfo(ctx, zhk.ID)
 		if err != nil {
 			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(),
 				"params": logger.LoggerFields{"id": zhk.ID}}).Error("GetZhk failed")

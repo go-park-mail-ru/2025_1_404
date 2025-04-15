@@ -26,15 +26,9 @@ func (h *ZhkHandler) GetZhkInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zhk, err := h.UC.GetZhkByID(r.Context(), id)
+	zhkInfo, err := h.UC.GetZhkInfo(r.Context(), int64(id))
 	if err != nil {
-		utils.SendErrorResponse(w, "ЖК с таким id не найден", http.StatusNotFound)
-		return
-	}
-
-	zhkInfo, err := h.UC.GetZhkInfo(r.Context(), zhk)
-	if err != nil {
-		utils.SendErrorResponse(w, "Ошибка при получении ЖК", http.StatusInternalServerError)
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

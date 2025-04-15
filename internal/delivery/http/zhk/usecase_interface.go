@@ -10,6 +10,6 @@ import (
 
 type zhkUsecase interface {
 	GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error)
-	GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.ZhkInfo, error)
+	GetZhkInfo(ctx context.Context, id int64) (domain.ZhkInfo, error)
 	GetAllZhk(ctx context.Context) ([]domain.ZhkInfo, error)
 }
