@@ -1,4 +1,4 @@
-package repository
+package usecase
 
 import (
 	"context"
@@ -6,12 +6,13 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
+	"github.com/go-park-mail-ru/2025_1_404/internal/repository/auth"
 )
 
-//go:generate mockgen -source interface.go -destination=mocks/mock_auth_repo.go -package=mocks
+//go:generate mockgen -source repo_interface.go -destination=mocks/mock_auth_repo.go -package=mocks
 
-type AuthRepository interface {
-	CreateUser(ctx context.Context, user User) (int64, error)
+type authRepository interface {
+	CreateUser(ctx context.Context, user repository.User) (int64, error)
 	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
 	GetUserByID(ctx context.Context, id int64) (domain.User, error)
 	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)

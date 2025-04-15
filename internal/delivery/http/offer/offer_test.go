@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/offer/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/offer/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
@@ -21,7 +21,7 @@ func TestGetOffersHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	mockUC := mocks.NewMockofferUsecase(ctrl)
 	offerHandlers := NewOfferHandler(mockUC)
 
 	t.Run("GetOffers ok", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestGetOfferByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	mockUC := mocks.NewMockofferUsecase(ctrl)
 	offerHandlers := NewOfferHandler(mockUC)
 
 	t.Run("GetOfferByID ok", func(t *testing.T) {
@@ -169,7 +169,7 @@ func TestCreateOffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockOfferUsecase(ctrl)
+	mockUS := mocks.NewMockofferUsecase(ctrl)
 
 	offerHandlers := NewOfferHandler(mockUS)
 
@@ -241,7 +241,7 @@ func TestUpdateOffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockOfferUsecase(ctrl)
+	mockUS := mocks.NewMockofferUsecase(ctrl)
 
 	offerHandlers := NewOfferHandler(mockUS)
 
@@ -388,7 +388,7 @@ func TestDeleteOffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockOfferUsecase(ctrl)
+	mockUS := mocks.NewMockofferUsecase(ctrl)
 
 	offerHandlers := NewOfferHandler(mockUS)
 
@@ -469,7 +469,7 @@ func TestDeleteOfferImage(t *testing.T) {
     ctrl := gomock.NewController(t)
     defer ctrl.Finish()
 
-    mockUS := mocks.NewMockOfferUsecase(ctrl)
+    mockUS := mocks.NewMockofferUsecase(ctrl)
     offerHandlers := NewOfferHandler(mockUS)
 
     t.Run("DeleteOfferImage ok", func(t *testing.T) {

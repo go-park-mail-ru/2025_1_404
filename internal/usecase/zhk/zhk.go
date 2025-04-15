@@ -5,25 +5,16 @@ import (
 	"log"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	zhkRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/zhk"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
 
-//go:generate mockgen -source zhk.go -destination=mocks/mock_zhk.go -package=mocks
-
-type ZhkUsecase interface {
-	GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error)
-	GetZhkInfo(ctx context.Context, zhk domain.Zhk) (domain.ZhkInfo, error)
-	GetAllZhk(ctx context.Context) ([]domain.ZhkInfo, error)
-}
-
 type zhkUsecase struct {
-	repo   zhkRepo.ZhkRepository
+	repo   zhkRepository
 	logger logger.Logger
 }
 
-func NewZhkUsecase(repo zhkRepo.ZhkRepository, logger logger.Logger) ZhkUsecase {
+func NewZhkUsecase(repo zhkRepository, logger logger.Logger) *zhkUsecase {
 	return &zhkUsecase{repo: repo, logger: logger}
 }
 

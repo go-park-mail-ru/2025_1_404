@@ -12,16 +12,15 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/offer"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/gorilla/mux"
 )
 
 type OfferHandler struct {
-	OfferUC usecase.OfferUsecase
+	OfferUC offerUsecase
 }
 
-func NewOfferHandler(uc usecase.OfferUsecase) *OfferHandler {
+func NewOfferHandler(uc offerUsecase) *OfferHandler {
 	return &OfferHandler{OfferUC: uc}
 }
 

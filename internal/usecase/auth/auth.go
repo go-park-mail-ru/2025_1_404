@@ -14,25 +14,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-//go:generate mockgen -source auth.go -destination=mocks/mock_auth.go -package=mocks
-
-type AuthUsecase interface {
-	IsEmailTaken(ctx context.Context, email string) bool
-	CreateUser(ctx context.Context, email, password, firstName, lastName string) (domain.User, error)
-	GetUserByEmail(ctx context.Context, email string) (domain.User, error)
-	GetUserByID(ctx context.Context, id int) (domain.User, error)
-	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)
-	UploadImage(ctx context.Context, id int, file filestorage.FileUpload) (domain.User, error)
-	DeleteImage(ctx context.Context, id int) (domain.User, error)
-}
-
 type authUsecase struct {
-	repo   authRepo.AuthRepository
+	repo   authRepository
 	logger logger.Logger
 	fs     filestorage.FileStorage
 }
 
-func NewAuthUsecase(repo authRepo.AuthRepository, logger logger.Logger, fs filestorage.FileStorage) AuthUsecase {
+func NewAuthUsecase(repo authRepository, logger logger.Logger, fs filestorage.FileStorage) *authUsecase {
 	return &authUsecase{repo: repo, logger: logger, fs: fs}
 }
 
@@ -53,6 +41,10 @@ func (u *authUsecase) CreateUser(ctx context.Context, email, password, firstName
 		FirstName:    firstName,
 		LastName:     lastName,
 		TokenVersion: 1,
+	}
+
+	if u.IsEmailTaken(ctx, email) {
+		return domain.User{}, errors.New("email уже занят")
 	}
 
 	requestID := ctx.Value(utils.RequestIDKey)
@@ -116,7 +108,13 @@ func (u *authUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 	currentUser, err := u.GetUserByID(ctx, user.ID)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "id": user.ID}).Warn("user id not found")
-		return domain.User{}, fmt.Errorf("failed to find user")
+		return domain.User{}, errors.New("пользователь не найден")
+	}
+
+	if currentUser.Email != user.Email {
+		if u.IsEmailTaken(ctx, user.Email) {
+			return domain.User{}, errors.New("email уже занят")
+		}
 	}
 
 	if currentUser.Image != "" {

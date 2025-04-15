@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/auth/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/auth/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +22,7 @@ func TestRegisterHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	mockUS := mocks.NewMockauthUsecase(ctrl)
 
 	userHandlers := NewAuthHandler(mockUS)
 	t.Run("registration ok", func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestLoginHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	mockUS := mocks.NewMockauthUsecase(ctrl)
 
 	userHandlers := NewAuthHandler(mockUS)
 
@@ -262,7 +262,7 @@ func TestMeHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	mockUS := mocks.NewMockauthUsecase(ctrl)
 
 	userHandlers := NewAuthHandler(mockUS)
 
@@ -313,7 +313,7 @@ func TestLogoutHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	mockUS := mocks.NewMockauthUsecase(ctrl)
 
 	userHandlers := NewAuthHandler(mockUS)
 
@@ -331,7 +331,7 @@ func TestUpdateHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	mockUS := mocks.NewMockauthUsecase(ctrl)
 
 	userHandlers := NewAuthHandler(mockUS)
 
@@ -343,8 +343,8 @@ func TestUpdateHandler(t *testing.T) {
 		}
 
 		user := domain.User{
-			ID:    1,
-			Email: "old@mail.ru",
+			ID:        1,
+			Email:     "old@mail.ru",
 			FirstName: "OldName",
 			LastName:  "OldLastName",
 		}
@@ -420,8 +420,8 @@ func TestUpdateHandler(t *testing.T) {
 			LastName:  "NewLastName",
 		}
 		user := domain.User{
-			ID:    1,
-			Email: "email@taken.ru",
+			ID:        1,
+			Email:     "email@taken.ru",
 			FirstName: "OldName",
 			LastName:  "OldLastName",
 		}
@@ -450,8 +450,8 @@ func TestUpdateHandler(t *testing.T) {
 		}
 
 		user := domain.User{
-			ID:    1,
-			Email: "email@mail.ru",
+			ID:        1,
+			Email:     "email@mail.ru",
 			FirstName: "OldName",
 			LastName:  "OldLastName",
 		}
@@ -477,7 +477,7 @@ func TestDeleteImage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	mockUS := mocks.NewMockauthUsecase(ctrl)
 
 	userHandlers := NewAuthHandler(mockUS)
 

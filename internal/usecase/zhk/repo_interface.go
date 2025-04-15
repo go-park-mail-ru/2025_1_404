@@ -1,4 +1,4 @@
-package repository
+package usecase
 
 import (
 	"context"
@@ -6,9 +6,9 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 )
 
-//go:generate mockgen -source interface.go -destination=mocks/mock_zhk_repo.go -package=mocks
+//go:generate mockgen -source repo_interface.go -destination=mocks/mock_zhk_repo.go -package=mocks
 
-type ZhkRepository interface {
+type zhkRepository interface {
 	GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error)
 	GetZhkHeader(ctx context.Context, zhk domain.Zhk) (domain.ZhkHeader, error)
 	GetZhkCharacteristics(ctx context.Context, zhk domain.Zhk) (domain.ZhkCharacteristics, error)
@@ -16,4 +16,3 @@ type ZhkRepository interface {
 	GetZhkReviews(ctx context.Context, zhk domain.Zhk) (domain.ZhkReviews, error)
 	GetAllZhk(ctx context.Context) ([]domain.Zhk, error)
 }
-

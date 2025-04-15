@@ -10,7 +10,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	mockFS "github.com/go-park-mail-ru/2025_1_404/internal/filestorage/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository/auth"
-	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/auth/mocks"
+	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/usecase/auth/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
@@ -22,7 +22,7 @@ func TestUploadImage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
+	mockRepo := mockRepo.NewMockauthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 	logger := logger.NewStub()
 
@@ -54,7 +54,7 @@ func TestIsEmailTaken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
+	mockRepo := mockRepo.NewMockauthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 	logger := logger.NewStub()
 
@@ -79,7 +79,7 @@ func TestCreateUser(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
+	mockRepo := mockRepo.NewMockauthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 	logger := logger.NewStub()
 
@@ -88,6 +88,7 @@ func TestCreateUser(t *testing.T) {
 	t.Run("CreateUser ok", func(t *testing.T) {
 		ctx := context.WithValue(context.Background(), utils.RequestIDKey, requestID)
 
+		mockRepo.EXPECT().GetUserByEmail(ctx, email).Return(domain.User{}, fmt.Errorf("user not found"))
 		mockRepo.EXPECT().CreateUser(ctx, gomock.Any()).
 			DoAndReturn(func(ctx context.Context, u repository.User) (int64, error) {
 				err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
@@ -118,7 +119,7 @@ func TestGetUserByEmail(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
+	mockRepo := mockRepo.NewMockauthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 	logger := logger.NewStub()
 
@@ -158,7 +159,7 @@ func TestUpdateUser(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
+	mockRepo := mockRepo.NewMockauthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 	logger := logger.NewStub()
 
@@ -180,6 +181,7 @@ func TestUpdateUser(t *testing.T) {
 
 		updatedUser := user
 
+		mockRepo.EXPECT().GetUserByEmail(ctx, user.Email).Return(domain.User{}, fmt.Errorf("user not found"))
 		mockRepo.EXPECT().GetUserByID(ctx, int64(1)).Return(currentUser, nil)
 		mockRepo.EXPECT().UpdateUser(ctx, user).Return(updatedUser, nil)
 
@@ -212,7 +214,7 @@ func TestDeleteImage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockAuthRepository(ctrl)
+	mockRepo := mockRepo.NewMockauthRepository(ctrl)
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 	mockLogger := logger.NewStub()
 

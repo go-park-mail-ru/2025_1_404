@@ -15,7 +15,7 @@ type zhkRepository struct {
 	logger logger.Logger
 }
 
-func NewZhkRepository(db repository.DB, logger logger.Logger) ZhkRepository {
+func NewZhkRepository(db repository.DB, logger logger.Logger) *zhkRepository {
 	return &zhkRepository{db: db, logger: logger}
 }
 

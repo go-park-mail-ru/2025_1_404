@@ -30,7 +30,7 @@ type authRepository struct {
 	logger logger.Logger
 }
 
-func NewAuthRepository(db repository.DB, logger logger.Logger) AuthRepository {
+func NewAuthRepository(db repository.DB, logger logger.Logger) *authRepository {
 	return &authRepository{db: db, logger: logger}
 }
 

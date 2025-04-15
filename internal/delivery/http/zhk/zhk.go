@@ -4,22 +4,21 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/zhk"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/gorilla/mux"
 )
 
 type ZhkHandler struct {
-	UC usecase.ZhkUsecase
+	UC zhkUsecase
 }
 
-func NewZhkHandler (uc usecase.ZhkUsecase) *ZhkHandler {
+func NewZhkHandler(uc zhkUsecase) *ZhkHandler {
 	return &ZhkHandler{UC: uc}
 }
 
 func (h *ZhkHandler) GetZhkInfo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	idStr := vars["id"] 
+	idStr := vars["id"]
 
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -42,7 +41,7 @@ func (h *ZhkHandler) GetZhkInfo(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, zhkInfo, http.StatusOK)
 }
 
-func (h *ZhkHandler) GetAllZhk (w http.ResponseWriter, r *http.Request) {
+func (h *ZhkHandler) GetAllZhk(w http.ResponseWriter, r *http.Request) {
 	zhks, err := h.UC.GetAllZhk(r.Context())
 	if err != nil {
 		utils.SendErrorResponse(w, "Ошибка при получении списка ЖК", http.StatusInternalServerError)

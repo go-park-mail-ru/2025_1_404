@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestRepo(t *testing.T) (ZhkRepository, pgxmock.PgxPoolIface) {
+func newTestRepo(t *testing.T) (*zhkRepository, pgxmock.PgxPoolIface) {
 	mock, err := pgxmock.NewPool()
 	require.NoError(t, err)
 	repo := NewZhkRepository(mock, logger.NewStub())

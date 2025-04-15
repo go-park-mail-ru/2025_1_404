@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/zhk/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/zhk/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func TestGetZhkInfoHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockZhkUsecase(ctrl)
+	mockUS := mocks.NewMockzhkUsecase(ctrl)
 
 	zhkHandlers := NewZhkHandler(mockUS)
 	
@@ -97,7 +97,7 @@ func TestGetAllZhkHandler (t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockZhkUsecase(ctrl)
+	mockUS := mocks.NewMockzhkUsecase(ctrl)
 
 	zhkHandlers := NewZhkHandler(mockUS)
 

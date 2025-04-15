@@ -8,7 +8,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	mockFS "github.com/go-park-mail-ru/2025_1_404/internal/filestorage/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository/offer"
-	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/offer/mocks"
+	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/usecase/offer/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
@@ -19,7 +19,7 @@ func TestGetOffers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockRepo := mockRepo.NewMockofferRepository(ctrl)
 	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
@@ -93,7 +93,7 @@ func TestGetOffersByFilter(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockRepo := mockRepo.NewMockofferRepository(ctrl)
 	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
@@ -173,7 +173,7 @@ func TestGetOfferByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockRepo := mockRepo.NewMockofferRepository(ctrl)
 	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
@@ -237,7 +237,7 @@ func TestGetOffersBySellerID(t *testing.T) {
     ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockRepo := mockRepo.NewMockofferRepository(ctrl)
 	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
@@ -319,7 +319,7 @@ func TestCreateOffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockRepo := mockRepo.NewMockofferRepository(ctrl)
 	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 
@@ -363,7 +363,7 @@ func TestDEleteOfferImage (t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockOfferRepository(ctrl)
+	mockRepo := mockRepo.NewMockofferRepository(ctrl)
 	mockLogger := logger.NewStub()
 	mockFS := mockFS.NewMockFileStorage(ctrl)
 

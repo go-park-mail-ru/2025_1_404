@@ -41,7 +41,7 @@ type offerRepository struct {
 	logger logger.Logger
 }
 
-func NewOfferRepository(db repository.DB, logger logger.Logger) OfferRepository {
+func NewOfferRepository(db repository.DB, logger logger.Logger) *offerRepository {
 	return &offerRepository{db: db, logger: logger}
 }
 

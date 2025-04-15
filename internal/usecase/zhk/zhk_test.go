@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/zhk/mocks"
+	mockRepo "github.com/go-park-mail-ru/2025_1_404/internal/usecase/zhk/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
@@ -17,7 +17,7 @@ func TestGetZhkByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockZhkRepository(ctrl)
+	mockRepo := mockRepo.NewMockzhkRepository(ctrl)
 	mockLogger := logger.NewStub()
 
 	zhkUsecase := NewZhkUsecase(mockRepo, mockLogger)
@@ -56,7 +56,7 @@ func TestGetZhkInfo(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mockRepo.NewMockZhkRepository(ctrl)
+	mockRepo := mockRepo.NewMockzhkRepository(ctrl)
 	mockLogger := logger.NewStub()
 	zhkUsecase := NewZhkUsecase(mockRepo, mockLogger)
 

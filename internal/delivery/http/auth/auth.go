@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
-	"github.com/go-park-mail-ru/2025_1_404/internal/usecase/auth"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/csrf"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -20,10 +19,10 @@ import (
 )
 
 type AuthHandler struct {
-	UC usecase.AuthUsecase
+	UC authUsecase
 }
 
-func NewAuthHandler(uc usecase.AuthUsecase) *AuthHandler {
+func NewAuthHandler(uc authUsecase) *AuthHandler {
 	return &AuthHandler{UC: uc}
 }
 
@@ -44,14 +43,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.UC.IsEmailTaken(r.Context(), req.Email) {
-		utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
-		return
-	}
-
 	user, err := h.UC.CreateUser(r.Context(), req.Email, req.Password, req.FirstName, req.LastName)
 	if err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -181,25 +175,12 @@ func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentUser, err := h.UC.GetUserByID(r.Context(), userID)
-	if err != nil {
-		utils.SendErrorResponse(w, "Пользователь не найден", http.StatusUnauthorized)
-		return
-	}
-
-	if currentUser.Email != updateUser.Email {
-		if h.UC.IsEmailTaken(r.Context(), updateUser.Email) {
-			utils.SendErrorResponse(w, "Email уже занят", http.StatusBadRequest)
-			return
-		}
-	}
-
 	// Возвращает User вместо UserUpdate
 	user := domain.UserFromUpdated(updateUser)
 	// Пытаемся обновить данные
 	userUpdated, err := h.UC.UpdateUser(r.Context(), user)
 	if err != nil {
-		utils.SendErrorResponse(w, "не удалось обновить данные о пользователе", http.StatusInternalServerError)
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
