@@ -1,0 +1,11 @@
+SET SEARCH_PATH = kvartirum;
+
+ALTER TABLE Users
+DROP CONSTRAINT IF EXISTS users_image_id_fkey;
+
+ALTER TABLE Users
+ADD CONSTRAINT users_image_id_fkey
+FOREIGN KEY (image_id)
+REFERENCES Image(id)
+ON DELETE SET NULL
+ON UPDATE CASCADE;
