@@ -8,21 +8,21 @@ import (
 
 const MAX_SIZE = 5 * 1024 * 1024
 
-func CheckImage(fileBytes []byte) (string, error){
-	if (len(fileBytes) > MAX_SIZE) {
-		return "", fmt.Errorf("file too big")
+func CheckImage(fileBytes []byte) (string, error) {
+	if len(fileBytes) > MAX_SIZE {
+		return "", fmt.Errorf("файл слишком большой")
 	}
 
 	contentType := http.DetectContentType(fileBytes)
 
 	if !strings.HasPrefix(contentType, "image/") {
-		return "", fmt.Errorf("file is not an image")
+		return "", fmt.Errorf("неверный формат файла")
 	}
 
-	validFormats := map[string]string {"image/png": "png", "image/jpeg": "jpeg"}
+	validFormats := map[string]string{"image/png": "png", "image/jpeg": "jpeg"}
 	ext, ok := validFormats[contentType]
 	if !ok {
-		return "", fmt.Errorf("not supported file type")
+		return "", fmt.Errorf("не поддерживаемый формат изображения")
 	}
 
 	return ext, nil

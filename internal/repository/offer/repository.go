@@ -84,6 +84,15 @@ const (
 		FROM kvartirum.Offer;
 	`
 
+	getNotDraftOffersSQL = `
+		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
+			purchase_type_id, property_type_id, offer_status_id, renovation_id,
+			complex_id, price, description, floor, total_floors, rooms,
+			address, flat, area, ceiling_height, created_at, updated_at
+		FROM kvartirum.Offer
+		WHERE offer_status_id != 2;
+	`
+
 	updateOfferSQL = `
 		UPDATE kvartirum.Offer
 		SET offer_type_id = $1, metro_station_id = $2, rent_type_id = $3,
@@ -199,12 +208,14 @@ func (r *offerRepository) GetOffersBySellerID(ctx context.Context, sellerID int6
 }
 
 func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
+	query := getNotDraftOffersSQL
+
 	requestID := ctx.Value(utils.RequestIDKey)
-	rows, err := r.db.Query(ctx, getAllOffersSQL)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		r.logger.WithFields(logger.LoggerFields{
 			"requestID": requestID,
-			"query":     getAllOffersSQL,
+			"query":     query,
 			"success":   false,
 			"err":       err.Error(),
 		}).Error("SQL query GetAllOffers failed")
@@ -230,7 +241,7 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 
 	r.logger.WithFields(logger.LoggerFields{
 		"requestID": requestID,
-		"query":     getAllOffersSQL,
+		"query":     query,
 		"success":   true,
 		"count":     len(offers),
 	}).Info("SQL query GetAllOffers succeeded")
