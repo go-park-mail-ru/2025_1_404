@@ -311,6 +311,9 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 			whereParts = append(whereParts, "complex_id IS NULL")
 		}
 	}
+	if f.OfferTypeID != nil {
+		addFilter("offer_status_id = $%d", *f.OfferStatusID)
+	}
 
 	query := strings.TrimRight(getAllOffersSQL, "\t\n;")
 
