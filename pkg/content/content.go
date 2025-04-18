@@ -1,7 +1,11 @@
 package content
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"net/http"
 	"strings"
 )
@@ -19,10 +23,27 @@ func CheckImage(fileBytes []byte) (string, error) {
 		return "", fmt.Errorf("неверный формат файла")
 	}
 
-	validFormats := map[string]string{"image/png": "png", "image/jpeg": "jpeg"}
+	validFormats := map[string]string{
+		"image/png":  "png",
+		"image/jpeg": "jpeg",
+	}
 	ext, ok := validFormats[contentType]
 	if !ok {
 		return "", fmt.Errorf("не поддерживаемый формат изображения")
+	}
+
+	img, _, err := image.Decode(bytes.NewReader(fileBytes))
+	if err != nil {
+		return "", fmt.Errorf("не удалось декодировать изображение: %w", err)
+	}
+	bounds := img.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+
+	if width < 100 || height < 100 {
+		return "", fmt.Errorf("изображение слишком маленькое (минимум 100x100)")
+	}
+	if width > 4000 || height > 4000 {
+		return "", fmt.Errorf("изображение слишком большое (максимум 4000x4000)")
 	}
 
 	return ext, nil
