@@ -6,7 +6,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/go-park-mail-ru/2025_1_404/pkg/database"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
 	"github.com/joho/godotenv"
 )
 

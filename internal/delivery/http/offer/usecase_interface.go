@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 )
 
 //go:generate mockgen -source usecase_interface.go -destination=mocks/mock_offer.go -package=mocks
@@ -17,7 +17,7 @@ type offerUsecase interface {
 	CreateOffer(ctx context.Context, offer domain.Offer) (int, error)
 	UpdateOffer(ctx context.Context, offer domain.Offer) error
 	DeleteOffer(ctx context.Context, id int) error
-	SaveOfferImage(ctx context.Context, offerID int, upload filestorage.FileUpload) (int64, error)
+	SaveOfferImage(ctx context.Context, offerID int, upload s3.Upload) (int64, error)
 	PublishOffer(ctx context.Context, offerID int, userID int) error
 	DeleteOfferImage(ctx context.Context, imageID int, userID int) error
 	PrepareOfferInfo(ctx context.Context, offer domain.Offer) (domain.OfferInfo, error)

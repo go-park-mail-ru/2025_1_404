@@ -10,7 +10,10 @@ import (
 var BasePath string
 var BaseFrontendPath string
 var Salt string
+var MinioPath string
 var ImagesPath string = "/images/"
+var AvatarsPath string = "/avatars/"
+var OffersImagesPath string = "/offers/"
 
 func init() {
 	err := godotenv.Load("../.env")
@@ -31,5 +34,10 @@ func init() {
 	Salt = os.Getenv("CSRF_SALT")
 	if Salt == "" {
 		Salt = "SomeSalt"
+	}
+
+	MinioPath = os.Getenv("MINIO_PATH")
+	if MinioPath == "" {
+		MinioPath = "http://localhost:9000"
 	}
 }

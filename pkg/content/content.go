@@ -23,12 +23,11 @@ func CheckImage(fileBytes []byte) (string, error) {
 		return "", fmt.Errorf("неверный формат файла")
 	}
 
-	validFormats := map[string]string{
-		"image/png":  "png",
-		"image/jpeg": "jpeg",
+	validFormats := map[string]bool{
+		"image/png":  true,
+		"image/jpeg": true,
 	}
-	ext, ok := validFormats[contentType]
-	if !ok {
+	if !validFormats[contentType] {
 		return "", fmt.Errorf("не поддерживаемый формат изображения")
 	}
 
@@ -46,5 +45,5 @@ func CheckImage(fileBytes []byte) (string, error) {
 		return "", fmt.Errorf("изображение слишком большое (максимум 4000x4000)")
 	}
 
-	return ext, nil
+	return contentType, nil
 }

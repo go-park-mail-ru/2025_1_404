@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 
 	deliveryAuth "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/auth"
 	deliveryOffer "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/offer"
@@ -15,7 +16,8 @@ import (
 	usecaseAuth "github.com/go-park-mail-ru/2025_1_404/internal/usecase/auth"
 	usecaseOffer "github.com/go-park-mail-ru/2025_1_404/internal/usecase/offer"
 	usecaseZhk "github.com/go-park-mail-ru/2025_1_404/internal/usecase/zhk"
-	"github.com/go-park-mail-ru/2025_1_404/pkg/database"
+	database "github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -49,7 +51,12 @@ func main() {
 
 	// Хранилище файлов
 	basePath := "./../internal/static/upload"
-	fs := filestorage.NewLocalStorage(basePath)
+	
+	s3repo, err := s3.New("localhost:9000", os.Getenv("MINIO_USER"), os.Getenv("MINIO_PASSWORD"), false, l)
+	if err != nil {
+		log.Printf("не удалось подключиться к s3: %v", err)
+		return
+	}
 
 	// Репозиторий
 	authRepo := repoAuth.NewAuthRepository(dbpool, l)
@@ -57,8 +64,8 @@ func main() {
 	zhkRepo := repoZhk.NewZhkRepository(dbpool, l)
 
 	// Юзкейсы
-	authUC := usecaseAuth.NewAuthUsecase(authRepo, l, fs)
-	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, fs)
+	authUC := usecaseAuth.NewAuthUsecase(authRepo, l, s3repo)
+	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo)
 	zhkUC := usecaseZhk.NewZhkUsecase(zhkRepo, l)
 
 	// Хендлеры
