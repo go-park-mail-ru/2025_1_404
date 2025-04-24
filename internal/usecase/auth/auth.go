@@ -7,8 +7,8 @@ import (
 	"path"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	authRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/auth"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
@@ -17,11 +17,11 @@ import (
 type authUsecase struct {
 	repo   authRepository
 	logger logger.Logger
-	fs     filestorage.FileStorage
+	s3Repo s3.S3Repo
 }
 
-func NewAuthUsecase(repo authRepository, logger logger.Logger, fs filestorage.FileStorage) *authUsecase {
-	return &authUsecase{repo: repo, logger: logger, fs: fs}
+func NewAuthUsecase(repo authRepository, logger logger.Logger, s3Repo s3.S3Repo) *authUsecase {
+	return &authUsecase{repo: repo, logger: logger, s3Repo: s3Repo}
 }
 
 func (u *authUsecase) IsEmailTaken(ctx context.Context, email string) bool {
@@ -53,7 +53,7 @@ func (u *authUsecase) CreateUser(ctx context.Context, email, password, firstName
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("User usecase: create user failed")
 		return domain.User{}, err
 	}
-	
+
 	user.ID = id
 
 	return domain.User{
@@ -75,7 +75,7 @@ func (u *authUsecase) GetUserByEmail(ctx context.Context, email string) (domain.
 	}
 
 	if user.Image != "" {
-		user.Image = utils.BasePath + utils.ImagesPath + user.Image
+		user.Image = utils.MinioPath + utils.AvatarsPath + user.Image
 	}
 
 	return user, nil
@@ -91,7 +91,7 @@ func (u *authUsecase) GetUserByID(ctx context.Context, id int) (domain.User, err
 	}
 
 	if user.Image != "" {
-		user.Image = utils.BasePath + utils.ImagesPath + user.Image
+		user.Image = utils.MinioPath + utils.AvatarsPath + user.Image
 	}
 
 	return user, nil
@@ -138,13 +138,13 @@ func (u *authUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 	}
 
 	if updatedUser.Image != "" {
-		updatedUser.Image = utils.BasePath + utils.ImagesPath + updatedUser.Image
+		updatedUser.Image = utils.MinioPath + utils.AvatarsPath + updatedUser.Image
 	}
 
 	return updatedUser, nil
 }
 
-func (u *authUsecase) UploadImage(ctx context.Context, id int, file filestorage.FileUpload) (domain.User, error) {
+func (u *authUsecase) UploadImage(ctx context.Context, id int, file s3.Upload) (domain.User, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	user, err := u.GetUserByID(ctx, id)
@@ -156,14 +156,14 @@ func (u *authUsecase) UploadImage(ctx context.Context, id int, file filestorage.
 	previousImage := user.Image
 
 	// Загружаем в файловое хранилище фото
-	err = u.fs.Add(file)
+	fileName, err := u.s3Repo.Put(ctx, file)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("upload image failed")
 		return domain.User{}, err
 	}
 
 	// Создаем запись в БД
-	err = u.repo.CreateImage(ctx, file)
+	err = u.repo.CreateImage(ctx, fileName)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("failed to load user image")
 		return domain.User{}, err
@@ -180,7 +180,7 @@ func (u *authUsecase) UploadImage(ctx context.Context, id int, file filestorage.
 	// Обновляем пользователя с новым именем аватарки
 	updatedUser, err := u.UpdateUser(ctx, domain.User{
 		ID:    user.ID,
-		Image: file.Name,
+		Image: fileName,
 	})
 
 	if err != nil {
@@ -200,7 +200,7 @@ func (u *authUsecase) DeleteImage(ctx context.Context, id int) (domain.User, err
 		return domain.User{}, fmt.Errorf("failed to find user")
 	}
 
-	err = u.fs.Delete(path.Base(user.Image))
+	err = u.s3Repo.Remove(ctx, "avatars", path.Base(user.Image))
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("delete image failed")
 		return domain.User{}, err

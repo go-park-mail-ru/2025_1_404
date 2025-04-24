@@ -9,12 +9,11 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/csrf"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/validation"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -217,8 +216,9 @@ func (h *AuthHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upload := filestorage.FileUpload{
-		Name:        uuid.New().String() + "." + contentType,
+	upload := s3.Upload{
+		Bucket:      "avatars",
+		Filename:    header.Filename,
 		Size:        header.Size,
 		File:        bytes.NewReader(fileBytes),
 		ContentType: contentType,

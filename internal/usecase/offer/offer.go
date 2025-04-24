@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"html"
 
-	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
-
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	offerRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/offer"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
@@ -16,11 +15,11 @@ import (
 type offerUsecase struct {
 	repo   offerRepository
 	logger logger.Logger
-	fs     filestorage.FileStorage
+	s3Repo s3.S3Repo
 }
 
-func NewOfferUsecase(repo offerRepository, logger logger.Logger, fs filestorage.FileStorage) *offerUsecase {
-	return &offerUsecase{repo: repo, logger: logger, fs: fs}
+func NewOfferUsecase(repo offerRepository, logger logger.Logger, s3Repo s3.S3Repo) *offerUsecase {
+	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo}
 }
 
 func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error) {
@@ -31,7 +30,7 @@ func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get all offers failed")
 		return nil, err
 	}
-	
+
 	offersDTO := mapOffers(offers)
 
 	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
@@ -93,7 +92,7 @@ func (u *offerUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "seller_id": sellerID, "err": err.Error()}).Error("Offer usecase: get offers by seller failed")
 		return nil, err
 	}
-	
+
 	offersDTO := mapOffers(offers)
 
 	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
@@ -182,13 +181,13 @@ func (u *offerUsecase) DeleteOffer(ctx context.Context, id int) error {
 	return nil
 }
 
-func (u *offerUsecase) SaveOfferImage(ctx context.Context, offerID int, upload filestorage.FileUpload) (int64, error) {
-	err := u.fs.Add(upload)
+func (u *offerUsecase) SaveOfferImage(ctx context.Context, offerID int, upload s3.Upload) (int64, error) {
+	fileName, err := u.s3Repo.Put(ctx, upload)
 	if err != nil {
 		return 0, err
 	}
 
-	return u.repo.CreateImageAndBindToOffer(ctx, offerID, upload.Name)
+	return u.repo.CreateImageAndBindToOffer(ctx, offerID, fileName)
 }
 
 func (u *offerUsecase) PublishOffer(ctx context.Context, offerID int, userID int) error {
@@ -233,12 +232,8 @@ func (u *offerUsecase) DeleteOfferImage(ctx context.Context, imageID int, userID
 	}
 
 	// удаляем физически файл
-	if err := u.fs.Delete(uuid); err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"image_id": imageID,
-			"uuid":     uuid,
-			"err":      err.Error(),
-		}).Warn("Ошибка при удалении файла")
+	if err := u.s3Repo.Remove(ctx, "offers", uuid); err != nil {
+		u.logger.WithFields(logger.LoggerFields{"image_id": imageID, "uuid": uuid, "err": err.Error()}).Warn("Ошибка при удалении файла")
 	}
 
 	return nil
@@ -254,11 +249,11 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer)
 	}
 
 	if offerData.Seller.Avatar != "" {
-		offerData.Seller.Avatar = utils.BasePath + utils.ImagesPath + offerData.Seller.Avatar
+		offerData.Seller.Avatar = utils.MinioPath + utils.AvatarsPath + offerData.Seller.Avatar
 	}
 
 	for i, img := range offerData.Images {
-		offerData.Images[i].Image = utils.BasePath + utils.ImagesPath + img.Image
+		offerData.Images[i].Image = utils.MinioPath + utils.OffersImagesPath + img.Image
 	}
 
 	offerInfo := domain.OfferInfo{

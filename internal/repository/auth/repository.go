@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/internal/repository"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -185,15 +184,15 @@ func (r *authRepository) DeleteUser(ctx context.Context, id int64) error {
 	return err
 }
 
-func (r *authRepository) CreateImage(ctx context.Context, file filestorage.FileUpload) error {
+func (r *authRepository) CreateImage(ctx context.Context, fileName string) error {
 	requestID := ctx.Value(utils.RequestIDKey)
-	_, err := r.db.Exec(ctx, createImageSQL, file.Name)
+	_, err := r.db.Exec(ctx, createImageSQL, fileName)
 
 	r.logger.WithFields(logger.LoggerFields{
 		"requestID": requestID,
 		"query":     createImageSQL,
 		"params": logger.LoggerFields{
-			"name": file.Name,
+			"name": fileName,
 		},
 		"success": err == nil,
 	})

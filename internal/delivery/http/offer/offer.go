@@ -7,9 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
-	"github.com/google/uuid"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -277,8 +276,9 @@ func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	upload := filestorage.FileUpload{
-		Name:        uuid.New().String() + "." + contentType,
+	upload := s3.Upload{
+		Bucket:      "offers",
+		Filename:    header.Filename,
 		Size:        header.Size,
 		File:        bytes.NewReader(fileBytes),
 		ContentType: contentType,
