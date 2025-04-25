@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	authRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/auth"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
@@ -18,10 +19,11 @@ type authUsecase struct {
 	repo   authRepository
 	logger logger.Logger
 	s3Repo s3.S3Repo
+	cfg    *config.Config
 }
 
-func NewAuthUsecase(repo authRepository, logger logger.Logger, s3Repo s3.S3Repo) *authUsecase {
-	return &authUsecase{repo: repo, logger: logger, s3Repo: s3Repo}
+func NewAuthUsecase(repo authRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config) *authUsecase {
+	return &authUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg}
 }
 
 func (u *authUsecase) IsEmailTaken(ctx context.Context, email string) bool {
@@ -75,7 +77,7 @@ func (u *authUsecase) GetUserByEmail(ctx context.Context, email string) (domain.
 	}
 
 	if user.Image != "" {
-		user.Image = utils.MinioPath + utils.AvatarsPath + user.Image
+		user.Image = u.cfg.Minio.Path + u.cfg.Minio.AvatarsBucket + user.Image
 	}
 
 	return user, nil
@@ -91,7 +93,7 @@ func (u *authUsecase) GetUserByID(ctx context.Context, id int) (domain.User, err
 	}
 
 	if user.Image != "" {
-		user.Image = utils.MinioPath + utils.AvatarsPath + user.Image
+		user.Image = u.cfg.Minio.Path + u.cfg.Minio.AvatarsBucket + user.Image
 	}
 
 	return user, nil
@@ -138,7 +140,7 @@ func (u *authUsecase) UpdateUser(ctx context.Context, user domain.User) (domain.
 	}
 
 	if updatedUser.Image != "" {
-		updatedUser.Image = utils.MinioPath + utils.AvatarsPath + updatedUser.Image
+		updatedUser.Image = u.cfg.Minio.Path + u.cfg.Minio.AvatarsBucket + updatedUser.Image
 	}
 
 	return updatedUser, nil

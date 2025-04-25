@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
@@ -16,10 +17,10 @@ type s3Repo struct {
 	logger logger.Logger
 }
 
-func New(endpoint, accessKey, secretKey string, useSSL bool, logger logger.Logger) (*s3Repo, error) {
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
+func New(cfg *config.MinioConfig, logger logger.Logger) (*s3Repo, error) {
+	client, err := minio.New(cfg.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.User, cfg.Password, ""),
+		Secure: cfg.UseSSL,
 	})
 	if err != nil {
 		return nil, err

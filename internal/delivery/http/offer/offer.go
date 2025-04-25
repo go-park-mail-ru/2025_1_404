@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 
@@ -17,10 +18,11 @@ import (
 
 type OfferHandler struct {
 	OfferUC offerUsecase
+	cfg     *config.Config
 }
 
-func NewOfferHandler(uc offerUsecase) *OfferHandler {
-	return &OfferHandler{OfferUC: uc}
+func NewOfferHandler(uc offerUsecase, cfg *config.Config) *OfferHandler {
+	return &OfferHandler{OfferUC: uc, cfg: cfg}
 }
 
 func parseOfferFilter(r *http.Request) domain.OfferFilter {
@@ -90,20 +92,20 @@ func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) 
 	if hasFilter(filter) {
 		offers, err := h.OfferUC.GetOffersByFilter(r.Context(), filter)
 		if err != nil {
-			utils.SendErrorResponse(w, "Ошибка при фильтрации объявлений", http.StatusInternalServerError)
+			utils.SendErrorResponse(w, "Ошибка при фильтрации объявлений", http.StatusInternalServerError, &h.cfg.App.CORS)
 			return
 		}
-		utils.SendJSONResponse(w, offers, http.StatusOK)
+		utils.SendJSONResponse(w, offers, http.StatusOK, &h.cfg.App.CORS)
 		return
 	}
 
 	// иначе — возвращаем все
 	offers, err := h.OfferUC.GetOffers(r.Context())
 	if err != nil {
-		utils.SendErrorResponse(w, "Ошибка при получении объявлений", http.StatusInternalServerError)
+		utils.SendErrorResponse(w, "Ошибка при получении объявлений", http.StatusInternalServerError, &h.cfg.App.CORS)
 		return
 	}
-	utils.SendJSONResponse(w, offers, http.StatusOK)
+	utils.SendJSONResponse(w, offers, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) GetOfferByID(w http.ResponseWriter, r *http.Request) {
@@ -112,29 +114,29 @@ func (h *OfferHandler) GetOfferByID(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	offer, err := h.OfferUC.GetOfferByID(r.Context(), id)
 	if err != nil {
-		utils.SendErrorResponse(w, "Объявление не найдено", http.StatusNotFound)
+		utils.SendErrorResponse(w, "Объявление не найдено", http.StatusNotFound, &h.cfg.App.CORS)
 		return
 	}
 
-	utils.SendJSONResponse(w, offer, http.StatusOK)
+	utils.SendJSONResponse(w, offer, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
-		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	var offer domain.Offer
 	if err := json.NewDecoder(r.Body).Decode(&offer); err != nil {
-		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
@@ -142,17 +144,17 @@ func (h *OfferHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 
 	id, err := h.OfferUC.CreateOffer(r.Context(), offer)
 	if err != nil {
-		utils.SendErrorResponse(w, "Ошибка при создании", http.StatusInternalServerError)
+		utils.SendErrorResponse(w, "Ошибка при создании", http.StatusInternalServerError, &h.cfg.App.CORS)
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]int{"id": id}, http.StatusCreated)
+	utils.SendJSONResponse(w, map[string]int{"id": id}, http.StatusCreated, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
-		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
@@ -160,18 +162,18 @@ func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	if err := h.OfferUC.CheckAccessToOffer(r.Context(), id, userID); err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden)
+		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden, &h.cfg.App.CORS)
 		return
 	}
 
 	var offer domain.Offer
 	if err := json.NewDecoder(r.Body).Decode(&offer); err != nil {
-		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
@@ -179,17 +181,17 @@ func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 	offer.SellerID = userID // Защита от подмены
 
 	if err := h.OfferUC.UpdateOffer(r.Context(), offer); err != nil {
-		utils.SendErrorResponse(w, "Ошибка при обновлении", http.StatusInternalServerError)
+		utils.SendErrorResponse(w, "Ошибка при обновлении", http.StatusInternalServerError, &h.cfg.App.CORS)
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Обновлено"}, http.StatusOK)
+	utils.SendJSONResponse(w, map[string]string{"message": "Обновлено"}, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
-		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
@@ -197,82 +199,82 @@ func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	if err := h.OfferUC.CheckAccessToOffer(r.Context(), id, userID); err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden)
+		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden, &h.cfg.App.CORS)
 		return
 	}
 
 	if err := h.OfferUC.DeleteOffer(r.Context(), id); err != nil {
-		utils.SendErrorResponse(w, "Ошибка при удалении", http.StatusInternalServerError)
+		utils.SendErrorResponse(w, "Ошибка при удалении", http.StatusInternalServerError, &h.cfg.App.CORS)
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Удалено"}, http.StatusOK)
+	utils.SendJSONResponse(w, map[string]string{"message": "Удалено"}, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) PublishOffer(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
-		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized)
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
 		return
 	}
 
 	vars := mux.Vars(r)
 	offerID, err := strconv.Atoi(vars["id"])
 	if err != nil || offerID <= 0 {
-		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	err = h.OfferUC.PublishOffer(r.Context(), offerID, userID)
 	if err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Объявление опубликовано"}, http.StatusOK)
+	utils.SendJSONResponse(w, map[string]string{"message": "Объявление опубликовано"}, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
-		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	vars := mux.Vars(r)
 	offerID, err := strconv.Atoi(vars["id"])
 	if err != nil || offerID <= 0 {
-		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	offer, err := h.OfferUC.GetOfferByID(r.Context(), offerID)
 	if err != nil || offer.Offer.SellerID != userID {
-		utils.SendErrorResponse(w, "Доступ запрещён", http.StatusForbidden)
+		utils.SendErrorResponse(w, "Доступ запрещён", http.StatusForbidden, &h.cfg.App.CORS)
 		return
 	}
 
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		utils.SendErrorResponse(w, "Файл не найден", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Файл не найден", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 	defer file.Close()
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		utils.SendErrorResponse(w, "Не удалось прочитать файл", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Не удалось прочитать файл", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	contentType, err := content.CheckImage(fileBytes)
 	if err != nil {
-		utils.SendErrorResponse(w, "Недопустимый формат изображения", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Недопустимый формат изображения", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
@@ -286,34 +288,34 @@ func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) 
 
 	imageID, err := h.OfferUC.SaveOfferImage(r.Context(), offerID, upload)
 	if err != nil {
-		utils.SendErrorResponse(w, "Ошибка при сохранении", http.StatusInternalServerError)
+		utils.SendErrorResponse(w, "Ошибка при сохранении", http.StatusInternalServerError, &h.cfg.App.CORS)
 		return
 	}
 
 	utils.SendJSONResponse(w, map[string]any{
 		"image_id": imageID,
-	}, http.StatusCreated)
+	}, http.StatusCreated, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) DeleteOfferImage(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
-		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized)
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
 		return
 	}
 
 	vars := mux.Vars(r)
 	imageID, err := strconv.Atoi(vars["id"])
 	if err != nil || imageID <= 0 {
-		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest)
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
 	err = h.OfferUC.DeleteOfferImage(r.Context(), imageID, userID)
 	if err != nil {
-		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest)
+		utils.SendErrorResponse(w, err.Error(), http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Изображение удалено"}, http.StatusOK)
+	utils.SendJSONResponse(w, map[string]string{"message": "Изображение удалено"}, http.StatusOK, &h.cfg.App.CORS)
 }

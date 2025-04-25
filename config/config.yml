@@ -1,0 +1,21 @@
+app:
+  baseDir: "http://localhost:8001"
+  baseFrontendDir: "http://localhost:8000"
+  baseImagesPath: "/images/"
+  cors:
+    allowOrigin: "http://localhost:8000"
+    allowMethods: "GET, POST, PUT, OPTIONS, DELETE"
+    allowHeaders: "Content-Type, X-CSRF-TOKEN"
+    allowCredentials: "true"
+  auth:
+    csrf:
+      headerName: X-CSRF-TOKEN
+      
+postgres:
+  sslMode: false
+
+minio:
+  endpoint: minio:9000
+  useSSL: false
+  avatarsBucket: "/avatars/"
+  offersBucket: "/offers/"

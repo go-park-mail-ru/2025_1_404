@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	offerRepo "github.com/go-park-mail-ru/2025_1_404/internal/repository/offer"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
@@ -16,10 +17,11 @@ type offerUsecase struct {
 	repo   offerRepository
 	logger logger.Logger
 	s3Repo s3.S3Repo
+	cfg    *config.Config
 }
 
-func NewOfferUsecase(repo offerRepository, logger logger.Logger, s3Repo s3.S3Repo) *offerUsecase {
-	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo}
+func NewOfferUsecase(repo offerRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config) *offerUsecase {
+	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg}
 }
 
 func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error) {
@@ -135,11 +137,7 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 	// Получаем существующее объявление
 	existing, err := u.repo.GetOfferByID(ctx, int64(offer.ID))
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"offer_id":  offer.ID,
-			"err":       err.Error(),
-		}).Error("Offer usecase: get offer before update failed")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"offer_id":  offer.ID,"err":err.Error(),}).Error("Offer usecase: get offer before update failed")
 		return fmt.Errorf("объявление не найдено")
 	}
 
@@ -160,11 +158,7 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 
 	err = u.repo.UpdateOffer(ctx, repoOffer)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{
-			"requestID": requestID,
-			"offer_id":  offer.ID,
-			"err":       err.Error(),
-		}).Error("Offer usecase: update offer failed")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID,"offer_id":  offer.ID,"err":err.Error(),}).Error("Offer usecase: update offer failed")
 		return err
 	}
 
@@ -249,11 +243,11 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer)
 	}
 
 	if offerData.Seller.Avatar != "" {
-		offerData.Seller.Avatar = utils.MinioPath + utils.AvatarsPath + offerData.Seller.Avatar
+		offerData.Seller.Avatar = u.cfg.Minio.Path + u.cfg.Minio.AvatarsBucket + offerData.Seller.Avatar
 	}
 
 	for i, img := range offerData.Images {
-		offerData.Images[i].Image = utils.MinioPath + utils.OffersImagesPath + img.Image
+		offerData.Images[i].Image = u.cfg.Minio.Path + u.cfg.Minio.OffersBucket + img.Image
 	}
 
 	offerInfo := domain.OfferInfo{

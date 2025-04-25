@@ -9,14 +9,12 @@ import (
 
 var BasePath string
 var BaseFrontendPath string
-var Salt string
 var MinioPath string
 var ImagesPath string = "/images/"
-var AvatarsPath string = "/avatars/"
 var OffersImagesPath string = "/offers/"
 
 func init() {
-	err := godotenv.Load("../.env")
+	err := godotenv.Load("./docker/.dev.env")
 	if err != nil {
 		log.Println("⚠️ .env файл не найден, переменные будут браться из окружения")
 	}
@@ -29,15 +27,5 @@ func init() {
 	BaseFrontendPath = os.Getenv("BASE_FRONTEND_DIR")
 	if BaseFrontendPath == "" {
 		BaseFrontendPath = "http://localhost:8000"
-	}
-
-	Salt = os.Getenv("CSRF_SALT")
-	if Salt == "" {
-		Salt = "SomeSalt"
-	}
-
-	MinioPath = os.Getenv("MINIO_PATH")
-	if MinioPath == "" {
-		MinioPath = "http://localhost:9000"
 	}
 }

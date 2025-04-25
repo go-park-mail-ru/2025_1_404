@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
 
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	deliveryAuth "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/auth"
 	deliveryOffer "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/offer"
 	deliveryZhk "github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/zhk"
@@ -22,24 +22,20 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/gorilla/mux"
-
-	"github.com/joho/godotenv"
 )
 
-func init() {
-	err := godotenv.Load("../.env")
-	if err != nil {
-		log.Println("⚠️ .env файл не найден, переменные будут браться из окружения")
-	}
-}
-
 func main() {
+	cfg, err := config.NewConfig()
+	if err != nil {
+		log.Fatalf("не удалось загрузить конфиг: %v", err)
+	}
+
 	log.Println("Сервер запущен на ", utils.BasePath)
 
 	ctx := context.Background()
 
 	// Инициализация подключения к БД
-	dbpool, err := database.NewPool(ctx)
+	dbpool, err := database.NewPool(&cfg.Postgres, ctx)
 	if err != nil {
 		log.Fatalf("не удалось подключиться к базе данных: %v", err)
 	}
@@ -51,8 +47,8 @@ func main() {
 
 	// Хранилище файлов
 	basePath := "./../internal/static/upload"
-	
-	s3repo, err := s3.New("localhost:9000", os.Getenv("MINIO_USER"), os.Getenv("MINIO_PASSWORD"), false, l)
+
+	s3repo, err := s3.New(&cfg.Minio, l)
 	if err != nil {
 		log.Printf("не удалось подключиться к s3: %v", err)
 		return
@@ -64,14 +60,14 @@ func main() {
 	zhkRepo := repoZhk.NewZhkRepository(dbpool, l)
 
 	// Юзкейсы
-	authUC := usecaseAuth.NewAuthUsecase(authRepo, l, s3repo)
-	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo)
-	zhkUC := usecaseZhk.NewZhkUsecase(zhkRepo, l)
+	authUC := usecaseAuth.NewAuthUsecase(authRepo, l, s3repo, cfg)
+	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg)
+	zhkUC := usecaseZhk.NewZhkUsecase(zhkRepo, l, cfg)
 
 	// Хендлеры
-	authHandler := deliveryAuth.NewAuthHandler(authUC)
-	offerHandler := deliveryOffer.NewOfferHandler(offerUC)
-	zhkHandler := deliveryZhk.NewZhkHandler(zhkUC)
+	authHandler := deliveryAuth.NewAuthHandler(authUC, cfg)
+	offerHandler := deliveryOffer.NewOfferHandler(offerUC, cfg)
+	zhkHandler := deliveryZhk.NewZhkHandler(zhkUC, cfg)
 
 	// Маршруты
 	r := mux.NewRouter()
@@ -93,18 +89,18 @@ func main() {
 		Methods(http.MethodPost)
 
 	// Профиль
-	r.Handle("/api/v1/auth/me", middleware.AuthHandler(l, http.HandlerFunc(authHandler.Me))).
+	r.Handle("/api/v1/auth/me", middleware.AuthHandler(l, &cfg.App.CORS,http.HandlerFunc(authHandler.Me))).
 		Methods(http.MethodPost)
 	r.Handle("/api/v1/users/update",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(authHandler.Update)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l,  cfg, http.HandlerFunc(authHandler.Update)))).
 		Methods(http.MethodPut)
 	r.Handle("/api/v1/users/image",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(authHandler.UploadImage)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(authHandler.UploadImage)))).
 		Methods(http.MethodPut)
 	r.Handle("/api/v1/users/image",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(authHandler.DeleteImage)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(authHandler.DeleteImage)))).
 		Methods(http.MethodDelete)
-	r.Handle("/api/v1/users/csrf", middleware.AuthHandler(l, http.HandlerFunc(authHandler.GetCSRFToken))).
+	r.Handle("/api/v1/users/csrf", middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(authHandler.GetCSRFToken))).
 		Methods(http.MethodGet)
 
 	// Объявления
@@ -113,22 +109,22 @@ func main() {
 	r.HandleFunc("/api/v1/offers/{id:[0-9]+}", offerHandler.GetOfferByID).
 		Methods(http.MethodGet)
 	r.Handle("/api/v1/offers",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.CreateOffer)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.CreateOffer)))).
 		Methods(http.MethodPost)
 	r.Handle("/api/v1/offers/{id:[0-9]+}",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.UpdateOffer)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.UpdateOffer)))).
 		Methods(http.MethodPut)
 	r.Handle("/api/v1/offers/{id:[0-9]+}",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.DeleteOffer)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.DeleteOffer)))).
 		Methods(http.MethodDelete)
 	r.Handle("/api/v1/offers/{id:[0-9]+}/publish",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.PublishOffer)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.PublishOffer)))).
 		Methods(http.MethodPost)
 	r.Handle("/api/v1/offers/{id:[0-9]+}/image",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.UploadOfferImage)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.UploadOfferImage)))).
 		Methods(http.MethodPost)
 	r.Handle("/api/v1/images/{id:[0-9]+}",
-		middleware.AuthHandler(l, middleware.CSRFMiddleware(l, http.HandlerFunc(offerHandler.DeleteOfferImage)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.DeleteOfferImage)))).
 		Methods(http.MethodDelete)
 
 	// ЖК
@@ -138,7 +134,7 @@ func main() {
 	// AccessLog middleware
 	logMux := middleware.AccessLog(l, r)
 	// CORS middleware
-	corsMux := middleware.CORSHandler(logMux)
+	corsMux := middleware.CORSHandler(logMux, &cfg.App.CORS)
 
 	// Запуск сервера
 	if err := http.ListenAndServe(":8001", corsMux); err != nil {

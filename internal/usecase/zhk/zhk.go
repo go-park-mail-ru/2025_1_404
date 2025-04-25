@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -12,10 +13,11 @@ import (
 type zhkUsecase struct {
 	repo   zhkRepository
 	logger logger.Logger
+	cfg    *config.Config
 }
 
-func NewZhkUsecase(repo zhkRepository, logger logger.Logger) *zhkUsecase {
-	return &zhkUsecase{repo: repo, logger: logger}
+func NewZhkUsecase(repo zhkRepository, logger logger.Logger, cfg *config.Config) *zhkUsecase {
+	return &zhkUsecase{repo: repo, logger: logger, cfg: cfg}
 }
 
 func (u *zhkUsecase) GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error) {
@@ -43,7 +45,7 @@ func (u *zhkUsecase) GetZhkInfo(ctx context.Context, id int64) (domain.ZhkInfo, 
 		return domain.ZhkInfo{}, err
 	}
 	for i, img := range zhkHeader.Images {
-		zhkHeader.Images[i] = utils.BasePath + utils.ImagesPath + img
+		zhkHeader.Images[i] = u.cfg.App.BaseDir + u.cfg.App.BaseImagesPath + img
 	}
 
 	zhkContacts := domain.ZhkContacts{Developer: zhk.Developer, Phone: zhk.Phone}
@@ -97,8 +99,7 @@ func (u *zhkUsecase) GetAllZhk(ctx context.Context) ([]domain.ZhkInfo, error) {
 	for _, zhk := range zhks {
 		zhkInfo, err := u.GetZhkInfo(ctx, zhk.ID)
 		if err != nil {
-			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(),
-				"params": logger.LoggerFields{"id": zhk.ID}}).Error("GetZhk failed")
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(),"params": logger.LoggerFields{"id": zhk.ID}}).Error("GetZhk failed")
 			return nil, err
 		}
 		zhksInfo = append(zhksInfo, zhkInfo)
