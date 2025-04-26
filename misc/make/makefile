@@ -3,7 +3,7 @@ DB_HOST ?= localhost
 DB_PORT ?= 5432
 DB_USER ?= postgres
 DB_PASSWORD ?= password
-DB_NAME ?= kvartirum
+DB_NAME ?= csat
 SSL_MODE ?= disable
 
 DB_URL := postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(SSL_MODE)
