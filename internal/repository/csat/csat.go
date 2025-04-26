@@ -47,6 +47,11 @@ const (
 		FROM csat.Answer a
 		WHERE a.question_id = $1;
 	`
+
+	getEvents = `
+		SELECT event
+		FROM csat.CSAT;
+	`
 )
 
 func (repo *csatRepository) GetQuestionsByEvent(ctx context.Context, event string) ([]domain.QuestionDTO, error) {
@@ -103,4 +108,27 @@ func (repo *csatRepository) GetAnswersByQuestion(ctx context.Context, questionID
 	repo.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getAnswerStat, "params": logger.LoggerFields{"questionID": questionID}, "success": err == nil}).Info("SQL Query: get answers stat")
 
 	return answers, err
+}
+
+func (repo *csatRepository) GetEvents(ctx context.Context) (domain.EventList, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	rows, err := repo.db.Query(ctx, getEvents)
+	if err != nil {
+		repo.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getQuestionsByEvent, "err": err.Error()}).Error("SQL Query: get events failed")
+		return domain.EventList{}, err
+	}
+	defer rows.Close()
+
+	events := domain.EventList{}
+	for rows.Next() {
+		var event string
+		err := rows.Scan(&event)
+		if err != nil {
+			return events, err
+		}
+		events.Events = append(events.Events, event)
+	}
+
+	return events, nil
 }

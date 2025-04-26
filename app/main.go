@@ -56,6 +56,8 @@ func main() {
 		Methods(http.MethodPost)
 	r.Handle("/api/v1/csat/stats", middleware.AuthHandler(l, http.HandlerFunc(csatHandler.GetAnswersByQuestion))).
 		Methods(http.MethodGet)
+	r.HandleFunc("/api/v1/csat/events", csatHandler.GetEvents).
+		Methods(http.MethodGet)
 
 	// AccessLog middleware
 	logMux := middleware.AccessLog(l, r)

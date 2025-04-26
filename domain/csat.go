@@ -32,6 +32,10 @@ type AnswersStat struct {
 	FiveStarStat  fiveStarStat  `json:"five_star_stat"`
 }
 
+type EventList struct {
+	Events []string `json:"events"`
+}
+
 type oneStarStat struct {
 	Amount     int
 	Percentage float64

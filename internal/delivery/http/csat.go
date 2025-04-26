@@ -64,3 +64,12 @@ func (h *CsatHandler) GetAnswersByQuestion (w http.ResponseWriter, r *http.Reque
 
 	utils.SendJSONResponse(w, answers, http.StatusOK)
 }
+
+func (h *CsatHandler) GetEvents (w http.ResponseWriter, r *http.Request) {
+	events, err := h.UC.GetEvents(r.Context())
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при получении events", http.StatusInternalServerError)
+	}
+
+	utils.SendJSONResponse(w, events, http.StatusOK)
+}

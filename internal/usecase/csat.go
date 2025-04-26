@@ -62,6 +62,18 @@ func (u *csatUsecase) GetAnswersByQuestion(ctx context.Context, questionID int64
 	return answers, nil
 }
 
+func (u *csatUsecase) GetEvents(ctx context.Context) (domain.EventList, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	events, err := u.repo.GetEvents(ctx)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("CSAT usecase: get events failed")
+		return domain.EventList{}, err
+	}
+
+	return events, nil
+}
+
 func truncateNaive(f float64, unit float64) float64 {
 	return math.Trunc(f/unit) * unit
 }
