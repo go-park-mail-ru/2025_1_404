@@ -42,7 +42,7 @@ func (h *CsatHandler) AddAnswerToQuestion (w http.ResponseWriter, r *http.Reques
 
 	err := h.UC.AddAnswerToQuestion(r.Context(), req)
 	if err != nil {
-		utils.SendErrorResponse(w, "Ошибка при создании добавления", http.StatusInternalServerError)
+		utils.SendErrorResponse(w, "Ошибка при создании ответа", http.StatusInternalServerError)
 		return
 	}
 

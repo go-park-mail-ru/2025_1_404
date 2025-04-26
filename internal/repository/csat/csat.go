@@ -76,21 +76,21 @@ func (repo *csatRepository) AddAnswerToQuestion(ctx context.Context, answer doma
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var id int64
-	err := repo.db.QueryRow(ctx, createAnswer, answer.Rating, answer.QuestionID).Scan(id)
-	
+	err := repo.db.QueryRow(ctx, createAnswer, answer.Rating, answer.QuestionID).Scan(&id)
+
 	repo.logger.WithFields(logger.LoggerFields{
 		"requestID": requestID,
-		"params": logger.LoggerFields {
+		"params": logger.LoggerFields{
 			"question_id": answer.QuestionID,
-			"rating": answer.Rating,
+			"rating":      answer.Rating,
 		},
-		"success": err ==nil,
-	})
+		"success": err == nil,
+	}).Info("SQL Query add answer to question")
 
 	return err
 }
 
-func (repo *csatRepository) GetAnswersByQuestion (ctx context.Context, questionID int64) (domain.AnswersStat, error) {
+func (repo *csatRepository) GetAnswersByQuestion(ctx context.Context, questionID int64) (domain.AnswersStat, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var answers domain.AnswersStat
@@ -100,7 +100,7 @@ func (repo *csatRepository) GetAnswersByQuestion (ctx context.Context, questionI
 		&answers.FourStarStat.Amount, &answers.FourStarStat.Percentage, &answers.FiveStarStat.Amount, &answers.FiveStarStat.Percentage,
 	)
 
-	repo.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getAnswerStat,"params": logger.LoggerFields{"questionID": questionID}, "success": err==nil}).Error("SQL Query: get answers stat failed")
+	repo.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getAnswerStat, "params": logger.LoggerFields{"questionID": questionID}, "success": err == nil}).Info("SQL Query: get answers stat")
 
 	return answers, err
 }
