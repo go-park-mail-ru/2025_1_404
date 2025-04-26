@@ -69,7 +69,7 @@ func (u *zhkUsecase) GetZhkInfo(ctx context.Context, id int64) (domain.ZhkInfo, 
 	}
 	for i, review := range zhkReviews.Reviews {
 		if review.Avatar != "" {
-			zhkReviews.Reviews[i].Avatar = utils.BasePath + utils.ImagesPath + review.Avatar
+			zhkReviews.Reviews[i].Avatar = u.cfg.App.BaseDir + u.cfg.App.BaseImagesPath + review.Avatar
 		}
 	}
 

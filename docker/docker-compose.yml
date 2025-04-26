@@ -8,8 +8,10 @@ services:
     ports:
       - "8001:8001"
     depends_on:
-      - postgres
-      - minio
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     # volumes:
     #   - ../:/app
   postgres:
@@ -41,6 +43,9 @@ services:
     - "-path=/migrations"
     - "-database=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable"
     - "up"
+
+    db_init:
+      
     
   minio:
     image: minio/minio:latest

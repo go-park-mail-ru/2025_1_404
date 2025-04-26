@@ -30,7 +30,7 @@ func main() {
 		log.Fatalf("не удалось загрузить конфиг: %v", err)
 	}
 
-	log.Println("Сервер запущен на ", utils.BasePath)
+	log.Println("Сервер запущен на ", cfg.App.BaseDir)
 
 	ctx := context.Background()
 
