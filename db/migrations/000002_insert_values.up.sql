@@ -1,7 +1,8 @@
 SET SEARCH_PATH = csat;
 
 INSERT INTO CSAT (event) VALUES
-    ('create_offer');
+    ('create_offer'),
+    ('edit_offer');
 
 INSERT INTO Question (text, csat_id) VALUES
     ('Насколько вы удовлетворены процессом создания объявления?', (SELECT id FROM CSAT WHERE event = 'create_offer'));
