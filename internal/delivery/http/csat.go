@@ -30,7 +30,7 @@ func (h *CsatHandler) GetQuestionsByEvent (w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	utils.SendJSONResponse(w, questions, http.StatusFound)
+	utils.SendJSONResponse(w, questions, http.StatusOK)
 }
 
 func (h *CsatHandler) AddAnswerToQuestion (w http.ResponseWriter, r *http.Request) {
