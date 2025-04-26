@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -50,13 +51,19 @@ func (h *CsatHandler) AddAnswerToQuestion (w http.ResponseWriter, r *http.Reques
 }
 
 func (h *CsatHandler) GetAnswersByQuestion (w http.ResponseWriter, r *http.Request) {
-	var req domain.QuestionDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest)
+	id := r.URL.Query().Get("question_id")
+	if id == "" {
+		utils.SendErrorResponse(w, "нет параметра question_id", http.StatusBadRequest)
 		return
 	}
 
-	answers, err := h.UC.GetAnswersByQuestion(r.Context(), req.ID)
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		utils.SendErrorResponse(w, "не корректный question_id", http.StatusBadRequest)
+		return
+	}
+
+	answers, err := h.UC.GetAnswersByQuestion(r.Context(), idInt)
 	if err != nil {
 		utils.SendErrorResponse(w, "Ошибка при получении ответов", http.StatusInternalServerError)
 		return
