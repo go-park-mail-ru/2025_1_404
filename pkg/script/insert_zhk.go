@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
@@ -26,8 +25,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("не удалось загрузить конфиг: %v", err)
 	}
-
-	fmt.Println(cfg.Postgres)
 
 	ctx := context.Background()
 

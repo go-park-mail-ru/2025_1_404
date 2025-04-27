@@ -1,9 +1,10 @@
 services:
-  app:
+  auth:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: app
+    container_name: auth
+    command: /app/auth
     env_file: .dev.env
     ports:
       - "8001:8001"
@@ -12,8 +13,37 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    # volumes:
-    #   - ../:/app
+
+  offer:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: offer
+    command: /app/offer
+    env_file: .dev.env
+    ports:
+     - "8002:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  zhk:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: zhk
+    command: /app/zhk
+    env_file: .dev.env
+    ports:
+      - "8003:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -43,8 +73,7 @@ services:
     - "-path=/migrations"
     - "-database=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable"
     - "up"
-
-    db_init:
+    #db_init:
       
     
   minio:

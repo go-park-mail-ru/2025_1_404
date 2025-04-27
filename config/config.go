@@ -15,10 +15,15 @@ type Config struct {
 type AppConfig struct {
 	Auth            AuthConfig `yaml:"auth"`
 	CORS            CORSConfig `yaml:"cors"`
+	Http            HttpConfig `yaml:"http"`
 	Host            string     `yaml:"host"`
 	BaseDir         string     `yaml:"basePath"`
 	BaseFrontendDir string     `yaml:"baseFrontendPath"`
 	BaseImagesPath  string     `yaml:"baseImagesPath"`
+}
+
+type HttpConfig struct {
+	Port string `yaml:"port"`
 }
 
 type CORSConfig struct {
@@ -95,16 +100,16 @@ func newViper() (*viper.Viper, error) {
 
 func bindEnv(v *viper.Viper) error {
 	envVariables := map[string]string{
-		"app.host":            "HOST",
-		"app.auth.csrf.salt":  "CSRF_SALT",
-		"postgres.host":       "POSTGRES_HOST",
-		"postgres.port":       "POSTGRES_PORT",
-		"postgres.db":         "POSTGRES_DB",
-		"postgres.user":       "POSTGRES_USER",
-		"postgres.password":   "POSTGRES_PASSWORD",
-		"minio.user":          "MINIO_USER",
-		"minio.password":      "MINIO_PASSWORD",
-		"minio.path":          "MINIO_PATH",
+		"app.host":           "HOST",
+		"app.auth.csrf.salt": "CSRF_SALT",
+		"postgres.host":      "POSTGRES_HOST",
+		"postgres.port":      "POSTGRES_PORT",
+		"postgres.db":        "POSTGRES_DB",
+		"postgres.user":      "POSTGRES_USER",
+		"postgres.password":  "POSTGRES_PASSWORD",
+		"minio.user":         "MINIO_USER",
+		"minio.password":     "MINIO_PASSWORD",
+		"minio.path":         "MINIO_PATH",
 	}
 
 	for key, env := range envVariables {

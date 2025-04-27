@@ -2,6 +2,8 @@ app:
   baseDir: "http://localhost:8001"
   baseFrontendDir: "http://localhost:8000"
   baseImagesPath: "/images/"
+  http:
+    port: :8001
   cors:
     allowOrigin: "http://localhost:8000"
     allowMethods: "GET, POST, PUT, OPTIONS, DELETE"
