@@ -3,16 +3,19 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
 
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewPool(ctx context.Context) (*pgxpool.Pool, error) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		dsn = "postgres://user:pass@localhost:5432/dbname"
+func NewPool(cfg *config.PostgresConfig, ctx context.Context) (*pgxpool.Pool, error) {
+	sslMode := "require"
+	if !cfg.SSLMode {
+		sslMode = "disable"
 	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DB, sslMode)
 
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {

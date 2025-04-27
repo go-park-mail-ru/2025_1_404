@@ -6,8 +6,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
-	"github.com/joho/godotenv"
+	"github.com/go-park-mail-ru/2025_1_404/config"
+	database "github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
 )
 
 type zhk struct {
@@ -20,17 +20,15 @@ type zhk struct {
 	Address     string
 }
 
-func init() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Println("⚠️ .env файл не найден, переменные будут браться из окружения")
-	}
-}
-
 func main() {
+	cfg, err := config.NewConfig()
+	if err != nil {
+		log.Fatalf("не удалось загрузить конфиг: %v", err)
+	}
+
 	ctx := context.Background()
 
-	dbpool, err := database.NewPool(ctx)
+	dbpool, err := database.NewPool(&cfg.Postgres, ctx)
 	if err != nil {
 		log.Fatalf("не удалось подключиться к базе данных: %v", err)
 	}
