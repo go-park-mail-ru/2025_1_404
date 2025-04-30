@@ -22,13 +22,6 @@ type zhk struct {
 	Station     string
 }
 
-func init() {
-	err := godotenv.Load("./docker/.dev.env")
-	if err != nil {
-		log.Println("⚠️ .env файл не найден, переменные будут браться из окружения")
-	}
-}
-
 func main() {
 	cfg, err := config.NewConfig()
 	if err != nil {
