@@ -35,6 +35,8 @@ type Offer struct {
 	Flat           int       `json:"flat"`
 	Area           int       `json:"area"`
 	CeilingHeight  int       `json:"ceiling_height"`
+	Longitude      string    `json:"logitude"`
+	Latitude       string    `json:"latitude"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -58,7 +60,8 @@ type OfferFilter struct {
 }
 
 type Metro struct {
-	Line    string `json:"line"`
+	Id      int    `json:"station_id"`
+	Color   string `json:"color"`
 	Station string `json:"station"`
 }
 

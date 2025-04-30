@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"log"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/domain"
-	"github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
+	database "github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
@@ -45,7 +46,7 @@ const (
 		SELECT
 			u.id, 
 			COALESCE(i.uuid, '') as image,
-			u.first_name, u.last_name, u.email, u.password
+			u.first_name, u.last_name, u.email, u.password, u.created_at
 		FROM kvartirum.Users u
 		LEFT JOIN kvartirum.Image i on u.image_id = i.id
 		WHERE u.email = $1;
@@ -55,7 +56,7 @@ const (
 		SELECT
 			u.id, 
 			COALESCE(i.uuid, '') as image, 
-			u.first_name, u.last_name, u.email, u.password
+			u.first_name, u.last_name, u.email, u.password, u.created_at
 		FROM kvartirum.Users u
 		LEFT JOIN kvartirum.Image i on u.image_id = i.id
 		WHERE u.id = $1;
@@ -101,15 +102,7 @@ func (r *authRepository) CreateUser(ctx context.Context, u User) (int64, error) 
 		u.ImageID, u.FirstName, u.LastName, u.Email, u.Password, u.TokenVersion,
 	).Scan(&id)
 
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID, "query": createUserSQL,
-		"params": logger.LoggerFields{
-			"name":          u.FirstName,
-			"last_name":     u.LastName,
-			"email":         u.Email,
-			"token_version": u.TokenVersion,
-			"image_id":      u.ImageID,
-		}, "success": err == nil}).Info("SQL query CreateUser")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": createUserSQL, "params": logger.LoggerFields{"name": u.FirstName, "last_name": u.LastName, "email": u.Email, "token_version": u.TokenVersion, "image_id": u.ImageID}, "success": err == nil}).Info("SQL query CreateUser")
 
 	return id, err
 }
@@ -119,11 +112,10 @@ func (r *authRepository) GetUserByEmail(ctx context.Context, email string) (doma
 
 	var u domain.User
 	err := r.db.QueryRow(ctx, getUserByEmailSQL, email).Scan(
-		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password,
+		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password, &u.CreatedAt,
 	)
 
-	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getUserByEmailSQL,
-		"params": logger.LoggerFields{"email": email}, "success": err == nil}).Info("SQL query GetUserByEmail")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getUserByEmailSQL, "params": logger.LoggerFields{"email": email}, "success": err == nil}).Info("SQL query GetUserByEmail")
 
 	return u, err
 }
@@ -133,17 +125,11 @@ func (r *authRepository) GetUserByID(ctx context.Context, id int64) (domain.User
 
 	var u domain.User
 	err := r.db.QueryRow(ctx, getUserByIDSQL, id).Scan(
-		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password,
+		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password, &u.CreatedAt,
 	)
-
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     getUserByEmailSQL,
-		"params": logger.LoggerFields{
-			"id": id,
-		},
-		"success": err == nil,
-	}).Info("SQL query GetUserByID")
+	log.Println(u.CreatedAt)
+	
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getUserByEmailSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL query GetUserByID")
 
 	return u, err
 }
@@ -157,14 +143,7 @@ func (r *authRepository) UpdateUser(ctx context.Context, u domain.User) (domain.
 	).Scan(&updatedUser.ID, &updatedUser.FirstName, &updatedUser.LastName,
 		&updatedUser.Email, &updatedUser.Image)
 
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID, "query": updateUserSQL,
-		"params": logger.LoggerFields{
-			"name":       u.FirstName,
-			"last_name":  u.LastName,
-			"email":      u.Email,
-			"image_path": u.Image,
-		}, "success": err == nil}).Info("SQL query UpdateUser")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": updateUserSQL, "params": logger.LoggerFields{"name": u.FirstName, "last_name": u.LastName, "email": u.Email, "image_path": u.Image}, "success": err == nil}).Info("SQL query UpdateUser")
 
 	return updatedUser, err
 }
@@ -173,14 +152,7 @@ func (r *authRepository) DeleteUser(ctx context.Context, id int64) error {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	_, err := r.db.Exec(ctx, deleteUserSQL, id)
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     deleteUserSQL,
-		"params": logger.LoggerFields{
-			"id": id,
-		},
-		"success": err == nil,
-	})
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": deleteUserSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL Query: Delete user")
 	return err
 }
 
@@ -188,14 +160,7 @@ func (r *authRepository) CreateImage(ctx context.Context, fileName string) error
 	requestID := ctx.Value(utils.RequestIDKey)
 	_, err := r.db.Exec(ctx, createImageSQL, fileName)
 
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     createImageSQL,
-		"params": logger.LoggerFields{
-			"name": fileName,
-		},
-		"success": err == nil,
-	})
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": createImageSQL, "params": logger.LoggerFields{"name": fileName}, "success": err == nil}).Info("SQL Query: Create Image")
 
 	return err
 }
@@ -206,14 +171,7 @@ func (r *authRepository) GetImageByUUID(ctx context.Context, uuid string) (sql.N
 	var id sql.NullInt64
 	err := r.db.QueryRow(ctx, getImageByUUIDSQL, uuid).Scan(&id)
 
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID,
-		"query":     getImageByUUIDSQL,
-		"params": logger.LoggerFields{
-			"name": uuid,
-		},
-		"success": err == nil,
-	})
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getImageByUUIDSQL, "params": logger.LoggerFields{"name": uuid}, "success": err == nil}).Info("SQL Query: GetImageByUUID ")
 
 	return id, err
 }
@@ -227,9 +185,7 @@ func (r *authRepository) GetImageByID(ctx context.Context, id sql.NullInt64) (st
 	}
 	err := r.db.QueryRow(ctx, getImageByIDSQL, id.Int64).Scan(&fileName)
 
-	r.logger.WithFields(logger.LoggerFields{
-		"requestID": requestID, "query": getImageByIDSQL,
-		"params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL GetIMageByID")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getImageByIDSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL Query: GetIMageByID")
 
 	return fileName, err
 
@@ -239,8 +195,7 @@ func (r *authRepository) DeleteUserImage(ctx context.Context, id int64) error {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	_, err := r.db.Exec(ctx, deleteUserImageSQL, id)
-	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": deleteUserSQL,
-		"params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL DeleteImage")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": deleteUserSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL Query: DeleteImage")
 
 	return err
 }

@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
+	service "github.com/go-park-mail-ru/2025_1_404/microservices/auth/delivery/grpc"
 	deliveryAuth "github.com/go-park-mail-ru/2025_1_404/microservices/auth/delivery/http"
 	repoAuth "github.com/go-park-mail-ru/2025_1_404/microservices/auth/repository"
 	usecaseAuth "github.com/go-park-mail-ru/2025_1_404/microservices/auth/usecase"
@@ -14,10 +16,13 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	authpb "github.com/go-park-mail-ru/2025_1_404/proto/auth"
 	"github.com/gorilla/mux"
+	"google.golang.org/grpc"
 )
 
 func main() {
+	// Конфиг
 	cfg, err := config.NewConfig()
 	if err != nil {
 		log.Fatalf("не удалось загрузить конфиг: %v", err)
@@ -80,6 +85,24 @@ func main() {
 	logMux := middleware.AccessLog(l, r)
 	// CORS middleware
 	corsMux := middleware.CORSHandler(logMux, &cfg.App.CORS)
+
+	// Запуск grpc
+	listen, err := net.Listen("tcp", cfg.App.Grpc.Port)
+	if err != nil {
+		log.Printf("failed to listen: %v", err)
+		return
+	}
+	grpcServer := grpc.NewServer()
+
+	authpb.RegisterAuthServiceServer(grpcServer, service.NewAuthService(authUC, l))
+
+	go func() {
+		log.Println("Auth grpc запущен")
+		if err := grpcServer.Serve(listen); err != nil {
+			log.Printf("failed to serve grpc: %v", err)
+			return
+		}
+	}()
 
 	log.Println("Auth микросервис запущен")
 

@@ -16,6 +16,7 @@ type AppConfig struct {
 	Auth            AuthConfig `yaml:"auth"`
 	CORS            CORSConfig `yaml:"cors"`
 	Http            HttpConfig `yaml:"http"`
+	Grpc 			GrpcConfig `yaml:"grpc"`
 	Host            string     `yaml:"host"`
 	BaseDir         string     `yaml:"basePath"`
 	BaseFrontendDir string     `yaml:"baseFrontendPath"`
@@ -23,6 +24,10 @@ type AppConfig struct {
 }
 
 type HttpConfig struct {
+	Port string `yaml:"port"`
+}
+
+type GrpcConfig struct {
 	Port string `yaml:"port"`
 }
 
