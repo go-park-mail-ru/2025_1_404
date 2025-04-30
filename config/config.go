@@ -10,6 +10,8 @@ type Config struct {
 	App      AppConfig      `yaml:"app"`
 	Postgres PostgresConfig `yaml:"postgres"`
 	Minio    MinioConfig    `yaml:"minio"`
+	Redis    RedisConfig    `yaml:"redis"`
+	Gemini   GeminiConfig   `yaml:"gemini"`
 }
 
 type AppConfig struct {
@@ -59,6 +61,19 @@ type MinioConfig struct {
 	UseSSL        bool   `yaml:"useSSL"`
 	AvatarsBucket string `yaml:"avatarsBucket"`
 	OffersBucket  string `yaml:"offersBucket"`
+}
+
+type RedisConfig struct {
+	Address  string `yaml:"address"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
+type GeminiConfig struct {
+	Proxy            string `yaml:"proxy"`
+	Token            string `yaml:"token"`
+	Model            string `yaml:"model"`
+	EstimationPrompt string `yaml:"estimationPrompt"`
 }
 
 func NewConfig() (*Config, error) {

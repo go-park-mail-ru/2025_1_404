@@ -10,3 +10,4 @@ COPY . .
 RUN go build -o /app/auth ./cmd/auth/main.go && chmod +x /app/auth
 RUN go build -o /app/offer ./cmd/offer/main.go && chmod +x /app/offer
 RUN go build -o /app/zhk ./cmd/zhk/main.go && chmod +x /app/zhk
+RUN go build -o /app/ai ./cmd/ai/main.go && chmod +x /app/ai

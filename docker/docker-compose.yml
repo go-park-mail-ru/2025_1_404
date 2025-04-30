@@ -43,6 +43,16 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+        
+  ai:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ai
+    command: /app/ai
+    env_file: .dev.env
+    ports:
+      - "8004:8001"
 
   postgres:
     image: postgres:latest
@@ -75,7 +85,19 @@ services:
     - "up"
     #db_init:
       
-    
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -113,3 +135,4 @@ services:
 volumes:
     postgres_data:
     minio_data:
+    redis_data:
