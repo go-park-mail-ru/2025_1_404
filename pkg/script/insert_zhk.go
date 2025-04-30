@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	database "github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
-	"github.com/joho/godotenv"
 )
 
 type zhk struct {
@@ -96,7 +95,6 @@ func main() {
 		SELECT id FROM kvartirum.HousingComplexClass
 		WHERE name = $1;
 		`, zhk.Class).Scan(&classID)
-
 
 		if err != nil {
 			log.Fatalf("ошибка при получении ID класса: %v", err)
