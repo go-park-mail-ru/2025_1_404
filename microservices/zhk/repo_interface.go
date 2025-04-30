@@ -12,7 +12,6 @@ type ZhkRepository interface {
 	GetZhkByID(ctx context.Context, id int64) (domain.Zhk, error)
 	GetZhkHeader(ctx context.Context, zhk domain.Zhk) (domain.ZhkHeader, error)
 	GetZhkCharacteristics(ctx context.Context, zhk domain.Zhk) (domain.ZhkCharacteristics, error)
-	GetZhkApartments(ctx context.Context, zhk domain.Zhk) (domain.ZhkApartments, error)
-	GetZhkReviews(ctx context.Context, zhk domain.Zhk) (domain.ZhkReviews, error)
 	GetAllZhk(ctx context.Context) ([]domain.Zhk, error)
+	GetZhkMetro(ctx context.Context, id int64) (domain.ZhkMetro, error)
 }

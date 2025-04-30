@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package offerService;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "./;offerpb";
+
+message Offer {
+    int32 id = 1;
+    int32 seller_id = 2;
+    int32 offer_type_id = 3;
+    optional int32 metro_station_id = 4;
+    optional int32 rent_type_id = 5;
+    optional int32 purchase_type_id = 6;
+    int32 property_type_id = 7;
+    int32 status_id = 8;
+    int32 renovation_id = 9;
+    optional int32 complex_id = 10;
+    int32 price = 11;
+    optional string description = 12;
+    int32 floor = 13;
+    int32 total_floors = 14;
+    int32 rooms = 15;
+    optional string address = 16;
+    int32 flat = 17;
+    int32 area = 18;
+    int32 ceiling_height = 19;
+    string longitude = 20;
+    string latitude = 21;
+    google.protobuf.Timestamp created_at = 22;
+    google.protobuf.Timestamp updated_at = 23;
+}
+
+message GetOfferRequest {
+    int32 id = 1;
+}
+
+message GetOfferResponse {
+    Offer offer = 1;
+}
+
+message GetOffersByZhkRequest {
+    int32 zhk_id = 1;
+}
+
+message GetOffersByZhkResponse {
+    repeated Offer offers = 1;
+}
+
+service OfferService {
+    rpc GetOfferById (GetOfferRequest) returns (GetOfferResponse);
+    rpc GetOffersByZhkId (GetOffersByZhkRequest) returns (GetOffersByZhkResponse);
+}

@@ -2,25 +2,40 @@ package domain
 
 // Zhk Структура ЖК
 type Zhk struct {
-	ID          int64
-	ClassID     int64
-	Name        string
-	Developer   string
-	Phone       string
-	Address     string
-	Description string
+	ID             int64
+	ClassID        int64
+	Name           string
+	Developer      string
+	Phone          string
+	Address        string
+	Description    string
+	MetroStationId *int
 }
 
 // ZhkInfo Структура с информацией о ЖК
 type ZhkInfo struct {
 	ID              int64              `json:"id"`
 	Description     string             `json:"description"`
-	Address         string             `json:"address"`
+	Address         ZhkAddress         `json:"address"`
 	Header          ZhkHeader          `json:"header"`
 	Contacts        ZhkContacts        `json:"contacts"`
 	Characteristics ZhkCharacteristics `json:"characteristics"`
 	Apartments      ZhkApartments      `json:"apartments"`
 	Reviews         ZhkReviews         `json:"reviews"`
+}
+
+// ZhkAddress Расположение ЖК
+type ZhkAddress struct {
+	Address string   `json:"address"`
+	Metro   ZhkMetro `json:"metro"`
+}
+
+// ZhkMetro Метро ЖК
+type ZhkMetro struct {
+	Id      int    `json:"station_id"`
+	Color   string `json:"line_color"`
+	Line    string `json:"line"`
+	Station string `json:"station"`
 }
 
 // ZhkHeader Заголовок ЖК
@@ -40,7 +55,7 @@ type ZhkContacts struct {
 
 // ZhkCharacteristics Характеристики ЖК
 type ZhkCharacteristics struct {
-	Decoration    []string     `json:"decoration"`
+	Decoration    []int        `json:"decoration"`
 	Class         string       `json:"class"`
 	CeilingHeight CeilingRange `json:"ceiling_height"`
 	Floors        FloorsRange  `json:"floors"`

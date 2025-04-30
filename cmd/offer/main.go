@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
+	service "github.com/go-park-mail-ru/2025_1_404/microservices/offer/delivery/grpc"
 	deliveryOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/delivery/http"
 	repoOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/repository"
 	usecaseOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/usecase"
@@ -14,7 +17,11 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	authpb "github.com/go-park-mail-ru/2025_1_404/proto/auth"
+	offerpb "github.com/go-park-mail-ru/2025_1_404/proto/offer"
 	"github.com/gorilla/mux"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -43,8 +50,18 @@ func main() {
 		return
 	}
 
+	// Подключаемся к auth grpc
+	conn, err := grpc.NewClient(fmt.Sprint("auth", cfg.App.Grpc.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("не удалось подключиться к auth grpc: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	authService := authpb.NewAuthServiceClient(conn)
+
 	offerRepo := repoOffer.NewOfferRepository(dbpool, l)
-	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg)
+	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService)
 	offerHandler := deliveryOffer.NewOfferHandler(offerUC, cfg)
 
 	// Маршруты
@@ -76,14 +93,33 @@ func main() {
 	r.Handle("/api/v1/images/{id:[0-9]+}",
 		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.DeleteOfferImage)))).
 		Methods(http.MethodDelete)
+	r.HandleFunc("/api/v1/offers/stations", offerHandler.GetStations).
+		Methods(http.MethodGet)
 
 	// AccessLog middleware
 	logMux := middleware.AccessLog(l, r)
 	// CORS middleware
 	corsMux := middleware.CORSHandler(logMux, &cfg.App.CORS)
 
-	log.Println("Offers микросервис запущен")
+	// Запуск grpc
+	listen, err := net.Listen("tcp", cfg.App.Grpc.Port)
+	if err != nil {
+		log.Printf("failed to listen: %v", err)
+		return
+	}
+	grpcServer := grpc.NewServer()
 
+	offerpb.RegisterOfferServiceServer(grpcServer, service.NewOfferService(offerUC, l))
+
+	go func() {
+		log.Println("Offer grpc запущен")
+		if err := grpcServer.Serve(listen); err != nil {
+			log.Printf("failed to serve grpc: %v", err)
+			return
+		}
+	}()
+
+	log.Println("Offers микросервис запущен")
 	// Запуск сервера
 	if err := http.ListenAndServe(cfg.App.Http.Port, corsMux); err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)

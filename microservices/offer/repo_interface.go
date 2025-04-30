@@ -21,4 +21,6 @@ type OfferRepository interface {
 	GetOfferData(ctx context.Context, offer domain.Offer) (domain.OfferData, error)
 	GetOfferImageWithUUID(ctx context.Context, imageID int64) (int64, string, error)
 	DeleteOfferImage(ctx context.Context, imageID int64) error
+	GetOffersByZhkId (ctx context.Context, zhkId int) ([]domain.Offer, error)
+	GetStations(ctx context.Context) ([]domain.Metro, error)
 }

@@ -23,4 +23,6 @@ type OfferUsecase interface {
 	PrepareOfferInfo(ctx context.Context, offer domain.Offer) (domain.OfferInfo, error)
 	PrepareOffersInfo(ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error)
 	CheckAccessToOffer(ctx context.Context, offerID int, userID int) error
+	GetOffersByZhkId (ctx context.Context, zhkId int) ([]domain.Offer, error)
+	GetStations(ctx context.Context) ([]domain.Metro, error)
 }

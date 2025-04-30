@@ -320,3 +320,13 @@ func (h *OfferHandler) DeleteOfferImage(w http.ResponseWriter, r *http.Request) 
 
 	utils.SendJSONResponse(w, map[string]string{"message": "Изображение удалено"}, http.StatusOK, &h.cfg.App.CORS)
 }
+
+func (h *OfferHandler) GetStations(w http.ResponseWriter, r *http.Request) {
+	stations, err := h.OfferUC.GetStations(r.Context())
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при получении станций метро", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, stations, http.StatusOK, &h.cfg.App.CORS)
+}
