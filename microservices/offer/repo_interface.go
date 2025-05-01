@@ -21,10 +21,11 @@ type OfferRepository interface {
 	GetOfferData(ctx context.Context, offer domain.Offer) (domain.OfferData, error)
 	GetOfferImageWithUUID(ctx context.Context, imageID int64) (int64, string, error)
 	DeleteOfferImage(ctx context.Context, imageID int64) error
-	GetOffersByZhkId (ctx context.Context, zhkId int) ([]domain.Offer, error)
+	GetOffersByZhkId(ctx context.Context, zhkId int) ([]domain.Offer, error)
 	GetStations(ctx context.Context) ([]domain.Metro, error)
-	IsOfferLiked(ctx context.Context,like domain.LikeRequest) (bool, error)
+	IsOfferLiked(ctx context.Context, like domain.LikeRequest) (bool, error)
 	CreateLike(ctx context.Context, like domain.LikeRequest) error
 	DeleteLike(ctx context.Context, like domain.LikeRequest) error
 	GetLikeStat(ctx context.Context, like domain.LikeRequest) (int, error)
+	IncrementView(ctx context.Context, id int) error
 }

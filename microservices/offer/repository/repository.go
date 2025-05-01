@@ -145,6 +145,13 @@ const (
 		SELECT COUNT(*) FROM kvartirum.Likes WHERE offer_id = $1
 	`
 
+	addView = `
+		INSERT INTO kvartirum.Views (offer_id)  VALUES ($1);
+	`
+
+	countView = `
+		SELECT COUNT (*) FROM kvartirum.Views WHERE offer_id = $1;
+	`
 )
 
 func (r *offerRepository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
@@ -470,6 +477,13 @@ func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer) 
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferStation")
 
+	err = r.db.QueryRow(ctx, isOfferLiked, offer.SellerID, offer.ID).Scan(&offerData.OfferStat.LikesStat.IsLiked)
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsLikedOffer")
+	err = r.db.QueryRow(ctx, getLikeStat, offer.ID).Scan(&offerData.OfferStat.LikesStat.Amount)
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query GetLikeStat")
+	err = r.db.QueryRow(ctx, countView, offer.ID).Scan(&offerData.OfferStat.Views)
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query CountViews")
+
 	return offerData, nil
 }
 
@@ -574,7 +588,7 @@ func (r *offerRepository) CreateLike(ctx context.Context, like domain.LikeReques
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query CreateLike ")
 
-	return  err
+	return err
 }
 
 func (r *offerRepository) DeleteLike(ctx context.Context, like domain.LikeRequest) error {
@@ -584,8 +598,8 @@ func (r *offerRepository) DeleteLike(ctx context.Context, like domain.LikeReques
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query DeleteLike ")
 
-	return  err
-}	
+	return err
+}
 
 func (r *offerRepository) GetLikeStat(ctx context.Context, like domain.LikeRequest) (int, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
@@ -596,4 +610,14 @@ func (r *offerRepository) GetLikeStat(ctx context.Context, like domain.LikeReque
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query GetLikeStat ")
 
 	return likesStat, err
+}
+
+func (r *offerRepository) IncrementView(ctx context.Context, id int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, addView, id)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query  AddViewToOffer")
+
+	return err
 }

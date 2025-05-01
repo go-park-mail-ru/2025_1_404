@@ -12,7 +12,7 @@ import (
 type OfferUsecase interface {
 	GetOffers(ctx context.Context) ([]domain.OfferInfo, error)
 	GetOffersByFilter(ctx context.Context, filter domain.OfferFilter) ([]domain.OfferInfo, error)
-	GetOfferByID(ctx context.Context, id int) (domain.OfferInfo, error)
+	GetOfferByID(ctx context.Context, id int, ip string, userID *int) (domain.OfferInfo, error)
 	GetOffersBySellerID(ctx context.Context, sellerID int) ([]domain.OfferInfo, error)
 	CreateOffer(ctx context.Context, offer domain.Offer) (int, error)
 	UpdateOffer(ctx context.Context, offer domain.Offer) error
@@ -23,7 +23,7 @@ type OfferUsecase interface {
 	PrepareOfferInfo(ctx context.Context, offer domain.Offer) (domain.OfferInfo, error)
 	PrepareOffersInfo(ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error)
 	CheckAccessToOffer(ctx context.Context, offerID int, userID int) error
-	GetOffersByZhkId (ctx context.Context, zhkId int) ([]domain.Offer, error)
+	GetOffersByZhkId(ctx context.Context, zhkId int) ([]domain.Offer, error)
 	GetStations(ctx context.Context) ([]domain.Metro, error)
-	LikeOffer(ctx context.Context,like domain.LikeRequest) (domain.LikesStat, error)
+	LikeOffer(ctx context.Context, like domain.LikeRequest) (domain.LikesStat, error)
 }

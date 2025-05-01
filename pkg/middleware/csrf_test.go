@@ -25,7 +25,7 @@ func TestCSRFMiddleware(t *testing.T) {
 
 		token := csrf.GenerateCSRF("1", utils.Salt)
 		request.Header.Set("X-CSRF-TOKEN", token)
-		
+
 		response := httptest.NewRecorder()
 
 		handler := CSRFMiddleware(l, testHandler)

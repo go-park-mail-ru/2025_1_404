@@ -166,10 +166,10 @@ func prepareOfferDate(header *domain.ZhkHeader, characteristics *domain.ZhkChara
 		if !ok {
 			aps[int(offer.Rooms)] = &domain.ZhkApartment{
 				HighestPrice: int(offer.Price),
-				LowestPrice: int(offer.Price),
-				MinSquare: int(offer.Area),
-				Offers: 1,
-				Rooms: int(offer.Rooms),
+				LowestPrice:  int(offer.Price),
+				MinSquare:    int(offer.Area),
+				Offers:       1,
+				Rooms:        int(offer.Rooms),
 			}
 		} else {
 			if offer.Price < int32(stats.LowestPrice) {
@@ -192,13 +192,13 @@ func prepareOfferDate(header *domain.ZhkHeader, characteristics *domain.ZhkChara
 }
 
 func uniqueInts(input []int) []int {
-    seen := make(map[int]struct{})
-    result := make([]int, 0, len(input))
-    for _, v := range input {
-        if _, ok := seen[v]; !ok {
-            seen[v] = struct{}{}
-            result = append(result, v)
-        }
-    }
-    return result
+	seen := make(map[int]struct{})
+	result := make([]int, 0, len(input))
+	for _, v := range input {
+		if _, ok := seen[v]; !ok {
+			seen[v] = struct{}{}
+			result = append(result, v)
+		}
+	}
+	return result
 }

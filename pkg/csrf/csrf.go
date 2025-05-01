@@ -33,6 +33,6 @@ type CSRFResponse struct {
 	CSRF string `json:"csrf_token"`
 }
 
-func GetCSRFResponse(token string) CSRFResponse  {
+func GetCSRFResponse(token string) CSRFResponse {
 	return CSRFResponse{CSRF: token}
 }

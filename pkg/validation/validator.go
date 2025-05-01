@@ -2,8 +2,8 @@ package validation
 
 import (
 	"fmt"
-	"unicode"
 	"regexp"
+	"unicode"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -42,6 +42,7 @@ func GetError(err error) string {
 	}
 	return "Неизвестная ошибка"
 }
+
 // nameValidator Валидация имя
 func nameValidator(fl validator.FieldLevel) bool {
 	name := fl.Field().String()

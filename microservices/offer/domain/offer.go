@@ -79,9 +79,9 @@ type OfferSeller struct {
 }
 
 type OfferStat struct {
-	LikesStat     LikesStat     `json:"likes_stat"`
-	FavoutiteStat *FavoriteStat `json:"favourite_stat"`
-	Views         *int          `json:"views"`
+	LikesStat LikesStat `json:"likes_stat"`
+	Views     *int      `json:"views"`
+	// FavoutiteStat *FavoriteStat `json:"favourite_stat"`
 }
 
 type LikesStat struct {
@@ -89,10 +89,10 @@ type LikesStat struct {
 	Amount  int  `json:"amount"`
 }
 
-type FavoriteStat struct {
-	IsFavourited bool `json:"is_favorited"`
-	Amount       *int  `json:"amount"`
-}
+// type FavoriteStat struct {
+// 	IsFavourited bool `json:"is_favorited"`
+// 	Amount       *int  `json:"amount"`
+// }
 
 type LikeRequest struct {
 	OfferId int `json:"offer_id"`

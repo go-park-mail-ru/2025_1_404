@@ -10,7 +10,7 @@ import (
 )
 
 func AuthHandler(log logger.Logger, cfg *config.CORSConfig, nextHandler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			utils.SendErrorResponse(w, "Учётные данные не предоставлены", http.StatusUnauthorized, cfg)
