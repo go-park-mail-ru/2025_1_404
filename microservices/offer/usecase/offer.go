@@ -104,6 +104,10 @@ func (u *offerUsecase) GetOfferByID(ctx context.Context, id int, ip string, user
 func (u *offerUsecase) addView(ctx context.Context, offerId int, ip string) error {
 	requestID := ctx.Value(utils.RequestIDKey)
 
+	if ip == "" {
+		return nil
+	}
+	
 	key := fmt.Sprintf("view:%d:%s", offerId, ip)
 
 	_, err := u.redisRepo.Get(ctx, key)
