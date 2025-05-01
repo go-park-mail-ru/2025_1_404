@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 // User Структура пользователя
 type User struct {
 	ID        int		`json:"id"`
@@ -8,6 +10,7 @@ type User struct {
 	FirstName string	`json:"first_name"`
 	LastName  string	`json:"last_name"`
 	Image     string	`json:"image"`
+	CreatedAt time.Time `json:"-"`
 }
 
 // RegisterRequest Запрос на регистрацию

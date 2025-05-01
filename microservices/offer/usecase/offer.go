@@ -4,25 +4,28 @@ import (
 	"context"
 	"fmt"
 	"html"
+	"log"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
-	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/repository"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	authpb "github.com/go-park-mail-ru/2025_1_404/proto/auth"
 )
 
 type offerUsecase struct {
-	repo   offer.OfferRepository
-	logger logger.Logger
-	s3Repo s3.S3Repo
-	cfg    *config.Config
+	repo        offer.OfferRepository
+	logger      logger.Logger
+	s3Repo      s3.S3Repo
+	cfg         *config.Config
+	authService authpb.AuthServiceClient
 }
 
-func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config) *offerUsecase {
-	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg}
+func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient) *offerUsecase {
+	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService}
 }
 
 func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error) {
@@ -243,9 +246,21 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer)
 		return domain.OfferInfo{}, fmt.Errorf("offer data get failed")
 	}
 
-	if offerData.Seller.Avatar != "" {
-		offerData.Seller.Avatar = u.cfg.Minio.Path + u.cfg.Minio.AvatarsBucket + offerData.Seller.Avatar
+	seller, err := u.authService.GetUserById(ctx, &authpb.GetUserRequest{Id: int32(offer.SellerID)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: get seller failed")
 	}
+
+	log.Println(seller.User.CreatedAt)
+
+	offerData.Seller = domain.OfferSeller{
+		FirstName: seller.User.FirstName,
+		LastName:  seller.User.LastName,
+		Avatar:    seller.User.Image,
+		CreatedAt: seller.User.CreatedAt.AsTime(),
+	}
+
+	log.Println(offerData.Seller.CreatedAt)
 
 	for i, img := range offerData.Images {
 		offerData.Images[i].Image = u.cfg.Minio.Path + u.cfg.Minio.OffersBucket + img.Image
@@ -257,6 +272,30 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer)
 	}
 
 	return offerInfo, nil
+}
+
+func (u *offerUsecase) GetOffersByZhkId(ctx context.Context, zhkId int) ([]domain.Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	offers, err := u.repo.GetOffersByZhkId(ctx, zhkId)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestId": requestID, "err": err.Error(), "zhkId": zhkId}).Error("Offer usecase: getOffersByZhkId failed")
+		return []domain.Offer{}, err
+	}
+
+	return offers, nil
+}
+
+func (u *offerUsecase) GetStations(ctx context.Context) ([]domain.Metro, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	stations, err := u.repo.GetStations(ctx)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestId": requestID, "err": err.Error()}).Error("Offer usecase: getStations failed")
+		return []domain.Metro{}, err
+	}
+
+	return stations, nil
 }
 
 func (u *offerUsecase) PrepareOffersInfo(ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error) {
@@ -306,6 +345,8 @@ func mapOffer(o repository.Offer) domain.Offer {
 		Flat:           o.Flat,
 		Area:           o.Area,
 		CeilingHeight:  o.CeilingHeight,
+		Longitude:      o.Longitude,
+		Latitude:       o.Latitude,
 		CreatedAt:      o.CreatedAt,
 		UpdatedAt:      o.UpdatedAt,
 	}
@@ -340,5 +381,7 @@ func unmapOffer(o domain.Offer) repository.Offer {
 		Flat:           o.Flat,
 		Area:           o.Area,
 		CeilingHeight:  o.CeilingHeight,
+		Longitude:      o.Longitude,
+		Latitude:       o.Latitude,
 	}
 }

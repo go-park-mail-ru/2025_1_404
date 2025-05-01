@@ -4,6 +4,8 @@ app:
   baseImagesPath: "/images/"
   http:
     port: :8001
+  grpc:
+    port: :8099
   cors:
     allowOrigin: "http://localhost:8000"
     allowMethods: "GET, POST, PUT, OPTIONS, DELETE"

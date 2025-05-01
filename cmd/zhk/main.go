@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -14,7 +15,10 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	offerpb "github.com/go-park-mail-ru/2025_1_404/proto/offer"
 	"github.com/gorilla/mux"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -33,14 +37,24 @@ func main() {
 	defer dbpool.Close()
 
 	// Логгер
-	l := logger.NewStub()
+	l, _ := logger.NewZapLogger()
 	//defer l.Close()
 
 	// Хранилище файлов
 	basePath := "./internal/static/upload"
 
+	// Подключаемся к offer grpc
+	conn, err := grpc.NewClient(fmt.Sprint("offer", cfg.App.Grpc.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("не удалось подключиться к offer grpc: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	offerService := offerpb.NewOfferServiceClient(conn)
+
 	zhkRepo := repoZhk.NewZhkRepository(dbpool, l)
-	zhkUC := usecaseZhk.NewZhkUsecase(zhkRepo, l, cfg)
+	zhkUC := usecaseZhk.NewZhkUsecase(zhkRepo, l, cfg, offerService)
 	zhkHandler := deliveryZhk.NewZhkHandler(zhkUC, cfg)
 
 	// Маршруты
