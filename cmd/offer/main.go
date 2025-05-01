@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	"log"
 	"net"
 	"net/http"
@@ -50,6 +51,8 @@ func main() {
 		return
 	}
 
+	yandexRepo := yandex.New(&cfg.Yandex)
+
 	// Подключаемся к auth grpc
 	conn, err := grpc.NewClient(fmt.Sprint("auth", cfg.App.Grpc.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -61,7 +64,7 @@ func main() {
 	authService := authpb.NewAuthServiceClient(conn)
 
 	offerRepo := repoOffer.NewOfferRepository(dbpool, l)
-	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService)
+	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService, yandexRepo)
 	offerHandler := deliveryOffer.NewOfferHandler(offerUC, cfg)
 
 	// Маршруты

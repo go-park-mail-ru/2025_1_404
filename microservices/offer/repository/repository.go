@@ -232,7 +232,7 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 	return offers, nil
 }
 
-func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter) ([]Offer, error) {
+func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter, pUserId *int) ([]Offer, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var (
@@ -284,8 +284,13 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 	if f.OfferTypeID != nil {
 		addFilter("offer_type_id = $%d", *f.OfferTypeID)
 	}
-	if f.SellerID != nil {
-		addFilter("seller_id = $%d", *f.SellerID)
+	if f.OnlyMe != nil && *f.OnlyMe && pUserId != nil {
+		addFilter("seller_id = $%d", *pUserId)
+	} else {
+		addFilter("offer_status_id = $%d", 1)
+		if f.SellerID != nil {
+			addFilter("seller_id = $%d", *f.SellerID)
+		}
 	}
 	if f.NewBuilding != nil {
 		if *f.NewBuilding {
@@ -293,9 +298,6 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 		} else {
 			whereParts = append(whereParts, "complex_id IS NULL")
 		}
-	}
-	if f.OfferStatusID != nil {
-		addFilter("offer_status_id = $%d", *f.OfferStatusID)
 	}
 
 	query := strings.TrimRight(getAllOffersSQL, "\t\n;")
@@ -340,7 +342,7 @@ func (r *offerRepository) UpdateOffer(ctx context.Context, o Offer) error {
 		o.OfferTypeID, o.MetroStationID, o.RentTypeID, o.PurchaseTypeID,
 		o.PropertyTypeID, o.StatusID, o.RenovationID, o.ComplexID,
 		o.Price, o.Description, o.Floor, o.TotalFloors, o.Rooms,
-		o.Address, o.Flat, o.Area, o.CeilingHeight, 
+		o.Address, o.Flat, o.Area, o.CeilingHeight,
 		o.Longitude, o.Latitude, o.ID,
 	)
 

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	"html"
 	"log"
 
@@ -20,12 +21,13 @@ type offerUsecase struct {
 	repo        offer.OfferRepository
 	logger      logger.Logger
 	s3Repo      s3.S3Repo
+	yandexRepo  yandex.YandexRepo
 	cfg         *config.Config
 	authService authpb.AuthServiceClient
 }
 
-func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient) *offerUsecase {
-	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService}
+func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient, yandexRepo yandex.YandexRepo) *offerUsecase {
+	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService, yandexRepo: yandexRepo}
 }
 
 func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error) {
@@ -49,10 +51,10 @@ func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error
 	return offersInfo, nil
 }
 
-func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.OfferFilter) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.OfferFilter, pUserId *int) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
-	rawOffers, err := u.repo.GetOffersByFilter(ctx, filter)
+	rawOffers, err := u.repo.GetOffersByFilter(ctx, filter, pUserId)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: filter offers failed")
 		return nil, err

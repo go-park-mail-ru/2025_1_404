@@ -12,13 +12,14 @@ type Config struct {
 	Minio    MinioConfig    `yaml:"minio"`
 	Redis    RedisConfig    `yaml:"redis"`
 	Gemini   GeminiConfig   `yaml:"gemini"`
+	Yandex   YandexConfig   `yaml:"yandex"`
 }
 
 type AppConfig struct {
 	Auth            AuthConfig `yaml:"auth"`
 	CORS            CORSConfig `yaml:"cors"`
 	Http            HttpConfig `yaml:"http"`
-	Grpc 			GrpcConfig `yaml:"grpc"`
+	Grpc            GrpcConfig `yaml:"grpc"`
 	Host            string     `yaml:"host"`
 	BaseDir         string     `yaml:"basePath"`
 	BaseFrontendDir string     `yaml:"baseFrontendPath"`
@@ -79,6 +80,10 @@ type GeminiConfig struct {
 	Token            string `yaml:"token"`
 	Model            string `yaml:"model"`
 	EstimationPrompt string `yaml:"estimationPrompt"`
+}
+
+type YandexConfig struct {
+	Token string `yaml:"token"`
 }
 
 func NewConfig() (*Config, error) {

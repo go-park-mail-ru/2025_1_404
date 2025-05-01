@@ -73,7 +73,7 @@ func parseOfferFilter(r *http.Request) domain.OfferFilter {
 		OfferTypeID:    getInt("offer_type_id"),
 		NewBuilding:    getBool("new_building"),
 		SellerID:       getInt("seller_id"),
-		OfferStatusID:  getInt("offer_status_id"),
+		OnlyMe:         getBool("me"),
 	}
 }
 
@@ -83,7 +83,7 @@ func hasFilter(f domain.OfferFilter) bool {
 		f.Floor != nil || f.Rooms != nil || f.Address != nil ||
 		f.RenovationID != nil || f.PropertyTypeID != nil ||
 		f.PurchaseTypeID != nil || f.RentTypeID != nil ||
-		f.OfferTypeID != nil || f.NewBuilding != nil || f.SellerID != nil || f.OfferStatusID != nil
+		f.OfferTypeID != nil || f.NewBuilding != nil || f.SellerID != nil || f.OnlyMe != nil
 }
 
 func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +91,8 @@ func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) 
 
 	// если хотя бы один фильтр задан — ищем по фильтру
 	if hasFilter(filter) {
-		offers, err := h.OfferUC.GetOffersByFilter(r.Context(), filter)
+		pUserID, _ := r.Context().Value(utils.UserIDKey).(*int)
+		offers, err := h.OfferUC.GetOffersByFilter(r.Context(), filter, pUserID)
 		if err != nil {
 			utils.SendErrorResponse(w, "Ошибка при фильтрации объявлений", http.StatusInternalServerError, &h.cfg.App.CORS)
 			return
