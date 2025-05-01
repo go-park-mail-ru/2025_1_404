@@ -25,4 +25,5 @@ type OfferUsecase interface {
 	CheckAccessToOffer(ctx context.Context, offerID int, userID int) error
 	GetOffersByZhkId (ctx context.Context, zhkId int) ([]domain.Offer, error)
 	GetStations(ctx context.Context) ([]domain.Metro, error)
+	LikeOffer(ctx context.Context,like domain.LikeRequest) (domain.LikesStat, error)
 }

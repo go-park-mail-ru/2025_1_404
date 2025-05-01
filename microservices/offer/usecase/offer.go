@@ -237,6 +237,64 @@ func (u *offerUsecase) DeleteOfferImage(ctx context.Context, imageID int, userID
 	return nil
 }
 
+func (u *offerUsecase) GetOffersByZhkId(ctx context.Context, zhkId int) ([]domain.Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	offers, err := u.repo.GetOffersByZhkId(ctx, zhkId)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestId": requestID, "err": err.Error(), "zhkId": zhkId}).Error("Offer usecase: getOffersByZhkId failed")
+		return []domain.Offer{}, err
+	}
+
+	return offers, nil
+}
+
+func (u *offerUsecase) GetStations(ctx context.Context) ([]domain.Metro, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	stations, err := u.repo.GetStations(ctx)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestId": requestID, "err": err.Error()}).Error("Offer usecase: getStations failed")
+		return []domain.Metro{}, err
+	}
+
+	return stations, nil
+}
+
+func (u *offerUsecase) LikeOffer(ctx context.Context, like domain.LikeRequest) (domain.LikesStat, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var likeStat domain.LikesStat
+
+	isLiked, err := u.repo.IsOfferLiked(ctx, like)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: isOfferLiked failed")
+		return likeStat, err
+	}
+
+	if isLiked {
+		err = u.repo.DeleteLike(ctx, like)
+		likeStat.IsLiked = false
+	} else {
+		err = u.repo.CreateLike(ctx, like)
+		likeStat.IsLiked = true
+	}
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: toggle like failed")
+		return likeStat, err
+	}
+
+	total, err := u.repo.GetLikeStat(ctx, like)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: getLikeAmount failed")
+		return likeStat, err
+	}
+
+	likeStat.Amount = total
+
+	return likeStat, nil
+}
+
 func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
@@ -272,30 +330,6 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer)
 	}
 
 	return offerInfo, nil
-}
-
-func (u *offerUsecase) GetOffersByZhkId(ctx context.Context, zhkId int) ([]domain.Offer, error) {
-	requestID := ctx.Value(utils.RequestIDKey)
-
-	offers, err := u.repo.GetOffersByZhkId(ctx, zhkId)
-	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{"requestId": requestID, "err": err.Error(), "zhkId": zhkId}).Error("Offer usecase: getOffersByZhkId failed")
-		return []domain.Offer{}, err
-	}
-
-	return offers, nil
-}
-
-func (u *offerUsecase) GetStations(ctx context.Context) ([]domain.Metro, error) {
-	requestID := ctx.Value(utils.RequestIDKey)
-
-	stations, err := u.repo.GetStations(ctx)
-	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{"requestId": requestID, "err": err.Error()}).Error("Offer usecase: getStations failed")
-		return []domain.Metro{}, err
-	}
-
-	return stations, nil
 }
 
 func (u *offerUsecase) PrepareOffersInfo(ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error) {

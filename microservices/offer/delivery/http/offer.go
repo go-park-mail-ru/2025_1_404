@@ -112,7 +112,7 @@ func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) 
 func (h *OfferHandler) GetOfferByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
-
+	
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
 		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
@@ -329,4 +329,28 @@ func (h *OfferHandler) GetStations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONResponse(w, stations, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) LikeOffer (w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	var req domain.LikeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	req.UserId = userID
+
+	likeStat, err := h.OfferUC.LikeOffer(ctx, req)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при лайке объявления", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, likeStat, http.StatusOK, &h.cfg.App.CORS)
 }
