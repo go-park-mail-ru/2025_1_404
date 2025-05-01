@@ -7,8 +7,9 @@ import (
 	"path"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/auth"
+	"gith
 	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/domain"
-	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/repository"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/auth"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
