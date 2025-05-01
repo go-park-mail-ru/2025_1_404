@@ -10,9 +10,10 @@ type OfferInfo struct {
 }
 
 type OfferData struct {
-	Images []OfferImage `json:"offer_images"`
-	Seller OfferSeller  `json:"seller"`
-	Metro  Metro        `json:"metro"`
+	Images    []OfferImage `json:"offer_images"`
+	Seller    OfferSeller  `json:"seller"`
+	Metro     Metro        `json:"metro"`
+	OfferStat OfferStat    `json:"offer_stat"`
 }
 
 type Offer struct {
@@ -75,6 +76,27 @@ type OfferSeller struct {
 	LastName  string    `json:"seller_last_name"`
 	Avatar    string    `json:"avatar"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type OfferStat struct {
+	LikesStat LikesStat `json:"likes_stat"`
+	Views     *int      `json:"views"`
+	// FavoutiteStat *FavoriteStat `json:"favourite_stat"`
+}
+
+type LikesStat struct {
+	IsLiked bool `json:"is_liked"`
+	Amount  int  `json:"amount"`
+}
+
+// type FavoriteStat struct {
+// 	IsFavourited bool `json:"is_favorited"`
+// 	Amount       *int  `json:"amount"`
+// }
+
+type LikeRequest struct {
+	OfferId int `json:"offer_id"`
+	UserId  int `json:"user_id"`
 }
 
 const OfferStatusDraft = 2

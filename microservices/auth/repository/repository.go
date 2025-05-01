@@ -128,7 +128,7 @@ func (r *authRepository) GetUserByID(ctx context.Context, id int64) (domain.User
 		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password, &u.CreatedAt,
 	)
 	log.Println(u.CreatedAt)
-	
+
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getUserByEmailSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL query GetUserByID")
 
 	return u, err

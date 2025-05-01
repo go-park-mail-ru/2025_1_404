@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
-	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/auth"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/csrf"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"

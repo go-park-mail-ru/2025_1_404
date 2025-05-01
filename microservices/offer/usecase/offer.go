@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/repository"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/redis"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -22,10 +24,11 @@ type offerUsecase struct {
 	s3Repo      s3.S3Repo
 	cfg         *config.Config
 	authService authpb.AuthServiceClient
+	redisRepo   redis.RedisRepo
 }
 
-func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient) *offerUsecase {
-	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService}
+func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient, redisRepo redis.RedisRepo) *offerUsecase {
+	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService, redisRepo: redisRepo}
 }
 
 func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error) {
@@ -69,7 +72,7 @@ func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.Offe
 	return offersInfo, nil
 }
 
-func (u *offerUsecase) GetOfferByID(ctx context.Context, id int) (domain.OfferInfo, error) {
+func (u *offerUsecase) GetOfferByID(ctx context.Context, id int, ip string, userID *int) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	offer, err := u.repo.GetOfferByID(ctx, int64(id))
@@ -78,16 +81,52 @@ func (u *offerUsecase) GetOfferByID(ctx context.Context, id int) (domain.OfferIn
 		return domain.OfferInfo{}, err
 	}
 
+	err = u.addView(ctx, id, ip)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "id": id, "err": err.Error()}).Error("Offer usecase: add view to offer failed")
+	}
+
 	offerDTO := mapOffer(offer)
 
 	offerInfo, err := u.PrepareOfferInfo(ctx, offerDTO)
-
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offer data failed")
 		return domain.OfferInfo{}, err
 	}
 
+	if userID == nil || int64(*userID) != offer.SellerID {
+		offerInfo.OfferData.OfferStat.Views = nil
+	}
+
 	return offerInfo, nil
+}
+
+func (u *offerUsecase) addView(ctx context.Context, offerId int, ip string) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	key := fmt.Sprintf("view:%d:%s", offerId, ip)
+
+	_, err := u.redisRepo.Get(ctx, key)
+	if err == nil {
+		return nil
+	}
+
+	if !u.redisRepo.IsNotFound(err) {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID}).Warn("Get view from redis failed")
+		return err
+	}
+
+	if err := u.redisRepo.Set(ctx, key, "1", 10*time.Minute); err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID}).Error("failed to set view in redis")
+		return err
+	}
+
+	if err := u.repo.IncrementView(ctx, offerId); err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID}).Error("failed to increment view")
+		return err
+	}
+
+	return nil
 }
 
 func (u *offerUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([]domain.OfferInfo, error) {
@@ -237,43 +276,6 @@ func (u *offerUsecase) DeleteOfferImage(ctx context.Context, imageID int, userID
 	return nil
 }
 
-func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer) (domain.OfferInfo, error) {
-	requestID := ctx.Value(utils.RequestIDKey)
-
-	offerData, err := u.repo.GetOfferData(ctx, offer)
-	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(), "offer_id": offer.ID}).Error("Offer usecase: get offer data failed")
-		return domain.OfferInfo{}, fmt.Errorf("offer data get failed")
-	}
-
-	seller, err := u.authService.GetUserById(ctx, &authpb.GetUserRequest{Id: int32(offer.SellerID)})
-	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: get seller failed")
-	}
-
-	log.Println(seller.User.CreatedAt)
-
-	offerData.Seller = domain.OfferSeller{
-		FirstName: seller.User.FirstName,
-		LastName:  seller.User.LastName,
-		Avatar:    seller.User.Image,
-		CreatedAt: seller.User.CreatedAt.AsTime(),
-	}
-
-	log.Println(offerData.Seller.CreatedAt)
-
-	for i, img := range offerData.Images {
-		offerData.Images[i].Image = u.cfg.Minio.Path + u.cfg.Minio.OffersBucket + img.Image
-	}
-
-	offerInfo := domain.OfferInfo{
-		Offer:     offer,
-		OfferData: offerData,
-	}
-
-	return offerInfo, nil
-}
-
 func (u *offerUsecase) GetOffersByZhkId(ctx context.Context, zhkId int) ([]domain.Offer, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
@@ -296,6 +298,75 @@ func (u *offerUsecase) GetStations(ctx context.Context) ([]domain.Metro, error) 
 	}
 
 	return stations, nil
+}
+
+func (u *offerUsecase) LikeOffer(ctx context.Context, like domain.LikeRequest) (domain.LikesStat, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var likeStat domain.LikesStat
+
+	isLiked, err := u.repo.IsOfferLiked(ctx, like)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: isOfferLiked failed")
+		return likeStat, err
+	}
+
+	if isLiked {
+		err = u.repo.DeleteLike(ctx, like)
+		likeStat.IsLiked = false
+	} else {
+		err = u.repo.CreateLike(ctx, like)
+		likeStat.IsLiked = true
+	}
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: toggle like failed")
+		return likeStat, err
+	}
+
+	total, err := u.repo.GetLikeStat(ctx, like)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: getLikeAmount failed")
+		return likeStat, err
+	}
+
+	likeStat.Amount = total
+
+	return likeStat, nil
+}
+
+func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer) (domain.OfferInfo, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	offerData, err := u.repo.GetOfferData(ctx, offer)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(), "offer_id": offer.ID}).Error("Offer usecase: get offer data failed")
+		return domain.OfferInfo{}, fmt.Errorf("offer data get failed")
+	}
+
+	seller, err := u.authService.GetUserById(ctx, &authpb.GetUserRequest{Id: int32(offer.SellerID)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: get seller failed")
+	}
+
+	offerData.Seller = domain.OfferSeller{
+		FirstName: seller.User.FirstName,
+		LastName:  seller.User.LastName,
+		Avatar:    seller.User.Image,
+		CreatedAt: seller.User.CreatedAt.AsTime(),
+	}
+
+	log.Println(offerData.Seller.CreatedAt)
+
+	for i, img := range offerData.Images {
+		offerData.Images[i].Image = u.cfg.Minio.Path + u.cfg.Minio.OffersBucket + img.Image
+	}
+
+	offerInfo := domain.OfferInfo{
+		Offer:     offer,
+		OfferData: offerData,
+	}
+
+	return offerInfo, nil
 }
 
 func (u *offerUsecase) PrepareOffersInfo(ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error) {

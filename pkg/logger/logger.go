@@ -46,7 +46,7 @@ func (l *ZapLogger) Debug(msg string) {
 func (l *ZapLogger) WithFields(fields LoggerFields) Logger {
 	newLogger := *l
 	for key, value := range fields {
-		if subMap, ok := value.(LoggerFields); ok{
+		if subMap, ok := value.(LoggerFields); ok {
 			newLogger.fields = append(newLogger.fields, zap.Any(key, subMap))
 		} else {
 			newLogger.fields = append(newLogger.fields, zap.Any(key, value))
@@ -58,4 +58,3 @@ func (l *ZapLogger) WithFields(fields LoggerFields) Logger {
 func (l *ZapLogger) Close() {
 	l.logger.Sync()
 }
-

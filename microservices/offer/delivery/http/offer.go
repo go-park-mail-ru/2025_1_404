@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 
@@ -113,13 +114,17 @@ func (h *OfferHandler) GetOfferByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+
+	userID := r.Context().Value(utils.SoftUserIDKey).(*int)
+
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
 		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
-	offer, err := h.OfferUC.GetOfferByID(r.Context(), id)
+	offer, err := h.OfferUC.GetOfferByID(r.Context(), id, ip, userID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Объявление не найдено", http.StatusNotFound, &h.cfg.App.CORS)
 		return
@@ -254,7 +259,7 @@ func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	offer, err := h.OfferUC.GetOfferByID(r.Context(), offerID)
+	offer, err := h.OfferUC.GetOfferByID(r.Context(), offerID, "", nil)
 	if err != nil || offer.Offer.SellerID != userID {
 		utils.SendErrorResponse(w, "Доступ запрещён", http.StatusForbidden, &h.cfg.App.CORS)
 		return
@@ -329,4 +334,28 @@ func (h *OfferHandler) GetStations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONResponse(w, stations, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) LikeOffer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	var req domain.LikeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	req.UserId = userID
+
+	likeStat, err := h.OfferUC.LikeOffer(r.Context(), req)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при лайке объявления", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, likeStat, http.StatusOK, &h.cfg.App.CORS)
 }
