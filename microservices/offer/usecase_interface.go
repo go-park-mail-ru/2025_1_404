@@ -11,7 +11,7 @@ import (
 
 type OfferUsecase interface {
 	GetOffers(ctx context.Context, userID *int) ([]domain.OfferInfo, error)
-	GetOffersByFilter(ctx context.Context, filter domain.OfferFilter, userID *int) ([]domain.OfferInfo, error)
+	GetOffersByFilter(ctx context.Context, filter domain.OfferFilter, userID *int) (*domain.OfferDetails, error)
 	GetOfferByID(ctx context.Context, id int, ip string, userID *int) (domain.OfferInfo, error)
 	GetOffersBySellerID(ctx context.Context, sellerID int, userID *int) ([]domain.OfferInfo, error)
 	CreateOffer(ctx context.Context, offer domain.Offer) (int, error)

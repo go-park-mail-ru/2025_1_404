@@ -13,7 +13,7 @@ type OfferRepository interface {
 	GetOfferByID(ctx context.Context, id int64) (repository.Offer, error)
 	GetOffersBySellerID(ctx context.Context, sellerID int64) ([]repository.Offer, error)
 	GetAllOffers(ctx context.Context) ([]repository.Offer, error)
-	GetOffersByFilter(ctx context.Context, f domain.OfferFilter, pUserId *int) ([]repository.Offer, error)
+	GetOffersByFilter(ctx context.Context, f domain.OfferFilter, userID *int) (*repository.OfferDetails, error)
 	UpdateOffer(ctx context.Context, offer repository.Offer) error
 	DeleteOffer(ctx context.Context, id int64) error
 	CreateImageAndBindToOffer(ctx context.Context, offerID int, uuid string) (int64, error)

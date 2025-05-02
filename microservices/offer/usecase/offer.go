@@ -55,24 +55,28 @@ func (u *offerUsecase) GetOffers(ctx context.Context, userID *int) ([]domain.Off
 	return offersInfo, nil
 }
 
-func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.OfferFilter, userID *int) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.OfferFilter, userID *int) (*domain.OfferDetails, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
-	rawOffers, err := u.repo.GetOffersByFilter(ctx, filter, userID)
+	rawOfferDetails, err := u.repo.GetOffersByFilter(ctx, filter, userID)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: filter offers failed")
 		return nil, err
 	}
 
-	offersDTO := mapOffers(rawOffers)
+	offersDTO := mapOffers(rawOfferDetails.Offers)
 
 	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO, userID)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offers data failed")
-		return []domain.OfferInfo{}, err
+		return nil, err
+	}
+	offerDetails := &domain.OfferDetails{
+		Pages:  rawOfferDetails.Pages,
+		Offers: offersInfo,
 	}
 
-	return offersInfo, nil
+	return offerDetails, nil
 }
 
 func (u *offerUsecase) GetOfferByID(ctx context.Context, id int, ip string, userID *int) (domain.OfferInfo, error) {

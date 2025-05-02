@@ -12,6 +12,11 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
 
+type OfferDetails struct {
+	Pages  int
+	Offers []Offer
+}
+
 type Offer struct {
 	ID             int64
 	SellerID       int64
@@ -260,7 +265,7 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 	return offers, nil
 }
 
-func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter, userID *int) ([]Offer, error) {
+func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter, userID *int) (*OfferDetails, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var (
@@ -335,8 +340,32 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 		query += " WHERE " + strings.Join(whereParts, " AND ")
 	}
 
-	query += ";"
+	limit := 16
+	page := 1
+	maxPages := 1
+	if f.Page != nil {
+		page = *f.Page
+	}
+	if page < 1 {
+		page = 1
+	}
+	count_rows, err := r.db.Query(ctx, "SELECT CEIL(COUNT(*)::float / $1) FROM kvartirum.Offer WHERE "+strings.Join(whereParts, " AND "), limit)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": query, "params": args, "success": false, "err": err.Error()}).Error("SQL query GetOffersByFilter failed")
+		return nil, err
+	}
+	defer count_rows.Close()
+	if count_rows.Next() {
+		err = count_rows.Scan(&maxPages)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if page > maxPages {
+		page = maxPages
+	}
 
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d;", limit, (page-1)*limit)
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": query, "params": args, "success": false, "err": err.Error()}).Error("SQL query GetOffersByFilter failed")
@@ -359,10 +388,14 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 		}
 		offers = append(offers, o)
 	}
+	offerData := &OfferDetails{
+		Pages:  maxPages,
+		Offers: offers,
+	}
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": query, "params": args, "success": true, "count": len(offers)}).Info("SQL query GetOffersByFilter succeeded")
 
-	return offers, nil
+	return offerData, nil
 }
 
 func (r *offerRepository) UpdateOffer(ctx context.Context, o Offer) error {

@@ -4,6 +4,11 @@ import (
 	"time"
 )
 
+type OfferDetails struct {
+	Pages  int         `json:"pages"`
+	Offers []OfferInfo `json:"offers"`
+}
+
 type OfferInfo struct {
 	Offer     Offer     `json:"offer"`
 	OfferData OfferData `json:"offer_data"`
@@ -58,6 +63,7 @@ type OfferFilter struct {
 	NewBuilding    *bool   `json:"new_building"`
 	SellerID       *int    `json:"seller_id"`
 	OnlyMe         *bool   `json:"me"`
+	Page           *int    `json:"page"`
 }
 
 type Metro struct {

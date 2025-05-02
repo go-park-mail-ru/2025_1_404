@@ -75,6 +75,7 @@ func parseOfferFilter(r *http.Request) domain.OfferFilter {
 		NewBuilding:    getBool("new_building"),
 		SellerID:       getInt("seller_id"),
 		OnlyMe:         getBool("me"),
+		Page:           getInt("page"),
 	}
 }
 
@@ -84,7 +85,7 @@ func hasFilter(f domain.OfferFilter) bool {
 		f.Floor != nil || f.Rooms != nil || f.Address != nil ||
 		f.RenovationID != nil || f.PropertyTypeID != nil ||
 		f.PurchaseTypeID != nil || f.RentTypeID != nil ||
-		f.OfferTypeID != nil || f.NewBuilding != nil || f.SellerID != nil || f.OnlyMe != nil
+		f.OfferTypeID != nil || f.NewBuilding != nil || f.SellerID != nil || f.OnlyMe != nil || f.Page != nil
 }
 
 func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) {
