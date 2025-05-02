@@ -3,14 +3,15 @@ package usecase
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"time"
+
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/ai/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/redis"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"google.golang.org/genai"
-	"os"
-	"time"
 )
 
 type aiUsecase struct {

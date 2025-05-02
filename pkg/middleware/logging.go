@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
-	"github.com/google/uuid"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
+	"github.com/google/uuid"
 )
 
-type responseWriter struct{
+type responseWriter struct {
 	http.ResponseWriter
 	status int
 }
@@ -20,10 +20,10 @@ func wrapResponseWriter(w http.ResponseWriter) *responseWriter {
 	return &responseWriter{ResponseWriter: w, status: http.StatusOK}
 }
 
-func (w *responseWriter) WriteHeader(status int){
+func (w *responseWriter) WriteHeader(status int) {
 	w.status = status
 	w.ResponseWriter.WriteHeader(status)
-} 
+}
 
 func AccessLog(log logger.Logger, nextHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -38,8 +38,8 @@ func AccessLog(log logger.Logger, nextHandler http.Handler) http.Handler {
 				w.WriteHeader(http.StatusInternalServerError)
 				log.WithFields(logger.LoggerFields{
 					"requestID": requestID,
-					"err": err,
-					"trace":debug.Stack(),
+					"err":       err,
+					"trace":     debug.Stack(),
 				}).Error("recovered from panic")
 			}
 		}()
@@ -48,10 +48,10 @@ func AccessLog(log logger.Logger, nextHandler http.Handler) http.Handler {
 
 		log.WithFields(logger.LoggerFields{
 			"requestID": requestID,
-			"status": wrappedRW.status,
-			"path": r.URL.Path,
-			"method": r.Method,
-			"duration": time.Since(start),
+			"status":    wrappedRW.status,
+			"path":      r.URL.Path,
+			"method":    r.Method,
+			"duration":  time.Since(start),
 		}).Info("request completed")
 	})
 }

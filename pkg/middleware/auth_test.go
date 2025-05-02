@@ -13,7 +13,7 @@ import (
 )
 
 func userIDHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusTeapot) 
+	w.WriteHeader(http.StatusTeapot)
 	id := r.Context().Value(utils.UserIDKey).(int)
 	w.Header().Set("id", strconv.Itoa(id))
 }
@@ -27,7 +27,7 @@ func TestAuthMiddleware_OK(t *testing.T) {
 	l, _ := logger.NewZapLogger()
 
 	handler := AuthHandler(l, http.HandlerFunc(userIDHandler))
-	handler.ServeHTTP(rr, req)	
+	handler.ServeHTTP(rr, req)
 
 	expectedID := "1"
 	actualID := rr.Header().Get("id")
@@ -87,4 +87,3 @@ func TestAuthMiddleware_Fail_IncorrectToken(t *testing.T) {
 		t.Errorf(`Ожидалось сообщение "%s", получено ""%s`, message, response["error"])
 	}
 }
-

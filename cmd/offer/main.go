@@ -3,17 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	"log"
 	"net"
 	"net/http"
-
+	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	service "github.com/go-park-mail-ru/2025_1_404/microservices/offer/delivery/grpc"
 	deliveryOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/delivery/http"
 	repoOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/repository"
 	usecaseOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/usecase"
 	database "github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/redis"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/middleware"
@@ -53,6 +53,12 @@ func main() {
 
 	yandexRepo := yandex.New(&cfg.Yandex)
 
+	// Инициализация подключения к Redis
+	redisRepo, err := redis.New(&cfg.Redis, l)
+	if err != nil {
+		log.Fatalf("не удалось подключиться к Redis: %v", err)
+	}
+
 	// Подключаемся к auth grpc
 	conn, err := grpc.NewClient(fmt.Sprint("auth", cfg.App.Grpc.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -64,7 +70,7 @@ func main() {
 	authService := authpb.NewAuthServiceClient(conn)
 
 	offerRepo := repoOffer.NewOfferRepository(dbpool, l)
-	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService, yandexRepo)
+	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService, redisRepo, yandexRepo)
 	offerHandler := deliveryOffer.NewOfferHandler(offerUC, cfg)
 
 	// Маршруты
@@ -74,9 +80,11 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(utils.NotFoundHandler)
 
 	// Объявления
-	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).
+	r.Handle("/api/v1/offers",
+		middleware.SoftAuthHandler(l, cfg, http.HandlerFunc(offerHandler.GetOffersHandler))).
 		Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/offers/{id:[0-9]+}", offerHandler.GetOfferByID).
+	r.Handle("/api/v1/offers/{id:[0-9]+}",
+		middleware.SoftAuthHandler(l, cfg, http.HandlerFunc(offerHandler.GetOfferByID))).
 		Methods(http.MethodGet)
 	r.Handle("/api/v1/offers",
 		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.CreateOffer)))).
@@ -98,6 +106,9 @@ func main() {
 		Methods(http.MethodDelete)
 	r.HandleFunc("/api/v1/offers/stations", offerHandler.GetStations).
 		Methods(http.MethodGet)
+	r.Handle("/api/v1/offers/like",
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.LikeOffer)))).
+		Methods(http.MethodPost)
 
 	// AccessLog middleware
 	logMux := middleware.AccessLog(l, r)

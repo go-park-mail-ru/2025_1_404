@@ -43,3 +43,7 @@ func (repo *redisRepo) Get(ctx context.Context, key string) (string, error) {
 	}
 	return value, nil
 }
+
+func (repo *redisRepo) IsNotFound(err error) bool {
+	return err == redis.Nil
+}

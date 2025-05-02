@@ -124,6 +124,34 @@ const (
 		FROM kvartirum.MetroStation ms
 		JOIN kvartirum.MetroLine ml ON ms.metro_line_id = ml.id;
 	`
+	isOfferLiked = `
+		SELECT 
+		EXISTS (SELECT 1 FROM kvartirum.Likes WHERE user_id = $1 AND offer_id = $2);
+	`
+
+	createLike = `
+		INSERT INTO kvartirum.Likes (user_id, offer_id) VALUES ($1, $2);
+	`
+
+	deleteLike = `
+		DELETE FROM kvartirum.Likes WHERE user_id = $1 AND offer_id = $2;
+	`
+
+	deleteAllLikes = `
+		Delete FROM kvartirum.Likes WHERE offer_id = $1;
+	`
+
+	getLikeStat = `
+		SELECT COUNT(*) FROM kvartirum.Likes WHERE offer_id = $1
+	`
+
+	addView = `
+		INSERT INTO kvartirum.Views (offer_id)  VALUES ($1);
+	`
+
+	countView = `
+		SELECT COUNT (*) FROM kvartirum.Views WHERE offer_id = $1;
+	`
 )
 
 func (r *offerRepository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
@@ -232,7 +260,7 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 	return offers, nil
 }
 
-func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter, pUserId *int) ([]Offer, error) {
+func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter, userID *int) ([]Offer, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var (
@@ -284,8 +312,8 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 	if f.OfferTypeID != nil {
 		addFilter("offer_type_id = $%d", *f.OfferTypeID)
 	}
-	if f.OnlyMe != nil && *f.OnlyMe && pUserId != nil {
-		addFilter("seller_id = $%d", *pUserId)
+	if f.OnlyMe != nil && *f.OnlyMe && userID != nil {
+		addFilter("seller_id = $%d", *userID)
 	} else {
 		addFilter("offer_status_id = $%d", 1)
 		if f.SellerID != nil {
@@ -415,7 +443,7 @@ func (r *offerRepository) UpdateOfferStatus(ctx context.Context, offerID int, st
 	return err
 }
 
-func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer) (domain.OfferData, error) {
+func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferData, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var offerData domain.OfferData
@@ -450,6 +478,15 @@ func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer) 
 	`, offer.MetroStationID).Scan(&offerData.Metro.Station, &offerData.Metro.Id, &offerData.Metro.Color)
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferStation")
+
+	if userID != nil {
+		err = r.db.QueryRow(ctx, isOfferLiked, userID, offer.ID).Scan(&offerData.OfferStat.LikesStat.IsLiked)
+	}
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsLikedOffer")
+	err = r.db.QueryRow(ctx, getLikeStat, offer.ID).Scan(&offerData.OfferStat.LikesStat.Amount)
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query GetLikeStat")
+	err = r.db.QueryRow(ctx, countView, offer.ID).Scan(&offerData.OfferStat.Views)
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query CountViews")
 
 	return offerData, nil
 }
@@ -532,7 +569,59 @@ func (r *offerRepository) GetStations(ctx context.Context) ([]domain.Metro, erro
 		metros = append(metros, metro)
 	}
 
-	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL GetStations")
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query GetStations")
 
 	return metros, nil
+}
+
+func (r *offerRepository) IsOfferLiked(ctx context.Context, like domain.LikeRequest) (bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var isLiked bool
+	err := r.db.QueryRow(ctx, isOfferLiked, like.UserId, like.OfferId).Scan(&isLiked)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query IsLiked ")
+
+	return isLiked, err
+}
+
+func (r *offerRepository) CreateLike(ctx context.Context, like domain.LikeRequest) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, createLike, like.UserId, like.OfferId)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query CreateLike ")
+
+	return err
+}
+
+func (r *offerRepository) DeleteLike(ctx context.Context, like domain.LikeRequest) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, deleteLike, like.UserId, like.OfferId)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query DeleteLike ")
+
+	return err
+}
+
+func (r *offerRepository) GetLikeStat(ctx context.Context, like domain.LikeRequest) (int, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var likesStat int
+	err := r.db.QueryRow(ctx, getLikeStat, &like.OfferId).Scan(&likesStat)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query GetLikeStat ")
+
+	return likesStat, err
+}
+
+func (r *offerRepository) IncrementView(ctx context.Context, id int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, addView, id)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query  AddViewToOffer")
+
+	return err
 }

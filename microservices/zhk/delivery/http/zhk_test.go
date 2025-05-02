@@ -20,17 +20,17 @@ func TestGetZhkInfoHandler(t *testing.T) {
 	mockUS := mocks.NewMockzhkUsecase(ctrl)
 
 	zhkHandlers := NewZhkHandler(mockUS)
-	
+
 	t.Run("GetZhkInfo ok", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/zhk/{id}", nil)
-		vars := map[string]string {
+		vars := map[string]string{
 			"id": "1",
 		}
 		request = mux.SetURLVars(request, vars)
 		response := httptest.NewRecorder()
 
 		zhk := domain.Zhk{ID: 1}
-		mockUS.EXPECT().GetZhkInfo(gomock.Any(), zhk.ID).Return(domain.ZhkInfo{ID:1}, nil)
+		mockUS.EXPECT().GetZhkInfo(gomock.Any(), zhk.ID).Return(domain.ZhkInfo{ID: 1}, nil)
 
 		zhkHandlers.GetZhkInfo(response, request)
 
@@ -48,20 +48,20 @@ func TestGetZhkInfoHandler(t *testing.T) {
 
 	t.Run("invalid zhk id", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/zhk/{id}", nil)
-		vars := map[string]string {
+		vars := map[string]string{
 			"id": "string",
 		}
 		request = mux.SetURLVars(request, vars)
 		response := httptest.NewRecorder()
 
 		zhkHandlers.GetZhkInfo(response, request)
-		
+
 		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
 	})
 
 	t.Run("zhk not found", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/zhk/{id}", nil)
-		vars := map[string]string {
+		vars := map[string]string{
 			"id": "1",
 		}
 		request = mux.SetURLVars(request, vars)
@@ -76,7 +76,7 @@ func TestGetZhkInfoHandler(t *testing.T) {
 
 	t.Run("usecase GetZhkInfo failed", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/zhk/{id}", nil)
-		vars := map[string]string {
+		vars := map[string]string{
 			"id": "1",
 		}
 		request = mux.SetURLVars(request, vars)
@@ -91,7 +91,7 @@ func TestGetZhkInfoHandler(t *testing.T) {
 	})
 }
 
-func TestGetAllZhkHandler (t *testing.T) {
+func TestGetAllZhkHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

@@ -127,24 +127,24 @@ func TestGetOfferByID(t *testing.T) {
 	})
 
 	t.Run("offer not found", func(t *testing.T) {
-        mockUC.EXPECT().GetOfferByID(gomock.Any(), 999).Return(domain.OfferInfo{}, fmt.Errorf("offer not found"))
+		mockUC.EXPECT().GetOfferByID(gomock.Any(), 999).Return(domain.OfferInfo{}, fmt.Errorf("offer not found"))
 
-        request := httptest.NewRequest("GET", "/offers/999", nil)
+		request := httptest.NewRequest("GET", "/offers/999", nil)
 		vars := map[string]string{
 			"id": "999",
 		}
 		request = mux.SetURLVars(request, vars)
-        response := httptest.NewRecorder()
+		response := httptest.NewRecorder()
 
-        offerHandlers.GetOfferByID(response, request)
+		offerHandlers.GetOfferByID(response, request)
 
-        assert.Equal(t, http.StatusNotFound, response.Result().StatusCode)
-        
-        var errResp map[string]string
-        err := json.NewDecoder(response.Body).Decode(&errResp)
-        assert.NoError(t, err)
-        assert.Equal(t, "Объявление не найдено", errResp["error"])
-    })
+		assert.Equal(t, http.StatusNotFound, response.Result().StatusCode)
+
+		var errResp map[string]string
+		err := json.NewDecoder(response.Body).Decode(&errResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "Объявление не найдено", errResp["error"])
+	})
 
 	t.Run("Invalid ID", func(t *testing.T) {
 		request := httptest.NewRequest("GET", "/offers/-1", nil)
@@ -159,9 +159,9 @@ func TestGetOfferByID(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, response.Code)
 
 		var errResp map[string]string
-        err := json.NewDecoder(response.Body).Decode(&errResp)
-        assert.NoError(t, err)
-        assert.Equal(t, "Некорректный ID", errResp["error"])
+		err := json.NewDecoder(response.Body).Decode(&errResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "Некорректный ID", errResp["error"])
 	})
 }
 
@@ -174,7 +174,7 @@ func TestCreateOffer(t *testing.T) {
 	offerHandlers := NewOfferHandler(mockUS)
 
 	t.Run("CreateOffer ok", func(t *testing.T) {
-		req := domain.Offer {
+		req := domain.Offer{
 			ID: 1,
 		}
 
@@ -215,7 +215,7 @@ func TestCreateOffer(t *testing.T) {
 	})
 
 	t.Run("CreateOffer usecase failed", func(t *testing.T) {
-		req := domain.Offer {
+		req := domain.Offer{
 			ID: 1,
 		}
 
@@ -246,10 +246,10 @@ func TestUpdateOffer(t *testing.T) {
 	offerHandlers := NewOfferHandler(mockUS)
 
 	t.Run("UpdateOffer ok", func(t *testing.T) {
-		req := domain.Offer {
-			ID: 1,
+		req := domain.Offer{
+			ID:       1,
 			SellerID: 1,
-			Price: 100,
+			Price:    100,
 		}
 
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
@@ -280,9 +280,9 @@ func TestUpdateOffer(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
 
 		var errResp map[string]string
-        err := json.NewDecoder(response.Body).Decode(&errResp)
-        assert.NoError(t, err)
-        assert.Equal(t, "UserID not found", errResp["error"])
+		err := json.NewDecoder(response.Body).Decode(&errResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "UserID not found", errResp["error"])
 	})
 
 	t.Run("incorrect offer id", func(t *testing.T) {
@@ -300,9 +300,9 @@ func TestUpdateOffer(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
 
 		var errResp map[string]string
-        err := json.NewDecoder(response.Body).Decode(&errResp)
-        assert.NoError(t, err)
-        assert.Equal(t, "Некорректный ID", errResp["error"])
+		err := json.NewDecoder(response.Body).Decode(&errResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "Некорректный ID", errResp["error"])
 	})
 
 	t.Run("offer not found", func(t *testing.T) {
@@ -323,9 +323,9 @@ func TestUpdateOffer(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)
 
 		var errResp map[string]string
-        err := json.NewDecoder(response.Body).Decode(&errResp)
-        assert.NoError(t, err)
-        assert.Equal(t, "объявление не найдено", errResp["error"])
+		err := json.NewDecoder(response.Body).Decode(&errResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "объявление не найдено", errResp["error"])
 	})
 
 	t.Run("alien userID", func(t *testing.T) {
@@ -345,17 +345,17 @@ func TestUpdateOffer(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)
 
 		var errResp map[string]string
-        err := json.NewDecoder(response.Body).Decode(&errResp)
-        assert.NoError(t, err)
-        assert.Equal(t, "нет доступа к этому объявлению", errResp["error"])
-		
+		err := json.NewDecoder(response.Body).Decode(&errResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "нет доступа к этому объявлению", errResp["error"])
+
 	})
 
 	t.Run("UpdateOffer usecase failed", func(t *testing.T) {
-		req := domain.Offer {
-			ID: 1,
+		req := domain.Offer{
+			ID:       1,
 			SellerID: 1,
-			Price: 100,
+			Price:    100,
 		}
 
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
@@ -377,11 +377,11 @@ func TestUpdateOffer(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, response.Result().StatusCode)
 
 		var errResp map[string]string
-        err := json.NewDecoder(response.Body).Decode(&errResp)
-        assert.NoError(t, err)
-        assert.Equal(t, "Ошибка при обновлении", errResp["error"])
+		err := json.NewDecoder(response.Body).Decode(&errResp)
+		assert.NoError(t, err)
+		assert.Equal(t, "Ошибка при обновлении", errResp["error"])
 	})
-	
+
 }
 
 func TestDeleteOffer(t *testing.T) {
@@ -394,7 +394,7 @@ func TestDeleteOffer(t *testing.T) {
 
 	t.Run("DeleteOffer ok", func(t *testing.T) {
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
-	
+
 		request := httptest.NewRequest(http.MethodPost, "/offers/1", nil).WithContext(ctx)
 		vars := map[string]string{
 			"id": "1",
@@ -403,7 +403,7 @@ func TestDeleteOffer(t *testing.T) {
 		response := httptest.NewRecorder()
 
 		mockUS.EXPECT().CheckAccessToOffer(gomock.Any(), 1, 1).Return(nil)
-		mockUS.EXPECT().DeleteOffer(gomock.Any(),1).Return(nil)
+		mockUS.EXPECT().DeleteOffer(gomock.Any(), 1).Return(nil)
 
 		offerHandlers.DeleteOffer(response, request)
 
@@ -431,7 +431,7 @@ func TestDeleteOffer(t *testing.T) {
 
 	t.Run("Offer not found", func(t *testing.T) {
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
-	
+
 		request := httptest.NewRequest(http.MethodPost, "/offers/1", nil).WithContext(ctx)
 		vars := map[string]string{
 			"id": "1",
@@ -448,7 +448,7 @@ func TestDeleteOffer(t *testing.T) {
 
 	t.Run("DeleteOffer usecase failed", func(t *testing.T) {
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
-	
+
 		request := httptest.NewRequest(http.MethodPost, "/offers/1", nil).WithContext(ctx)
 		vars := map[string]string{
 			"id": "1",
@@ -457,7 +457,7 @@ func TestDeleteOffer(t *testing.T) {
 		response := httptest.NewRecorder()
 
 		mockUS.EXPECT().CheckAccessToOffer(gomock.Any(), 1, 1).Return(nil)
-		mockUS.EXPECT().DeleteOffer(gomock.Any(),1).Return(fmt.Errorf("DeleteOffer usecase failed"))
+		mockUS.EXPECT().DeleteOffer(gomock.Any(), 1).Return(fmt.Errorf("DeleteOffer usecase failed"))
 
 		offerHandlers.DeleteOffer(response, request)
 
@@ -466,60 +466,60 @@ func TestDeleteOffer(t *testing.T) {
 }
 
 func TestDeleteOfferImage(t *testing.T) {
-    ctrl := gomock.NewController(t)
-    defer ctrl.Finish()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-    mockUS := mocks.NewMockofferUsecase(ctrl)
-    offerHandlers := NewOfferHandler(mockUS)
+	mockUS := mocks.NewMockofferUsecase(ctrl)
+	offerHandlers := NewOfferHandler(mockUS)
 
-    t.Run("DeleteOfferImage ok", func(t *testing.T) {
-        ctx := context.WithValue(context.Background(), utils.UserIDKey, 123)
-        request := httptest.NewRequest(http.MethodDelete, "/offers/images/456", nil).WithContext(ctx)
-        request = mux.SetURLVars(request, map[string]string{"id": "456"})
-        response := httptest.NewRecorder()
+	t.Run("DeleteOfferImage ok", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 123)
+		request := httptest.NewRequest(http.MethodDelete, "/offers/images/456", nil).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "456"})
+		response := httptest.NewRecorder()
 
-        mockUS.EXPECT().DeleteOfferImage(gomock.Any(), 456, 123).Return(nil)
+		mockUS.EXPECT().DeleteOfferImage(gomock.Any(), 456, 123).Return(nil)
 
-        offerHandlers.DeleteOfferImage(response, request)
+		offerHandlers.DeleteOfferImage(response, request)
 
-        assert.Equal(t, http.StatusOK, response.Result().StatusCode)
-        
-        var responseBody map[string]string
-        err := json.NewDecoder(response.Body).Decode(&responseBody)
-        assert.NoError(t, err)
-        assert.Equal(t, "Изображение удалено", responseBody["message"])
-    })
+		assert.Equal(t, http.StatusOK, response.Result().StatusCode)
 
-    t.Run("UserID not found in context", func(t *testing.T) {
-        request := httptest.NewRequest(http.MethodDelete, "/offers/images/456", nil)
-        response := httptest.NewRecorder()
+		var responseBody map[string]string
+		err := json.NewDecoder(response.Body).Decode(&responseBody)
+		assert.NoError(t, err)
+		assert.Equal(t, "Изображение удалено", responseBody["message"])
+	})
 
-        offerHandlers.DeleteOfferImage(response, request)
+	t.Run("UserID not found in context", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodDelete, "/offers/images/456", nil)
+		response := httptest.NewRecorder()
 
-        assert.Equal(t, http.StatusUnauthorized, response.Result().StatusCode)
-    })
+		offerHandlers.DeleteOfferImage(response, request)
 
-    t.Run("Invalid image ID in URL", func(t *testing.T) {
-        ctx := context.WithValue(context.Background(), utils.UserIDKey, 123)
-        request := httptest.NewRequest(http.MethodDelete, "/offers/images/invalid", nil).WithContext(ctx)
-        request = mux.SetURLVars(request, map[string]string{"id": "invalid"})
-        response := httptest.NewRecorder()
+		assert.Equal(t, http.StatusUnauthorized, response.Result().StatusCode)
+	})
 
-        offerHandlers.DeleteOfferImage(response, request)
+	t.Run("Invalid image ID in URL", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 123)
+		request := httptest.NewRequest(http.MethodDelete, "/offers/images/invalid", nil).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "invalid"})
+		response := httptest.NewRecorder()
 
-        assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
-    })
+		offerHandlers.DeleteOfferImage(response, request)
 
-    t.Run("Usecase returns error", func(t *testing.T) {
-        ctx := context.WithValue(context.Background(), utils.UserIDKey, 123)
-        request := httptest.NewRequest(http.MethodDelete, "/offers/images/456", nil).WithContext(ctx)
-        request = mux.SetURLVars(request, map[string]string{"id": "456"})
-        response := httptest.NewRecorder()
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
 
-        mockUS.EXPECT().DeleteOfferImage(gomock.Any(), 456, 123).Return(fmt.Errorf("image not found"))
+	t.Run("Usecase returns error", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 123)
+		request := httptest.NewRequest(http.MethodDelete, "/offers/images/456", nil).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "456"})
+		response := httptest.NewRecorder()
 
-        offerHandlers.DeleteOfferImage(response, request)
+		mockUS.EXPECT().DeleteOfferImage(gomock.Any(), 456, 123).Return(fmt.Errorf("image not found"))
 
-        assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
-    })
+		offerHandlers.DeleteOfferImage(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
 }
