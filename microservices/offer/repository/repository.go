@@ -441,7 +441,7 @@ func (r *offerRepository) UpdateOfferStatus(ctx context.Context, offerID int, st
 	return err
 }
 
-func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer) (domain.OfferData, error) {
+func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferData, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var offerData domain.OfferData
@@ -477,7 +477,9 @@ func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer) 
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferStation")
 
-	err = r.db.QueryRow(ctx, isOfferLiked, offer.SellerID, offer.ID).Scan(&offerData.OfferStat.LikesStat.IsLiked)
+	if userID != nil {
+		err = r.db.QueryRow(ctx, isOfferLiked, userID, offer.ID).Scan(&offerData.OfferStat.LikesStat.IsLiked)
+	}
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsLikedOffer")
 	err = r.db.QueryRow(ctx, getLikeStat, offer.ID).Scan(&offerData.OfferStat.LikesStat.Amount)
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query GetLikeStat")

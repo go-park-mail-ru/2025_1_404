@@ -78,7 +78,8 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(utils.NotFoundHandler)
 
 	// Объявления
-	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).
+	r.Handle("/api/v1/offers",
+		middleware.SoftAuthHandler(l, cfg, http.HandlerFunc(offerHandler.GetOffersHandler))).
 		Methods(http.MethodGet)
 	r.Handle("/api/v1/offers/{id:[0-9]+}",
 		middleware.SoftAuthHandler(l, cfg, http.HandlerFunc(offerHandler.GetOfferByID))).

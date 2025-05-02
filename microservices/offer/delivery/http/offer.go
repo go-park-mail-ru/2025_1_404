@@ -88,11 +88,12 @@ func hasFilter(f domain.OfferFilter) bool {
 }
 
 func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) {
+	userID, _ := r.Context().Value(utils.UserIDKey).(*int)
 	filter := parseOfferFilter(r)
 
 	// если хотя бы один фильтр задан — ищем по фильтру
 	if hasFilter(filter) {
-		offers, err := h.OfferUC.GetOffersByFilter(r.Context(), filter)
+		offers, err := h.OfferUC.GetOffersByFilter(r.Context(), filter, userID)
 		if err != nil {
 			utils.SendErrorResponse(w, "Ошибка при фильтрации объявлений", http.StatusInternalServerError, &h.cfg.App.CORS)
 			return
@@ -102,7 +103,7 @@ func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// иначе — возвращаем все
-	offers, err := h.OfferUC.GetOffers(r.Context())
+	offers, err := h.OfferUC.GetOffers(r.Context(), userID)
 	if err != nil {
 		utils.SendErrorResponse(w, "Ошибка при получении объявлений", http.StatusInternalServerError, &h.cfg.App.CORS)
 		return
