@@ -312,14 +312,15 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 	if f.OfferTypeID != nil {
 		addFilter("offer_type_id = $%d", *f.OfferTypeID)
 	}
+
 	if f.OnlyMe != nil && *f.OnlyMe && userID != nil {
 		addFilter("seller_id = $%d", *userID)
 	} else {
-		addFilter("offer_status_id = $%d", 1)
 		if f.SellerID != nil {
 			addFilter("seller_id = $%d", *f.SellerID)
 		}
 	}
+	addFilter("offer_status_id = $%d", 1)
 	if f.NewBuilding != nil {
 		if *f.NewBuilding {
 			whereParts = append(whereParts, "complex_id IS NOT NULL")

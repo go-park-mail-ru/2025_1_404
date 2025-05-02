@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"strconv"
 	"time"
 
-	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/repository"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/redis"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
@@ -164,10 +165,17 @@ func (u *offerUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int
 		offer.Description = &escaped
 	}
 
-	if offer.Address != nil {
-		escaped := html.EscapeString(*offer.Address)
-		offer.Address = &escaped
+	if offer.Address == nil {
+		return 0, fmt.Errorf("не указан адрес")
 	}
+	*offer.Address = html.EscapeString(*offer.Address)
+	coords, err := u.yandexRepo.GetCoordinatesOfAddress(*offer.Address)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get coordinates failed")
+		return 0, fmt.Errorf("не удалось получить координаты по адресу")
+	}
+	offer.Longitude = strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
+	offer.Latitude = strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
 
 	offer.StatusID = domain.OfferStatusDraft
 
@@ -195,9 +203,18 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 		offer.Description = &escaped
 	}
 
-	if offer.Address != nil {
-		escaped := html.EscapeString(*offer.Address)
-		offer.Address = &escaped
+	if offer.Address == nil {
+		return fmt.Errorf("не указан адрес")
+	}
+	*offer.Address = html.EscapeString(*offer.Address)
+	if existing.Address != nil && *existing.Address != *offer.Address {
+		coords, err := u.yandexRepo.GetCoordinatesOfAddress(*offer.Address)
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get coordinates failed")
+			return fmt.Errorf("не удалось получить координаты по адресу")
+		}
+		offer.Longitude = strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
+		offer.Latitude = strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
 	}
 
 	// Оставляем прежний статус

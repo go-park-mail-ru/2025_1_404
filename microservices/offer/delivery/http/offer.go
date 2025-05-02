@@ -88,7 +88,7 @@ func hasFilter(f domain.OfferFilter) bool {
 }
 
 func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) {
-	userID, _ := r.Context().Value(utils.UserIDKey).(*int)
+	userID, _ := r.Context().Value(utils.SoftUserIDKey).(*int)
 	filter := parseOfferFilter(r)
 
 	// если хотя бы один фильтр задан — ищем по фильтру
