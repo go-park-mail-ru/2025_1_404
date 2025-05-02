@@ -6,7 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
-
+	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	service "github.com/go-park-mail-ru/2025_1_404/microservices/offer/delivery/grpc"
 	deliveryOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/delivery/http"
@@ -51,6 +51,8 @@ func main() {
 		return
 	}
 
+	yandexRepo := yandex.New(&cfg.Yandex)
+
 	// Инициализация подключения к Redis
 	redisRepo, err := redis.New(&cfg.Redis, l)
 	if err != nil {
@@ -68,7 +70,7 @@ func main() {
 	authService := authpb.NewAuthServiceClient(conn)
 
 	offerRepo := repoOffer.NewOfferRepository(dbpool, l)
-	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService, redisRepo)
+	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService, redisRepo, yandexRepo)
 	offerHandler := deliveryOffer.NewOfferHandler(offerUC, cfg)
 
 	// Маршруты
@@ -78,7 +80,8 @@ func main() {
 	r.NotFoundHandler = http.HandlerFunc(utils.NotFoundHandler)
 
 	// Объявления
-	r.HandleFunc("/api/v1/offers", offerHandler.GetOffersHandler).
+	r.Handle("/api/v1/offers",
+		middleware.SoftAuthHandler(l, cfg, http.HandlerFunc(offerHandler.GetOffersHandler))).
 		Methods(http.MethodGet)
 	r.Handle("/api/v1/offers/{id:[0-9]+}",
 		middleware.SoftAuthHandler(l, cfg, http.HandlerFunc(offerHandler.GetOfferByID))).

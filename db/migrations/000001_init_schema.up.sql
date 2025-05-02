@@ -1,4 +1,4 @@
-CREATE SCHEMA kvartirum;
+CREATE SCHEMA IF NOT EXISTS kvartirum;
 
 -- Указываем схему
 SET SEARCH_PATH = kvartirum;

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/repository"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/redis"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
@@ -22,16 +24,17 @@ type offerUsecase struct {
 	repo        offer.OfferRepository
 	logger      logger.Logger
 	s3Repo      s3.S3Repo
+	yandexRepo  yandex.YandexRepo
 	cfg         *config.Config
 	authService authpb.AuthServiceClient
 	redisRepo   redis.RedisRepo
 }
 
-func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient, redisRepo redis.RedisRepo) *offerUsecase {
-	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService, redisRepo: redisRepo}
+func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient, redisRepo redis.RedisRepo, yandexRepo yandex.YandexRepo) *offerUsecase {
+	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService, redisRepo: redisRepo, yandexRepo: yandexRepo}
 }
 
-func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) GetOffers(ctx context.Context, userID *int) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	offers, err := u.repo.GetAllOffers(ctx)
@@ -42,7 +45,7 @@ func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error
 
 	offersDTO := mapOffers(offers)
 
-	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO, userID)
 
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offers data failed")
@@ -52,10 +55,10 @@ func (u *offerUsecase) GetOffers(ctx context.Context) ([]domain.OfferInfo, error
 	return offersInfo, nil
 }
 
-func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.OfferFilter) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.OfferFilter, userID *int) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
-	rawOffers, err := u.repo.GetOffersByFilter(ctx, filter)
+	rawOffers, err := u.repo.GetOffersByFilter(ctx, filter, userID)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: filter offers failed")
 		return nil, err
@@ -63,7 +66,7 @@ func (u *offerUsecase) GetOffersByFilter(ctx context.Context, filter domain.Offe
 
 	offersDTO := mapOffers(rawOffers)
 
-	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO, userID)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offers data failed")
 		return []domain.OfferInfo{}, err
@@ -88,7 +91,7 @@ func (u *offerUsecase) GetOfferByID(ctx context.Context, id int, ip string, user
 
 	offerDTO := mapOffer(offer)
 
-	offerInfo, err := u.PrepareOfferInfo(ctx, offerDTO)
+	offerInfo, err := u.PrepareOfferInfo(ctx, offerDTO, userID)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offer data failed")
 		return domain.OfferInfo{}, err
@@ -107,7 +110,7 @@ func (u *offerUsecase) addView(ctx context.Context, offerId int, ip string) erro
 	if ip == "" {
 		return nil
 	}
-	
+
 	key := fmt.Sprintf("view:%d:%s", offerId, ip)
 
 	_, err := u.redisRepo.Get(ctx, key)
@@ -133,7 +136,7 @@ func (u *offerUsecase) addView(ctx context.Context, offerId int, ip string) erro
 	return nil
 }
 
-func (u *offerUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) GetOffersBySellerID(ctx context.Context, sellerID int, userID *int) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	offers, err := u.repo.GetOffersBySellerID(ctx, int64(sellerID))
@@ -144,7 +147,7 @@ func (u *offerUsecase) GetOffersBySellerID(ctx context.Context, sellerID int) ([
 
 	offersDTO := mapOffers(offers)
 
-	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO)
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO, userID)
 
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offers data failed")
@@ -162,10 +165,17 @@ func (u *offerUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int
 		offer.Description = &escaped
 	}
 
-	if offer.Address != nil {
-		escaped := html.EscapeString(*offer.Address)
-		offer.Address = &escaped
+	if offer.Address == nil {
+		return 0, fmt.Errorf("не указан адрес")
 	}
+	*offer.Address = html.EscapeString(*offer.Address)
+	coords, err := u.yandexRepo.GetCoordinatesOfAddress(*offer.Address)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get coordinates failed")
+		return 0, fmt.Errorf("не удалось получить координаты по адресу")
+	}
+	offer.Longitude = strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
+	offer.Latitude = strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
 
 	offer.StatusID = domain.OfferStatusDraft
 
@@ -193,9 +203,18 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 		offer.Description = &escaped
 	}
 
-	if offer.Address != nil {
-		escaped := html.EscapeString(*offer.Address)
-		offer.Address = &escaped
+	if offer.Address == nil {
+		return fmt.Errorf("не указан адрес")
+	}
+	*offer.Address = html.EscapeString(*offer.Address)
+	if existing.Address != nil && *existing.Address != *offer.Address {
+		coords, err := u.yandexRepo.GetCoordinatesOfAddress(*offer.Address)
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get coordinates failed")
+			return fmt.Errorf("не удалось получить координаты по адресу")
+		}
+		offer.Longitude = strconv.FormatFloat(coords.Longitude, 'f', -1, 64)
+		offer.Latitude = strconv.FormatFloat(coords.Latitude, 'f', -1, 64)
 	}
 
 	// Оставляем прежний статус
@@ -248,6 +267,10 @@ func (u *offerUsecase) PublishOffer(ctx context.Context, offerID int, userID int
 		offer.TotalFloors <= 0 || offer.Rooms <= 0 || offer.PropertyTypeID == 0 ||
 		offer.RenovationID == 0 || offer.OfferTypeID == 0 || offer.StatusID == 0 {
 		return fmt.Errorf("не все обязательные поля заполнены")
+	}
+
+	if offer.Address == nil || *offer.Address == "" {
+		return fmt.Errorf("не указан адрес")
 	}
 
 	return u.repo.UpdateOfferStatus(ctx, offerID, 1)
@@ -338,10 +361,10 @@ func (u *offerUsecase) LikeOffer(ctx context.Context, like domain.LikeRequest) (
 	return likeStat, nil
 }
 
-func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer) (domain.OfferInfo, error) {
+func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
-	offerData, err := u.repo.GetOfferData(ctx, offer)
+	offerData, err := u.repo.GetOfferData(ctx, offer, userID)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(), "offer_id": offer.ID}).Error("Offer usecase: get offer data failed")
 		return domain.OfferInfo{}, fmt.Errorf("offer data get failed")
@@ -373,12 +396,12 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer)
 	return offerInfo, nil
 }
 
-func (u *offerUsecase) PrepareOffersInfo(ctx context.Context, offers []domain.Offer) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) PrepareOffersInfo(ctx context.Context, offers []domain.Offer, userID *int) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	offersInfo := make([]domain.OfferInfo, 0, len(offers))
 	for _, offer := range offers {
-		offerInfo, err := u.PrepareOfferInfo(ctx, offer)
+		offerInfo, err := u.PrepareOfferInfo(ctx, offer, userID)
 		if err != nil {
 			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(), "offerID": offer.ID}).Error("Offer usecase: prepareOffersInfo failed")
 			return []domain.OfferInfo{}, err

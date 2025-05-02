@@ -260,7 +260,7 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 	return offers, nil
 }
 
-func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter) ([]Offer, error) {
+func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferFilter, userID *int) ([]Offer, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var (
@@ -312,18 +312,21 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 	if f.OfferTypeID != nil {
 		addFilter("offer_type_id = $%d", *f.OfferTypeID)
 	}
-	if f.SellerID != nil {
-		addFilter("seller_id = $%d", *f.SellerID)
+
+	if f.OnlyMe != nil && *f.OnlyMe && userID != nil {
+		addFilter("seller_id = $%d", *userID)
+	} else {
+		if f.SellerID != nil {
+			addFilter("seller_id = $%d", *f.SellerID)
+		}
 	}
+	addFilter("offer_status_id = $%d", 1)
 	if f.NewBuilding != nil {
 		if *f.NewBuilding {
 			whereParts = append(whereParts, "complex_id IS NOT NULL")
 		} else {
 			whereParts = append(whereParts, "complex_id IS NULL")
 		}
-	}
-	if f.OfferStatusID != nil {
-		addFilter("offer_status_id = $%d", *f.OfferStatusID)
 	}
 
 	query := strings.TrimRight(getAllOffersSQL, "\t\n;")
@@ -441,7 +444,7 @@ func (r *offerRepository) UpdateOfferStatus(ctx context.Context, offerID int, st
 	return err
 }
 
-func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer) (domain.OfferData, error) {
+func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferData, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	var offerData domain.OfferData
@@ -477,7 +480,9 @@ func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer) 
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferStation")
 
-	err = r.db.QueryRow(ctx, isOfferLiked, offer.SellerID, offer.ID).Scan(&offerData.OfferStat.LikesStat.IsLiked)
+	if userID != nil {
+		err = r.db.QueryRow(ctx, isOfferLiked, userID, offer.ID).Scan(&offerData.OfferStat.LikesStat.IsLiked)
+	}
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsLikedOffer")
 	err = r.db.QueryRow(ctx, getLikeStat, offer.ID).Scan(&offerData.OfferStat.LikesStat.Amount)
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query GetLikeStat")

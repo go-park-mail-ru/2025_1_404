@@ -12,6 +12,7 @@ type Config struct {
 	Minio    MinioConfig    `yaml:"minio"`
 	Redis    RedisConfig    `yaml:"redis"`
 	Gemini   GeminiConfig   `yaml:"gemini"`
+	Yandex   YandexConfig   `yaml:"yandex"`
 }
 
 type AppConfig struct {
@@ -79,6 +80,10 @@ type GeminiConfig struct {
 	Token            string `yaml:"token"`
 	Model            string `yaml:"model"`
 	EstimationPrompt string `yaml:"estimationPrompt"`
+}
+
+type YandexConfig struct {
+	Token string `yaml:"token"`
 }
 
 func NewConfig() (*Config, error) {

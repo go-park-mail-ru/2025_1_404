@@ -24,7 +24,7 @@ type Offer struct {
 	RentTypeID     *int      `json:"rent_type_id,omitempty"`
 	PurchaseTypeID *int      `json:"purchase_type_id,omitempty"`
 	PropertyTypeID int       `json:"property_type_id"`
-	StatusID       int       `json:"status_id"`
+	StatusID       int       `json:"-"`
 	RenovationID   int       `json:"renovation_id"`
 	ComplexID      *int      `json:"complex_id,omitempty"`
 	Price          int       `json:"price"`
@@ -57,7 +57,7 @@ type OfferFilter struct {
 	OfferTypeID    *int    `json:"offer_type_id"`
 	NewBuilding    *bool   `json:"new_building"`
 	SellerID       *int    `json:"seller_id"`
-	OfferStatusID  *int    `json:"offer_status_id"`
+	OnlyMe         *bool   `json:"me"`
 }
 
 type Metro struct {
