@@ -29,6 +29,9 @@ redis:
   password: ""
   db: 0
 
+yandex:
+  token: "16697f01-687e-4e40-8c4f-f21ec269013d"
+
 gemini:
   proxy: ""
   token: ""

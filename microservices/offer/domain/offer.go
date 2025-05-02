@@ -57,7 +57,7 @@ type OfferFilter struct {
 	OfferTypeID    *int    `json:"offer_type_id"`
 	NewBuilding    *bool   `json:"new_building"`
 	SellerID       *int    `json:"seller_id"`
-	OfferStatusID  *int    `json:"offer_status_id"`
+	OnlyMe         *bool   `json:"me"`
 }
 
 type Metro struct {
