@@ -10,10 +10,11 @@ type OfferInfo struct {
 }
 
 type OfferData struct {
-	Images    []OfferImage `json:"offer_images"`
-	Seller    OfferSeller  `json:"seller"`
-	Metro     Metro        `json:"metro"`
-	OfferStat OfferStat    `json:"offer_stat"`
+	Images    []OfferImage        `json:"offer_images"`
+	Seller    OfferSeller         `json:"seller"`
+	Metro     Metro               `json:"metro"`
+	OfferStat OfferStat           `json:"offer_stat"`
+	Prices    []OfferPriceHistory `json:"offer_prices"`
 }
 
 type Offer struct {
@@ -100,3 +101,8 @@ type LikeRequest struct {
 }
 
 const OfferStatusDraft = 2
+
+type OfferPriceHistory struct {
+	Price int       `json:"price"`
+	Date  time.Time `json:"date"`
+}

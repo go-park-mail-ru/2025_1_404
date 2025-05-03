@@ -179,6 +179,14 @@ func (u *offerUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int
 
 	offer.StatusID = domain.OfferStatusDraft
 
+	if offer.Price > 0 {
+		err = u.repo.AddOrUpdatePriceHistory(ctx, int64(offer.ID), offer.Price)
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": offer.ID, "err": err.Error()}).Error("Offer usecase: price history update failed")
+			return 0, err
+		}
+	}
+
 	repoOffer := unmapOffer(offer)
 	id, err := u.repo.CreateOffer(ctx, repoOffer)
 	if err != nil {
@@ -220,6 +228,24 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 	// Оставляем прежний статус
 	offer.StatusID = existing.StatusID
 
+	// Удаляем историю если изменился статус
+	if offer.OfferTypeID != existing.OfferTypeID {
+		err = u.repo.DeletePriceHistory(ctx, int64(offer.ID))
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": offer.ID, "err": err.Error()}).Error("Offer usecase: price history delete failed")
+			return err
+		}
+	}
+
+	// Обновляем цену если изменилась
+	if offer.Price != existing.Price {
+		err = u.repo.AddOrUpdatePriceHistory(ctx, int64(offer.ID), offer.Price)
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": offer.ID, "err": err.Error()}).Error("Offer usecase: price history update failed")
+			return err
+		}
+	}
+
 	repoOffer := unmapOffer(offer)
 
 	err = u.repo.UpdateOffer(ctx, repoOffer)
@@ -232,6 +258,8 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 }
 
 func (u *offerUsecase) DeleteOffer(ctx context.Context, id int) error {
+	_ = u.repo.DeletePriceHistory(ctx, int64(id))
+
 	err := u.repo.DeleteOffer(ctx, int64(id))
 	requestID := ctx.Value(utils.RequestIDKey)
 	if err != nil {
@@ -386,6 +414,15 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer,
 
 	for i, img := range offerData.Images {
 		offerData.Images[i].Image = u.cfg.Minio.Path + u.cfg.Minio.OffersBucket + img.Image
+	}
+
+	priceHistory, err := u.repo.GetPriceHistory(ctx, int64(offer.ID), 5)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID, "offerID": offer.ID, "err": err.Error(),
+		}).Warn("не удалось получить историю цен")
+	} else {
+		offerData.Prices = priceHistory
 	}
 
 	offerInfo := domain.OfferInfo{
