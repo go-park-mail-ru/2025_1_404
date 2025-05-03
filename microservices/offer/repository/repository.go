@@ -376,6 +376,7 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 
 func (r *offerRepository) UpdateOffer(ctx context.Context, o Offer) error {
 	requestID := ctx.Value(utils.RequestIDKey)
+
 	_, err := r.db.Exec(ctx, updateOfferSQL,
 		o.OfferTypeID, o.MetroStationID, o.RentTypeID, o.PurchaseTypeID,
 		o.PropertyTypeID, o.StatusID, o.RenovationID, o.ComplexID,

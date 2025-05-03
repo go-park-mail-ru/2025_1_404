@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"html"
-	"log"
 	"strconv"
 	"time"
 
@@ -207,6 +206,9 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 		return fmt.Errorf("объявление не найдено")
 	}
 
+	offer.Latitude = existing.Latitude
+	offer.Longitude = existing.Longitude
+
 	if offer.Description != nil {
 		escaped := html.EscapeString(*offer.Description)
 		offer.Description = &escaped
@@ -215,6 +217,7 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 	if offer.Address == nil {
 		return fmt.Errorf("не указан адрес")
 	}
+
 	*offer.Address = html.EscapeString(*offer.Address)
 	if existing.Address != nil && *existing.Address != *offer.Address {
 		coords, err := u.yandexRepo.GetCoordinatesOfAddress(*offer.Address)
@@ -410,8 +413,6 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer,
 		Avatar:    seller.User.Image,
 		CreatedAt: seller.User.CreatedAt.AsTime(),
 	}
-
-	log.Println(offerData.Seller.CreatedAt)
 
 	for i, img := range offerData.Images {
 		offerData.Images[i].Image = u.cfg.Minio.Path + u.cfg.Minio.OffersBucket + img.Image
