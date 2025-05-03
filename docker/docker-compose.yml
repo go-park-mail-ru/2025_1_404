@@ -82,8 +82,8 @@ services:
     command: 
     - "-path=/migrations"
     - "-database=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable"
-    - "up"
-   
+    - "up" 
+    
   redis:
     image: redis:latest
     container_name: redis

@@ -154,10 +154,8 @@ const (
 	`
 
 	insertPriceHistorySQL = `
-		INSERT INTO kvartirum.OfferPriceHistory (offer_id, price, recorded_date)
-		VALUES ($1, $2, CURRENT_DATE)
-		ON CONFLICT (offer_id, recorded_date)
-		DO UPDATE SET price = EXCLUDED.price;
+		INSERT INTO kvartirum.OfferPriceHistory (offer_id, price, recorded_at)
+		VALUES ($1, $2, CURRENT_TIMESTAMP);
 	`
 
 	deletePriceHistorySQL = `
@@ -662,10 +660,10 @@ func (r *offerRepository) GetPriceHistory(ctx context.Context, offerID int64, li
 	requestID := ctx.Value(utils.RequestIDKey)
 
 	rows, err := r.db.Query(ctx, `
-		SELECT price, recorded_date
+		SELECT price, recorded_at
 		FROM kvartirum.OfferPriceHistory
 		WHERE offer_id = $1
-		ORDER BY recorded_date DESC
+		ORDER BY recorded_at DESC
 		LIMIT $2;
 	`, offerID, limit)
 	if err != nil {

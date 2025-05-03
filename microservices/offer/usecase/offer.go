@@ -179,20 +179,21 @@ func (u *offerUsecase) CreateOffer(ctx context.Context, offer domain.Offer) (int
 
 	offer.StatusID = domain.OfferStatusDraft
 
-	if offer.Price > 0 {
-		err = u.repo.AddOrUpdatePriceHistory(ctx, int64(offer.ID), offer.Price)
-		if err != nil {
-			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": offer.ID, "err": err.Error()}).Error("Offer usecase: price history update failed")
-			return 0, err
-		}
-	}
-
 	repoOffer := unmapOffer(offer)
 	id, err := u.repo.CreateOffer(ctx, repoOffer)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: create offer failed")
 		return 0, err
 	}
+
+	if offer.Price > 0 {
+		err = u.repo.AddOrUpdatePriceHistory(ctx, id, offer.Price)
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": offer.ID, "err": err.Error()}).Error("Offer usecase: price history update failed")
+			return 0, err
+		}
+	}
+
 	return int(id), nil
 }
 
