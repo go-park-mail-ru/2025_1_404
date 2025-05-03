@@ -1,0 +1,10 @@
+SET SEARCH_PATH = kvartirum;
+
+CREATE TABLE IF NOT EXISTS OfferPriceHistory (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    offer_id BIGINT NOT NULL REFERENCES Offer(id) ON DELETE CASCADE,
+    price INTEGER NOT NULL CHECK (price > 0),
+    recorded_date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (offer_id, recorded_date)
+);

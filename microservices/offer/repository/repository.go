@@ -152,6 +152,17 @@ const (
 	countView = `
 		SELECT COUNT (*) FROM kvartirum.Views WHERE offer_id = $1;
 	`
+
+	insertPriceHistorySQL = `
+		INSERT INTO kvartirum.OfferPriceHistory (offer_id, price, recorded_date)
+		VALUES ($1, $2, CURRENT_DATE)
+		ON CONFLICT (offer_id, recorded_date)
+		DO UPDATE SET price = EXCLUDED.price;
+	`
+
+	deletePriceHistorySQL = `
+		DELETE FROM kvartirum.OfferPriceHistory WHERE offer_id = $1;
+	`
 )
 
 func (r *offerRepository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
@@ -625,4 +636,53 @@ func (r *offerRepository) IncrementView(ctx context.Context, id int) error {
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query  AddViewToOffer")
 
 	return err
+}
+
+func (r *offerRepository) AddOrUpdatePriceHistory(ctx context.Context, offerID int64, price int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, insertPriceHistorySQL, offerID, price)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query  AddOrUpdatePriceHistory")
+
+	return err
+}
+
+func (r *offerRepository) DeletePriceHistory(ctx context.Context, offerID int64) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, deletePriceHistorySQL, offerID)
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query  DeletePriceHistory")
+
+	return err
+}
+
+func (r *offerRepository) GetPriceHistory(ctx context.Context, offerID int64, limit int) ([]domain.OfferPriceHistory, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	rows, err := r.db.Query(ctx, `
+		SELECT price, recorded_date
+		FROM kvartirum.OfferPriceHistory
+		WHERE offer_id = $1
+		ORDER BY recorded_date DESC
+		LIMIT $2;
+	`, offerID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []domain.OfferPriceHistory
+	for rows.Next() {
+		var record domain.OfferPriceHistory
+		if err := rows.Scan(&record.Price, &record.Date); err != nil {
+			return nil, err
+		}
+		history = append(history, record)
+	}
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query  GetPriceHistory")
+
+	return history, nil
 }

@@ -28,4 +28,7 @@ type OfferRepository interface {
 	DeleteLike(ctx context.Context, like domain.LikeRequest) error
 	GetLikeStat(ctx context.Context, like domain.LikeRequest) (int, error)
 	IncrementView(ctx context.Context, id int) error
+	AddOrUpdatePriceHistory(ctx context.Context, offerID int64, price int) error
+	DeletePriceHistory(ctx context.Context, offerID int64) error
+	GetPriceHistory(ctx context.Context, offerID int64, limit int) ([]domain.OfferPriceHistory, error)
 }
