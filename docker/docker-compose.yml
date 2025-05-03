@@ -13,6 +13,9 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    networks:
+      - default
+      - monitoring
 
   offer:
     build: 
@@ -28,6 +31,11 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+      - monitoring
 
   zhk:
     build:
@@ -43,6 +51,9 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    networks:
+      - default
+      - monitoring
         
   ai:
     build:
@@ -53,7 +64,12 @@ services:
     env_file: .dev.env
     ports:
       - "8004:8001"
-
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+      - monitoring
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -71,6 +87,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - default
   
   migrate:
     image: migrate/migrate
@@ -96,6 +114,8 @@ services:
       interval: 5s
       timeout: 2s
       retries: 10
+    networks:
+      - default
 
   minio:
     image: minio/minio:latest
@@ -113,6 +133,8 @@ services:
       interval: 5s
       timeout: 2s
       retries: 10
+    networks:
+      - default
 
   minio-client:
     image: minio/mc:latest
@@ -130,8 +152,53 @@ services:
     depends_on:
       minio:
         condition: service_healthy
+    networks:
+      - default
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports: 
+      - "9090:9090"
+    command: 
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--log.level=warn'
+    networks:
+      - monitoring
+    
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    command:
+    - '--log.level=warn'
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports: 
+      - "9080:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_LOG_LEVEL=warn
+    networks:
+      - monitoring
 
 volumes:
     postgres_data:
     minio_data:
     redis_data:
+    grafana-storage:
+
+networks:
+  monitoring:
+  default:

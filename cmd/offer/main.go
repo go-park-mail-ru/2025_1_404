@@ -6,12 +6,14 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
+
 	"github.com/go-park-mail-ru/2025_1_404/config"
+	"github.com/go-park-mail-ru/2025_1_404/internal/metrics"
 	service "github.com/go-park-mail-ru/2025_1_404/microservices/offer/delivery/grpc"
 	deliveryOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/delivery/http"
 	repoOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/repository"
 	usecaseOffer "github.com/go-park-mail-ru/2025_1_404/microservices/offer/usecase"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/api/yandex"
 	database "github.com/go-park-mail-ru/2025_1_404/pkg/database/postgres"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/redis"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
@@ -21,6 +23,7 @@ import (
 	authpb "github.com/go-park-mail-ru/2025_1_404/proto/auth"
 	offerpb "github.com/go-park-mail-ru/2025_1_404/proto/offer"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -31,7 +34,15 @@ func main() {
 		log.Fatalf("не удалось загрузить конфиг: %v", err)
 	}
 
+	// Логгер
+	l, err := logger.NewZapLogger(cfg.App.Logger.Level)
+	if err != nil {
+		log.Fatalf("не удалось создать логгер: %v", err)
+	}
+	defer l.Close()
+
 	ctx := context.Background()
+
 
 	// Инициализация подключения к БД
 	dbpool, err := database.NewPool(&cfg.Postgres, ctx)
@@ -39,10 +50,6 @@ func main() {
 		log.Fatalf("не удалось подключиться к базе данных: %v", err)
 	}
 	defer dbpool.Close()
-
-	// Логгер
-	l, _ := logger.NewZapLogger()
-	defer l.Close()
 
 	// Хранилище файлов
 	s3repo, err := s3.New(&cfg.Minio, l)
@@ -110,8 +117,12 @@ func main() {
 		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.LikeOffer)))).
 		Methods(http.MethodPost)
 
+	// Метрики
+	metrics, reg := metrics.NewMetrics("offer")
+	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{})).Methods(http.MethodGet)
+	metricxMux := middleware.MetricsMiddleware(metrics, r)
 	// AccessLog middleware
-	logMux := middleware.AccessLog(l, r)
+	logMux := middleware.AccessLog(l, metricxMux)
 	// CORS middleware
 	corsMux := middleware.CORSHandler(logMux, &cfg.App.CORS)
 
@@ -134,6 +145,7 @@ func main() {
 	}()
 
 	log.Println("Offers микросервис запущен")
+
 	// Запуск сервера
 	if err := http.ListenAndServe(cfg.App.Http.Port, corsMux); err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)

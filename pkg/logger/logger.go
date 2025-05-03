@@ -1,7 +1,10 @@
 package logger
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type LoggerFields map[string]interface{}
@@ -19,8 +22,16 @@ type ZapLogger struct {
 	fields []zap.Field
 }
 
-func NewZapLogger() (*ZapLogger, error) {
-	logger, err := zap.NewProduction()
+func NewZapLogger(level string) (*ZapLogger, error) {
+	var zapLevel zapcore.Level
+	if err := zapLevel.UnmarshalText([]byte(level)); err != nil {
+		return nil, fmt.Errorf("invalid log level: %v", err)
+	}
+
+	config := zap.NewProductionConfig()
+	config.Level = zap.NewAtomicLevelAt(zapLevel)
+
+	logger, err := config.Build()
 	if err != nil {
 		return nil, err
 	}

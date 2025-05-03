@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
+	"github.com/go-park-mail-ru/2025_1_404/internal/metrics"
 	service "github.com/go-park-mail-ru/2025_1_404/microservices/auth/delivery/grpc"
 	deliveryAuth "github.com/go-park-mail-ru/2025_1_404/microservices/auth/delivery/http"
 	repoAuth "github.com/go-park-mail-ru/2025_1_404/microservices/auth/repository"
@@ -18,6 +19,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	authpb "github.com/go-park-mail-ru/2025_1_404/proto/auth"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 )
 
@@ -28,6 +30,14 @@ func main() {
 		log.Fatalf("не удалось загрузить конфиг: %v", err)
 	}
 
+
+	// Логгер
+	l, err := logger.NewZapLogger(cfg.App.Logger.Level)
+	if err != nil {
+		log.Fatalf("не удалось создать логгер: %v", err)
+	}
+	defer l.Close()
+	
 	ctx := context.Background()
 
 	// Инициализация подключения к БД
@@ -36,10 +46,6 @@ func main() {
 		log.Fatalf("не удалось подключиться к базе данных: %v", err)
 	}
 	defer dbpool.Close()
-
-	// Логгер
-	l, _ := logger.NewZapLogger()
-	defer l.Close()
 
 	// Хранилище файлов
 	s3repo, err := s3.New(&cfg.Minio, l)
@@ -80,9 +86,12 @@ func main() {
 		Methods(http.MethodDelete)
 	r.Handle("/api/v1/users/csrf", middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(authHandler.GetCSRFToken))).
 		Methods(http.MethodGet)
-
+	// Метрики
+	metrics, reg := metrics.NewMetrics("auth")
+	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{})).Methods(http.MethodGet)
+	metricxMux := middleware.MetricsMiddleware(metrics, r)
 	// AccessLog middleware
-	logMux := middleware.AccessLog(l, r)
+	logMux := middleware.AccessLog(l, metricxMux)
 	// CORS middleware
 	corsMux := middleware.CORSHandler(logMux, &cfg.App.CORS)
 

@@ -1,9 +1,12 @@
 package main
 
 import (
-	"github.com/go-park-mail-ru/2025_1_404/pkg/database/redis"
 	"log"
 	"net/http"
+
+	"github.com/go-park-mail-ru/2025_1_404/internal/metrics"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/redis"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	deliveryOffer "github.com/go-park-mail-ru/2025_1_404/microservices/ai/delivery/http"
@@ -20,10 +23,11 @@ func main() {
 		log.Fatalf("не удалось загрузить конфиг: %v", err)
 	}
 
-	//ctx := context.Background()
-
 	// Логгер
-	l, _ := logger.NewZapLogger()
+	l, err := logger.NewZapLogger(cfg.App.Logger.Level)
+	if err != nil {
+		log.Fatalf("не удалось создать логгер: %v", err)
+	}
 	defer l.Close()
 
 	// Инициализация подключения к Redis
@@ -47,13 +51,18 @@ func main() {
 		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(aiHandler.EvaluateOffer)))).
 		Methods(http.MethodPost)
 
+	// Метрики
+	metrics, reg := metrics.NewMetrics("ai")
+	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{})).Methods(http.MethodGet)
+	metricxMux := middleware.MetricsMiddleware(metrics, r)
 	// AccessLog middleware
-	logMux := middleware.AccessLog(l, r)
+	logMux := middleware.AccessLog(l, metricxMux)
 	// CORS middleware
 	corsMux := middleware.CORSHandler(logMux, &cfg.App.CORS)
 
 	log.Println("AI микросервис запущен")
 
+	http.Handle("/metrics", promhttp.Handler())
 	// Запуск сервера
 	if err := http.ListenAndServe(cfg.App.Http.Port, corsMux); err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)

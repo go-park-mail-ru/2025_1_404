@@ -17,6 +17,7 @@ type Config struct {
 
 type AppConfig struct {
 	Auth            AuthConfig `yaml:"auth"`
+	Logger			LoggerConfig `yaml:"logger"`
 	CORS            CORSConfig `yaml:"cors"`
 	Http            HttpConfig `yaml:"http"`
 	Grpc            GrpcConfig `yaml:"grpc"`
@@ -24,6 +25,10 @@ type AppConfig struct {
 	BaseDir         string     `yaml:"basePath"`
 	BaseFrontendDir string     `yaml:"baseFrontendPath"`
 	BaseImagesPath  string     `yaml:"baseImagesPath"`
+}
+
+type LoggerConfig struct {
+	Level string `yaml:"level"`
 }
 
 type HttpConfig struct {
