@@ -14,6 +14,8 @@ app:
   auth:
     csrf:
       headerName: X-CSRF-TOKEN
+  logger:
+    level: warn
       
 postgres:
   sslMode: false

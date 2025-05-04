@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/internal/filestorage"
+	"github.com/go-park-mail-ru/2025_1_404/internal/metrics"
 	deliveryZhk "github.com/go-park-mail-ru/2025_1_404/microservices/zhk/delivery/http"
 	repoZhk "github.com/go-park-mail-ru/2025_1_404/microservices/zhk/repository"
 	usecaseZhk "github.com/go-park-mail-ru/2025_1_404/microservices/zhk/usecase"
@@ -17,6 +18,7 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	offerpb "github.com/go-park-mail-ru/2025_1_404/proto/offer"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -29,6 +31,13 @@ func main() {
 
 	ctx := context.Background()
 
+	// Логгер
+	l, err := logger.NewZapLogger(cfg.App.Logger.Level)
+	if err != nil {
+		log.Fatalf("не удалось создать логгер: %v", err)
+	}
+	defer l.Close()
+
 	// Инициализация подключения к БД
 	dbpool, err := database.NewPool(&cfg.Postgres, ctx)
 	if err != nil {
@@ -36,9 +45,7 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	// Логгер
-	l, _ := logger.NewZapLogger()
-	//defer l.Close()
+	
 
 	// Хранилище файлов
 	basePath := "./internal/static/upload"
@@ -72,8 +79,12 @@ func main() {
 	r.HandleFunc("/api/v1/zhk/{id:[0-9]+}", zhkHandler.GetZhkInfo).Methods("GET")
 	r.HandleFunc("/api/v1/zhks", zhkHandler.GetAllZhk).Methods("GET")
 
+	// Метрики
+	metrics, reg := metrics.NewMetrics("zhk")
+	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{})).Methods(http.MethodGet)
+	metricxMux := middleware.MetricsMiddleware(metrics, r)
 	// AccessLog middleware
-	logMux := middleware.AccessLog(l, r)
+	logMux := middleware.AccessLog(l, metricxMux)
 	// CORS middleware
 	corsMux := middleware.CORSHandler(logMux, &cfg.App.CORS)
 
