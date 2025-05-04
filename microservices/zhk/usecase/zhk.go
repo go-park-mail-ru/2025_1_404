@@ -72,7 +72,7 @@ func (u *zhkUsecase) GetZhkInfo(ctx context.Context, id int64) (domain.ZhkInfo, 
 		return domain.ZhkInfo{}, err
 	}
 	for i, img := range zhkHeader.Images {
-		zhkHeader.Images[i] = "http://localhost:8003" + u.cfg.App.BaseImagesPath + img
+		zhkHeader.Images[i] = u.cfg.Minio.Path + u.cfg.App.BaseImagesPath + img
 	}
 
 	// Собираем контактную информацию о ЖК
