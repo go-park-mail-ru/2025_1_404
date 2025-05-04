@@ -174,9 +174,16 @@ services:
     ports:
       - "9100:9100"
     command:
-    - '--log.level=warn'
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - '--log.level=warn'
     networks:
       - monitoring
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
 
   grafana:
     image: grafana/grafana:latest
