@@ -53,6 +53,9 @@ services:
     env_file: .dev.env
     ports:
       - "8004:8001"
+    depends_on:
+      redis:
+      condition: service_healthy
 
   postgres:
     image: postgres:latest
