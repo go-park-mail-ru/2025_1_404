@@ -239,6 +239,12 @@ func (u *offerUsecase) UpdateOffer(ctx context.Context, offer domain.Offer) erro
 			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": offer.ID, "err": err.Error()}).Error("Offer usecase: price history delete failed")
 			return err
 		}
+
+		err = u.repo.AddOrUpdatePriceHistory(ctx, int64(offer.ID), offer.Price)
+		if err != nil {
+			u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offer_id": offer.ID, "err": err.Error()}).Error("Offer usecase: price history update failed")
+			return err
+		}
 	}
 
 	// Обновляем цену если изменилась
