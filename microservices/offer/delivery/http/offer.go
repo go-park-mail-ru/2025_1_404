@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -116,10 +117,12 @@ func (h *OfferHandler) GetOfferByID(w http.ResponseWriter, r *http.Request) {
 	idStr := vars["id"]
 
 	ip := r.Header.Get("X-Real-IP")
+	fmt.Printf("X-Real-IP: %s\n", ip)
 	if ip == "" {
 		ip = r.RemoteAddr
 	}
 	ip, _, _ = net.SplitHostPort(ip)
+	fmt.Printf("Final IP: %s\n", ip)
 
 	userID := r.Context().Value(utils.SoftUserIDKey).(*int)
 
