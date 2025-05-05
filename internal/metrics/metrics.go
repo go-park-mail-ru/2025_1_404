@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,12 +46,12 @@ func NewMetrics(serviceName string) (*Metrics, *prometheus.Registry) {
 	return m, reg
 }
 
-func (m *Metrics) RecordRequest(method, path, status string) {
-	m.requestCount.WithLabelValues(method, path, status).Inc()
+func (m *Metrics) RecordRequest(method, path string, statusCode int) {
+	m.requestCount.WithLabelValues(method, path, strconv.Itoa(statusCode)).Inc()
 }
 
-func (m *Metrics) RecordError(method, path, status string) {
-	m.errorCount.WithLabelValues(method, path, status).Inc()
+func (m *Metrics) RecordError(method, path string, statusCode int) {
+	m.errorCount.WithLabelValues(method, path, strconv.Itoa(statusCode)).Inc()
 }
 
 func (m *Metrics) RecordRequestDuration(method, path string, duration time.Duration) {

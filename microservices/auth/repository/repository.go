@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/domain"
@@ -127,7 +126,6 @@ func (r *authRepository) GetUserByID(ctx context.Context, id int64) (domain.User
 	err := r.db.QueryRow(ctx, getUserByIDSQL, id).Scan(
 		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password, &u.CreatedAt,
 	)
-	log.Println(u.CreatedAt)
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getUserByEmailSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL query GetUserByID")
 

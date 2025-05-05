@@ -54,9 +54,9 @@ func main() {
 	// Метрики
 	metrics, reg := metrics.NewMetrics("ai")
 	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{})).Methods(http.MethodGet)
-	metricxMux := middleware.MetricsMiddleware(metrics, r)
+	r.Use(middleware.MetricsMiddleware(metrics))
 	// AccessLog middleware
-	logMux := middleware.AccessLog(l, metricxMux)
+	logMux := middleware.AccessLog(l, r)
 	// CORS middleware
 	corsMux := middleware.CORSHandler(logMux, &cfg.App.CORS)
 
