@@ -115,7 +115,11 @@ func (h *OfferHandler) GetOfferByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 
-	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	ip := r.Header.Get("X-Real-IP")
+	if ip == "" {
+		ip = r.RemoteAddr
+		ip, _, _ = net.SplitHostPort(ip)
+	}
 
 	userID := r.Context().Value(utils.SoftUserIDKey).(*int)
 
