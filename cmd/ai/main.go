@@ -36,7 +36,6 @@ func main() {
 		log.Fatalf("не удалось подключиться к Redis: %v", err)
 	}
 
-	//aiRepo := repoOffer.NewAIRepository(dbpool, l)
 	aiUC := usecaseOffer.NewAIUsecase(redisRepo, l, cfg)
 	aiHandler := deliveryOffer.NewAIHandler(aiUC, cfg)
 

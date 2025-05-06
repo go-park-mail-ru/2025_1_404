@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk"
@@ -69,7 +70,7 @@ func (u *zhkUsecase) GetZhkInfo(ctx context.Context, id int64) (domain.ZhkInfo, 
 	zhkHeader, err := u.repo.GetZhkHeader(ctx, zhk)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Get ZhkHeader failed")
-		return domain.ZhkInfo{}, err
+		return domain.ZhkInfo{}, errors.New("Не удалось получить картинки ЖК")
 	}
 	for i, img := range zhkHeader.Images {
 		zhkHeader.Images[i] = u.cfg.Minio.Path + u.cfg.App.BaseImagesPath + img
@@ -82,7 +83,7 @@ func (u *zhkUsecase) GetZhkInfo(ctx context.Context, id int64) (domain.ZhkInfo, 
 	zhkCharacteristics, err := u.repo.GetZhkCharacteristics(ctx, zhk)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Get ZhkCharacteristics failed")
-		return domain.ZhkInfo{}, err
+		return domain.ZhkInfo{}, fmt.Errorf("Не удалось получить класс ЖК")
 	}
 
 	var zhkApartments domain.ZhkApartments

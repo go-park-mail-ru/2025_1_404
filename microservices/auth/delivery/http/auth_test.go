@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/auth/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +22,7 @@ func TestRegisterHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockauthUsecase(ctrl)
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
 
 	userHandlers := NewAuthHandler(mockUS)
 	t.Run("registration ok", func(t *testing.T) {
