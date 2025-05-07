@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-park-mail-ru/2025_1_404/config"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/offer/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
@@ -21,8 +23,9 @@ func TestGetOffersHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUC := mocks.NewMockofferUsecase(ctrl)
-	offerHandlers := NewOfferHandler(mockUC)
+	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	offerHandlers := NewOfferHandler(mockUC, cfg)
 
 	t.Run("GetOffers ok", func(t *testing.T) {
 		expectedOffers := []domain.OfferInfo{
@@ -47,7 +50,7 @@ func TestGetOffersHandler(t *testing.T) {
 		minPrice := 1000000
 		mockUC.EXPECT().GetOffersByFilter(gomock.Any(), gomock.Eq(domain.OfferFilter{
 			MinPrice: &minPrice,
-		})).Return(expectedOffers, nil)
+		}), gomock.Any()).Return(expectedOffers, nil)
 
 		request := httptest.NewRequest(http.MethodGet, "/offers?min_price=1000000", nil)
 		response := httptest.NewRecorder()
@@ -58,7 +61,7 @@ func TestGetOffersHandler(t *testing.T) {
 	})
 
 	t.Run("GerOffers error", func(t *testing.T) {
-		mockUC.EXPECT().GetOffers(gomock.Any()).Return(nil, fmt.Errorf("filter error"))
+		mockUC.EXPECT().GetOffers(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("filter error"))
 
 		request := httptest.NewRequest(http.MethodGet, "/offers", nil)
 		response := httptest.NewRecorder()
@@ -75,7 +78,7 @@ func TestGetOffersHandler(t *testing.T) {
 
 	t.Run("GetOffersByFilter error", func(t *testing.T) {
 		mockUC.EXPECT().
-			GetOffersByFilter(gomock.Any(), gomock.Any()).
+			GetOffersByFilter(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil, fmt.Errorf("filter error"))
 
 		request := httptest.NewRequest(http.MethodGet, "/offers?min_price=1000000", nil)
@@ -96,8 +99,9 @@ func TestGetOfferByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUC := mocks.NewMockofferUsecase(ctrl)
-	offerHandlers := NewOfferHandler(mockUC)
+	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	offerHandlers := NewOfferHandler(mockUC, cfg)
 
 	t.Run("GetOfferByID ok", func(t *testing.T) {
 		expectedOffer := domain.OfferInfo{
@@ -107,7 +111,7 @@ func TestGetOfferByID(t *testing.T) {
 			},
 		}
 
-		mockUC.EXPECT().GetOfferByID(gomock.Any(), 1).Return(expectedOffer, nil)
+		mockUC.EXPECT().GetOfferByID(gomock.Any(), 1, gomock.Any(), gomock.Any()).Return(expectedOffer, nil)
 
 		request := httptest.NewRequest("GET", "/offers/1", nil)
 		vars := map[string]string{
@@ -127,7 +131,8 @@ func TestGetOfferByID(t *testing.T) {
 	})
 
 	t.Run("offer not found", func(t *testing.T) {
-		mockUC.EXPECT().GetOfferByID(gomock.Any(), 999).Return(domain.OfferInfo{}, fmt.Errorf("offer not found"))
+		mockUC.EXPECT().GetOfferByID(gomock.Any(), 999, gomock.Any(), gomock.Any()).
+			Return(domain.OfferInfo{}, fmt.Errorf("offer not found"))
 
 		request := httptest.NewRequest("GET", "/offers/999", nil)
 		vars := map[string]string{
@@ -169,9 +174,9 @@ func TestCreateOffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockofferUsecase(ctrl)
-
-	offerHandlers := NewOfferHandler(mockUS)
+	mockUS := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	offerHandlers := NewOfferHandler(mockUS, cfg)
 
 	t.Run("CreateOffer ok", func(t *testing.T) {
 		req := domain.Offer{
@@ -241,9 +246,9 @@ func TestUpdateOffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockofferUsecase(ctrl)
-
-	offerHandlers := NewOfferHandler(mockUS)
+	mockUS := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	offerHandlers := NewOfferHandler(mockUS, cfg)
 
 	t.Run("UpdateOffer ok", func(t *testing.T) {
 		req := domain.Offer{
@@ -388,7 +393,7 @@ func TestDeleteOffer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockofferUsecase(ctrl)
+	mockUS := mocks.NewMockOfferUsecase(ctrl)
 
 	offerHandlers := NewOfferHandler(mockUS)
 
@@ -469,7 +474,7 @@ func TestDeleteOfferImage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockofferUsecase(ctrl)
+	mockUS := mocks.NewMockOfferUsecase(ctrl)
 	offerHandlers := NewOfferHandler(mockUS)
 
 	t.Run("DeleteOfferImage ok", func(t *testing.T) {
@@ -521,5 +526,276 @@ func TestDeleteOfferImage(t *testing.T) {
 		offerHandlers.DeleteOfferImage(response, request)
 
 		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+}
+
+func TestPublishOffer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	handler := NewOfferHandler(mockUC, cfg)
+
+	t.Run("PublishOffer ok", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 10)
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/publish", nil).WithContext(ctx)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		mockUC.EXPECT().PublishOffer(gomock.Any(), 1, 10).Return(nil)
+
+		handler.PublishOffer(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var resp map[string]string
+		_ = json.NewDecoder(rec.Body).Decode(&resp)
+		assert.Equal(t, "Объявление опубликовано", resp["message"])
+	})
+
+	t.Run("UserID not found", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/publish", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		handler.PublishOffer(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+		var resp map[string]string
+		_ = json.NewDecoder(rec.Body).Decode(&resp)
+		assert.Equal(t, "UserID not found", resp["error"])
+	})
+
+	t.Run("Invalid ID", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 10)
+		req := httptest.NewRequest(http.MethodPost, "/offers/abc/publish", nil).WithContext(ctx)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		rec := httptest.NewRecorder()
+
+		handler.PublishOffer(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var resp map[string]string
+		_ = json.NewDecoder(rec.Body).Decode(&resp)
+		assert.Equal(t, "Некорректный ID", resp["error"])
+	})
+
+	t.Run("PublishOffer usecase error", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 10)
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/publish", nil).WithContext(ctx)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		mockUC.EXPECT().PublishOffer(gomock.Any(), 1, 10).Return(fmt.Errorf("ошибка публикации"))
+
+		handler.PublishOffer(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		var resp map[string]string
+		_ = json.NewDecoder(rec.Body).Decode(&resp)
+		assert.Equal(t, "ошибка публикации", resp["error"])
+	})
+}
+
+func TestUploadOfferImage(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	handler := NewOfferHandler(mockUC, cfg)
+
+	t.Run("Upload ok", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body := new(bytes.Buffer)
+		writer := multipart.NewWriter(body)
+		part, _ := writer.CreateFormFile("image", "test.png")
+		part.Write([]byte{0x89, 0x50, 0x4e, 0x47}) // PNG header
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/images", body).WithContext(ctx)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		mockUC.EXPECT().GetOfferByID(gomock.Any(), 1, "", nil).Return(domain.OfferInfo{Offer: domain.Offer{SellerID: 1}}, nil)
+		mockUC.EXPECT().SaveOfferImage(gomock.Any(), 1, gomock.Any()).Return(42, nil)
+
+		handler.UploadOfferImage(rec, req)
+
+		assert.Equal(t, http.StatusCreated, rec.Code)
+		var resp map[string]interface{}
+		_ = json.NewDecoder(rec.Body).Decode(&resp)
+		assert.Equal(t, float64(42), resp["image_id"])
+	})
+
+	t.Run("UserID not found", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/images", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		handler.UploadOfferImage(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Invalid offer ID", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		req := httptest.NewRequest(http.MethodPost, "/offers/abc/images", nil).WithContext(ctx)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		rec := httptest.NewRecorder()
+
+		handler.UploadOfferImage(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Not owner", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body := new(bytes.Buffer)
+		writer := multipart.NewWriter(body)
+		writer.CreateFormFile("image", "test.png")
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/images", body).WithContext(ctx)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		mockUC.EXPECT().GetOfferByID(gomock.Any(), 1, "", nil).Return(domain.OfferInfo{Offer: domain.Offer{SellerID: 2}}, nil)
+
+		handler.UploadOfferImage(rec, req)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+
+	t.Run("File not found", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/images", body).WithContext(ctx)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		mockUC.EXPECT().GetOfferByID(gomock.Any(), 1, "", nil).Return(domain.OfferInfo{Offer: domain.Offer{SellerID: 1}}, nil)
+
+		handler.UploadOfferImage(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("Invalid file format", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body := new(bytes.Buffer)
+		writer := multipart.NewWriter(body)
+		part, _ := writer.CreateFormFile("image", "test.txt")
+		part.Write([]byte("not an image"))
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/images", body).WithContext(ctx)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		mockUC.EXPECT().GetOfferByID(gomock.Any(), 1, "", nil).Return(domain.OfferInfo{Offer: domain.Offer{SellerID: 1}}, nil)
+
+		handler.UploadOfferImage(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("SaveOfferImage failed", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+
+		body := new(bytes.Buffer)
+		writer := multipart.NewWriter(body)
+		part, _ := writer.CreateFormFile("image", "test.png")
+		part.Write([]byte{0x89, 0x50, 0x4e, 0x47})
+		writer.Close()
+
+		req := httptest.NewRequest(http.MethodPost, "/offers/1/images", body).WithContext(ctx)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rec := httptest.NewRecorder()
+
+		mockUC.EXPECT().GetOfferByID(gomock.Any(), 1, "", nil).Return(domain.OfferInfo{Offer: domain.Offer{SellerID: 1}}, nil)
+		mockUC.EXPECT().SaveOfferImage(gomock.Any(), 1, gomock.Any()).Return(0, fmt.Errorf("fail"))
+
+		handler.UploadOfferImage(rec, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+}
+
+func TestLikeOffer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	handler := NewOfferHandler(mockUC, cfg)
+
+	t.Run("ok", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 42)
+		reqBody := domain.LikeRequest{OfferId: 1}
+		body, _ := json.Marshal(reqBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/offers/like", bytes.NewBuffer(body)).WithContext(ctx)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		expected := domain.LikesStat{IsLiked: true, Amount: 10}
+		mockUC.EXPECT().LikeOffer(gomock.Any(), domain.LikeRequest{OfferId: 1, UserId: 42}).Return(expected, nil)
+
+		handler.LikeOffer(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+
+		var result domain.LikesStat
+		err := json.NewDecoder(rec.Body).Decode(&result)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, result)
+	})
+
+	t.Run("UserID not found", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/offers/like", nil)
+		rec := httptest.NewRecorder()
+
+		handler.LikeOffer(rec, req)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("bad request body", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 42)
+		req := httptest.NewRequest(http.MethodPost, "/offers/like", bytes.NewBufferString("bad")).WithContext(ctx)
+		rec := httptest.NewRecorder()
+
+		handler.LikeOffer(rec, req)
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("usecase error", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 42)
+		reqBody := domain.LikeRequest{OfferId: 1}
+		body, _ := json.Marshal(reqBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/offers/like", bytes.NewBuffer(body)).WithContext(ctx)
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		mockUC.EXPECT().LikeOffer(gomock.Any(), domain.LikeRequest{OfferId: 1, UserId: 42}).Return(domain.LikesStat{}, fmt.Errorf("fail"))
+
+		handler.LikeOffer(rec, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})
 }

@@ -2,9 +2,10 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
-	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	pgxmock "github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
@@ -119,6 +120,75 @@ func TestRepository_DeleteUser(t *testing.T) {
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
 	err := repo.DeleteUser(context.Background(), id)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_CreateImage(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	ctx := context.Background()
+	filename := "image-uuid.png"
+
+	mock.ExpectExec(`(?i)INSERT INTO kvartirum.Image \(uuid\) VALUES \(\$1\)`).
+		WithArgs(filename).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	err := repo.CreateImage(ctx, filename)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_GetImageByUUID(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	ctx := context.Background()
+	uuid := "image-uuid"
+	expectedID := int64(123)
+
+	mock.ExpectQuery(`(?i)SELECT id FROM kvartirum.Image WHERE uuid = \$1`).
+		WithArgs(uuid).
+		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(expectedID))
+
+	id, err := repo.GetImageByUUID(ctx, uuid)
+	require.NoError(t, err)
+	require.True(t, id.Valid)
+	require.Equal(t, expectedID, id.Int64)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_GetImageByID(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	ctx := context.Background()
+	id := sql.NullInt64{Int64: 123, Valid: true}
+	expectedUUID := "image-uuid.png"
+
+	mock.ExpectQuery(`(?i)SELECT uuid from kvartirum.Image WHERE id = \$1`).
+		WithArgs(id.Int64).
+		WillReturnRows(pgxmock.NewRows([]string{"uuid"}).AddRow(expectedUUID))
+
+	uuid, err := repo.GetImageByID(ctx, id)
+	require.NoError(t, err)
+	require.Equal(t, expectedUUID, uuid)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_DeleteUserImage(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	ctx := context.Background()
+	userID := int64(1)
+
+	mock.ExpectExec(`(?i)DELETE FROM kvartirum.Image where id = \(\s*SELECT image_id from kvartirum.Users where id = \$1\s*\)`).
+		WithArgs(userID).
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	err := repo.DeleteUserImage(ctx, userID)
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

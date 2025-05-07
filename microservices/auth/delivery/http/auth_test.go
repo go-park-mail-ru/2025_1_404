@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
@@ -23,8 +24,8 @@ func TestRegisterHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockAuthUsecase(ctrl)
-
-	userHandlers := NewAuthHandler(mockUS)
+	cfg, _ := config.NewConfig()
+	userHandlers := NewAuthHandler(mockUS, cfg)
 	t.Run("registration ok", func(t *testing.T) {
 		req := domain.RegisterRequest{
 			Email:     "email@mail.ru",
@@ -143,9 +144,9 @@ func TestLoginHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockauthUsecase(ctrl)
-
-	userHandlers := NewAuthHandler(mockUS)
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	cfg, _ := config.NewConfig()
+	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("login ok", func(t *testing.T) {
 		req := domain.LoginRequest{
@@ -262,9 +263,9 @@ func TestMeHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockauthUsecase(ctrl)
-
-	userHandlers := NewAuthHandler(mockUS)
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	cfg, _ := config.NewConfig()
+	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("me ok", func(t *testing.T) {
 		user := domain.User{
@@ -313,9 +314,9 @@ func TestLogoutHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockauthUsecase(ctrl)
-
-	userHandlers := NewAuthHandler(mockUS)
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	cfg, _ := config.NewConfig()
+	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("logout ok", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
@@ -331,9 +332,9 @@ func TestUpdateHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockauthUsecase(ctrl)
-
-	userHandlers := NewAuthHandler(mockUS)
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	cfg, _ := config.NewConfig()
+	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("update ok", func(t *testing.T) {
 		req := domain.UpdateRequest{
@@ -477,9 +478,9 @@ func TestDeleteImage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockauthUsecase(ctrl)
-
-	userHandlers := NewAuthHandler(mockUS)
+	mockUS := mocks.NewMockAuthUsecase(ctrl)
+	cfg, _ := config.NewConfig()
+	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("DeleteImage ok", func(t *testing.T) {
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)

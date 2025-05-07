@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	pgxmock "github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
@@ -89,25 +89,6 @@ func TestRepository_GetZhkCharacteristics(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestRepository_GetZhkApartments(t *testing.T) {
-	repo, mock := newTestRepo(t)
-	defer mock.Close()
-
-	zhk := domain.Zhk{ID: 1}
-
-	mock.ExpectQuery(`(?i)SELECT.*FROM kvartirum.offer o.*WHERE o.complex_id = \$1`).
-		WithArgs(zhk.ID).
-		WillReturnRows(pgxmock.NewRows([]string{
-			"rooms", "lowest_price", "highest_price", "min_square", "offers",
-		}).AddRow(1, 3000000, 4000000, 35, 10))
-
-	got, err := repo.GetZhkApartments(context.Background(), zhk)
-	require.NoError(t, err)
-	require.Len(t, got.Apartments, 1)
-	require.Equal(t, 1, got.Apartments[0].Rooms)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
 func TestRepository_GetAllZhk(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()
@@ -121,5 +102,29 @@ func TestRepository_GetAllZhk(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, "ЖК Радуга", got[0].Name)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_GetZhkMetro(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	ctx := context.Background()
+	stationID := int64(3)
+
+	expected := domain.ZhkMetro{
+		Station: "Кропоткинская",
+		Line:    "Красная",
+		Color:   "#FF0000",
+	}
+
+	mock.ExpectQuery(`(?i)SELECT\s+ms.name as station_name, ml.name as line_name, ml.color\s+FROM kvartirum.MetroStation ms\s+JOIN kvartirum.MetroLine ml ON ms.metro_line_id = ml.id\s+WHERE ms.id = \$1`).
+		WithArgs(stationID).
+		WillReturnRows(pgxmock.NewRows([]string{"station_name", "line_name", "color"}).
+			AddRow(expected.Station, expected.Line, expected.Color))
+
+	result, err := repo.GetZhkMetro(ctx, stationID)
+	require.NoError(t, err)
+	require.Equal(t, expected, result)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
