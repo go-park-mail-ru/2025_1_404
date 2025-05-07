@@ -2,12 +2,13 @@ package http
 
 import (
 	"fmt"
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-park-mail-ru/2025_1_404/domain"
-	"github.com/go-park-mail-ru/2025_1_404/internal/delivery/http/zhk/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk/domain"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -17,9 +18,9 @@ func TestGetZhkInfoHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockzhkUsecase(ctrl)
-
-	zhkHandlers := NewZhkHandler(mockUS)
+	mockUS := mocks.NewMockZhkUsecase(ctrl)
+	cfg, _ := config.NewConfig()
+	zhkHandlers := NewZhkHandler(mockUS, cfg)
 
 	t.Run("GetZhkInfo ok", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/zhk/{id}", nil)
@@ -95,9 +96,9 @@ func TestGetAllZhkHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUS := mocks.NewMockzhkUsecase(ctrl)
-
-	zhkHandlers := NewZhkHandler(mockUS)
+	mockUS := mocks.NewMockZhkUsecase(ctrl)
+	cfg, _ := config.NewConfig()
+	zhkHandlers := NewZhkHandler(mockUS, cfg)
 
 	t.Run("GetAllZhk ok", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodGet, "/zhks", nil)

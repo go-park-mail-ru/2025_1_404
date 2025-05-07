@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-park-mail-ru/2025_1_404/domain"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	pgxmock "github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
@@ -139,17 +139,21 @@ func TestRepository_GetOffersByFilter(t *testing.T) {
 		MaxPrice: ptr(2000000),
 	}
 
-	mock.ExpectQuery(`(?i)SELECT .* FROM kvartirum.Offer WHERE area >= \$1 AND price <= \$2;`).
-		WithArgs(*filter.MinArea, *filter.MaxPrice).
+	timeNow := time.Now()
+	mock.ExpectQuery(`(?i)SELECT id, seller_id.*FROM kvartirum.Offer WHERE area >= \$1 AND price <= \$2 AND offer_status_id = \$3;`).
+		WithArgs(*filter.MinArea, *filter.MaxPrice, 1).
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "seller_id", "offer_type_id", "metro_station_id", "rent_type_id", "purchase_type_id",
 			"property_type_id", "offer_status_id", "renovation_id", "complex_id", "price", "description",
-			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height", "created_at", "updated_at",
-		}).AddRow(1, 2, 1, nil, nil, nil, 1, 1, 1, nil, 1800000, nil, 2, 5, 2, nil, 10, 50, 3, time.Now(), time.Now()))
+			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height", "longitude", "latitude", "created_at", "updated_at",
+		}).AddRow(
+			1, 2, 1, nil, nil, nil, 1, 1, 1, nil, 1800000, nil, 2, 5, 2, nil, 10, 50, 3, "37.6173", "55.7558", timeNow, timeNow,
+		))
 
-	offers, err := repo.GetOffersByFilter(context.Background(), filter)
+	offers, err := repo.GetOffersByFilter(context.Background(), filter, nil)
 	require.NoError(t, err)
-	require.NotEmpty(t, offers)
+	require.Len(t, offers, 1)
+	require.Equal(t, int64(1), offers[0].ID)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -212,5 +216,142 @@ func TestRepository_GetOfferImageWithUUID(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedOfferID, offerID)
 	require.Equal(t, expectedUUID, uuid)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_UpdateOfferStatus(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectExec(`(?i)UPDATE kvartirum.Offer SET offer_status_id = \$1 WHERE id = \$2;`).
+		WithArgs(2, 1).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	err := repo.UpdateOfferStatus(context.Background(), 1, 2)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_GetStations(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectQuery(`(?i)SELECT ms.id as station_id`).
+		WillReturnRows(pgxmock.NewRows([]string{"station_id", "station_name", "color"}).AddRow(1, "Test Station", "Red"))
+
+	stations, err := repo.GetStations(context.Background())
+	require.NoError(t, err)
+	require.Len(t, stations, 1)
+	require.Equal(t, "Test Station", stations[0].Station)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_IsOfferLiked(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectQuery(`(?i)SELECT EXISTS`).
+		WithArgs(42, 77).
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
+
+	liked, err := repo.IsOfferLiked(context.Background(), domain.LikeRequest{UserId: 42, OfferId: 77})
+	require.NoError(t, err)
+	require.True(t, liked)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_CreateLike(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectExec(`(?i)INSERT INTO kvartirum.Likes`).
+		WithArgs(42, 77).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	err := repo.CreateLike(context.Background(), domain.LikeRequest{UserId: 42, OfferId: 77})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_DeleteLike(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectExec(`(?i)DELETE FROM kvartirum.Likes`).
+		WithArgs(42, 77).
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	err := repo.DeleteLike(context.Background(), domain.LikeRequest{UserId: 42, OfferId: 77})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_GetLikeStat(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectQuery(`(?i)SELECT COUNT\(\*\) FROM kvartirum.Likes`).
+		WithArgs(77).
+		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(5))
+
+	count, err := repo.GetLikeStat(context.Background(), domain.LikeRequest{OfferId: 77})
+	require.NoError(t, err)
+	require.Equal(t, 5, count)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_IncrementView(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectExec(`(?i)INSERT INTO kvartirum.Views`).
+		WithArgs(77).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	err := repo.IncrementView(context.Background(), 77)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_AddOrUpdatePriceHistory(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectExec(`(?i)INSERT INTO kvartirum.OfferPriceHistory`).
+		WithArgs(int64(1), 123456).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	err := repo.AddOrUpdatePriceHistory(context.Background(), 1, 123456)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_DeletePriceHistory(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	mock.ExpectExec(`(?i)DELETE FROM kvartirum.OfferPriceHistory`).
+		WithArgs(int64(1)).
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	err := repo.DeletePriceHistory(context.Background(), 1)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_GetPriceHistory(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	timestamp := time.Now()
+	mock.ExpectQuery(`(?i)SELECT price, recorded_at FROM kvartirum.OfferPriceHistory`).
+		WithArgs(int64(1), 5).
+		WillReturnRows(pgxmock.NewRows([]string{"price", "recorded_at"}).AddRow(123456, timestamp))
+
+	history, err := repo.GetPriceHistory(context.Background(), 1, 5)
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	require.Equal(t, 123456, history[0].Price)
+	require.Equal(t, timestamp, history[0].Date)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
