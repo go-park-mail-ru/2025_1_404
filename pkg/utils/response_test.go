@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/json"
-	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"

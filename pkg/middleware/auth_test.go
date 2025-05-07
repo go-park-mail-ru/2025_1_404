@@ -3,13 +3,13 @@ package middleware
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
+
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
@@ -23,13 +23,11 @@ func userIDHandler(w http.ResponseWriter, r *http.Request) {
 func TestAuthMiddleware_OK(t *testing.T) {
 	cookie, _ := utils.GenerateJWT(1)
 	cfg := &config.CORSConfig{AllowOrigin: "http://localhost:8000", AllowMethods: "GET, POST, PUT, OPTIONS, DELETE",
-		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true",}
+		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true"}
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("Cookie", fmt.Sprintf(`token=%s`, cookie))
 	rr := httptest.NewRecorder()
 	l, _ := logger.NewZapLogger("")
-
-	cfg := &config.CORSConfig{}
 
 	handler := AuthHandler(l, cfg, http.HandlerFunc(userIDHandler))
 	handler.ServeHTTP(rr, req)
@@ -52,7 +50,7 @@ func TestAuthMiddleware_Fail_EmptyCookie(t *testing.T) {
 
 	l := logger.NewStub()
 	cfg := &config.CORSConfig{AllowOrigin: "http://localhost:8000", AllowMethods: "GET, POST, PUT, OPTIONS, DELETE",
-		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true",}
+		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true"}
 
 	handler := AuthHandler(l, cfg, http.HandlerFunc(userIDHandler))
 	handler.ServeHTTP(rr, req)
@@ -80,7 +78,6 @@ func TestAuthMiddleware_Fail_IncorrectToken(t *testing.T) {
 
 	l := logger.NewStub()
 	cfg := &config.CORSConfig{}
-
 
 	handler := AuthHandler(l, cfg, http.HandlerFunc(userIDHandler))
 	handler.ServeHTTP(rr, req)
