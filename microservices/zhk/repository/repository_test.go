@@ -22,6 +22,7 @@ func TestRepository_GetZhkByID(t *testing.T) {
 	defer mock.Close()
 
 	id := int64(1)
+	station := 3
 	expected := domain.Zhk{
 		ID:          id,
 		ClassID:     2,
@@ -30,13 +31,14 @@ func TestRepository_GetZhkByID(t *testing.T) {
 		Phone:       "8001234567",
 		Address:     "Москва, Лесная 7",
 		Description: "Уютный ЖК у парка",
+		MetroStationId: &station,
 	}
 
-	mock.ExpectQuery(`(?i)SELECT id, class_id, name, developer, phone_number, address, description FROM kvartirum.HousingComplex WHERE id = \$1`).
+	mock.ExpectQuery(`(?i)SELECT id, class_id, name, developer, phone_number, address, description, metro_station_id FROM kvartirum.HousingComplex WHERE id = \$1`).
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows([]string{
-			"id", "class_id", "name", "developer", "phone_number", "address", "description",
-		}).AddRow(expected.ID, expected.ClassID, expected.Name, expected.Developer, expected.Phone, expected.Address, expected.Description))
+			"id", "class_id", "name", "developer", "phone_number", "address", "description", "metro_station_id",
+		}).AddRow(expected.ID, expected.ClassID, expected.Name, expected.Developer, expected.Phone, expected.Address, expected.Description, expected.MetroStationId))
 
 	got, err := repo.GetZhkByID(context.Background(), id)
 	require.NoError(t, err)

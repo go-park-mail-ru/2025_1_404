@@ -19,7 +19,7 @@ func TestGetZhkInfoHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockZhkUsecase(ctrl)
-	cfg, _ := config.NewConfig()
+	cfg := &config.Config{}
 	zhkHandlers := NewZhkHandler(mockUS, cfg)
 
 	t.Run("GetZhkInfo ok", func(t *testing.T) {
@@ -97,7 +97,7 @@ func TestGetAllZhkHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockZhkUsecase(ctrl)
-	cfg, _ := config.NewConfig()
+	cfg := &config.Config{}
 	zhkHandlers := NewZhkHandler(mockUS, cfg)
 
 	t.Run("GetAllZhk ok", func(t *testing.T) {

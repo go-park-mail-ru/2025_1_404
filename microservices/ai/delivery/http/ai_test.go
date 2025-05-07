@@ -41,7 +41,7 @@ func TestAIHandler_EvaluateOffer(t *testing.T) {
 		}
 		body, _ := json.Marshal(offer)
 
-		expected := domain.EvaluationResult{
+		expected := &domain.EvaluationResult{
 			MarketPrice:       domain.MarketPrice{Total: 6000000, PerSquareMeter: 100000},
 			PossibleCostRange: domain.PossibleCostRange{Min: 5800000, Max: 6200000},
 		}
@@ -57,7 +57,8 @@ func TestAIHandler_EvaluateOffer(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		var result domain.EvaluationResult
 		_ = json.NewDecoder(rec.Body).Decode(&result)
-		assert.Equal(t, expected, result)
+		resp := *expected
+		assert.Equal(t, resp, result)
 	})
 
 	t.Run("missing user id", func(t *testing.T) {
@@ -81,7 +82,7 @@ func TestAIHandler_EvaluateOffer(t *testing.T) {
 		offer := domain.Offer{OfferType: "sale"}
 		body, _ := json.Marshal(offer)
 
-		mockUC.EXPECT().EvaluateOffer(gomock.Any(), offer).Return(domain.EvaluationResult{}, errors.New("fail"))
+		mockUC.EXPECT().EvaluateOffer(gomock.Any(), offer).Return(&domain.EvaluationResult{}, errors.New("fail"))
 
 		req := httptest.NewRequest(http.MethodPost, "/evaluate", bytes.NewReader(body))
 		req = req.WithContext(context.WithValue(req.Context(), utils.UserIDKey, 1))
