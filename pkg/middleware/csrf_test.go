@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -34,7 +35,7 @@ func TestCSRFMiddleware(t *testing.T) {
 		handler := CSRFMiddleware(l, cfg, testHandler)
 		handler.ServeHTTP(response, request)
 
-		assert.Equal(t, http.StatusTeapot, response.Result().StatusCode)
+		assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)
 
 	})
 

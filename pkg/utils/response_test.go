@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -72,8 +73,14 @@ func TestSendErrorResponse(t *testing.T) {
 // Тест EnableCORS (CORS-заголовки)
 func TestEnableCORS(t *testing.T) {
 	rr := httptest.NewRecorder()
-	cfg := &config.CORSConfig{AllowOrigin: "http://localhost:8000", AllowMethods: "GET, POST, PUT, OPTIONS, DELETE",
-		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true"}
+
+	cfg := &config.CORSConfig{
+		AllowOrigin:      "http://localhost:8000",
+		AllowMethods:     "GET, POST, PUT, OPTIONS, DELETE",
+		AllowHeaders:     "Content-Type, x-csrf-token",
+		AllowCredentials: "true",
+	}
+
 	EnableCORS(rr, cfg)
 
 	expectedHeaders := map[string]string{

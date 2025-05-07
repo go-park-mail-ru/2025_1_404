@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
+	"github.com/lib/pq"
 	pgxmock "github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
 )
@@ -38,8 +39,8 @@ func TestRepository_GetZhkByID(t *testing.T) {
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "class_id", "name", "developer", "phone_number", "address", "description", "metro_station_id",
-		}).AddRow(expected.ID, expected.ClassID, expected.Name, expected.Developer, expected.Phone, expected.Address, expected.Description, expected.MetroStationId))
 
+		}).AddRow(expected.ID, expected.ClassID, expected.Name, expected.Developer, expected.Phone, expected.Address, expected.Description, expected.MetroStationId))
 	got, err := repo.GetZhkByID(context.Background(), id)
 	require.NoError(t, err)
 	require.Equal(t, expected, got)
@@ -59,14 +60,14 @@ func TestRepository_GetZhkHeader(t *testing.T) {
 		ImagesSize:   2,
 	}
 
-	mock.ExpectQuery(`(?i)SELECT.*MIN\(o.price\).*MAX\(o.price\).*kvartirum.housingcomplex hc`).
+	mock.ExpectQuery(`(?i)SELECT COALESCE\(ARRAY_AGG\(DISTINCT img.uuid\).*images_size`).
 		WithArgs(zhk.ID).
-		WillReturnRows(pgxmock.NewRows([]string{"lowest_price", "highest_price", "images", "images_size"}).
-			AddRow(expected.LowestPrice, expected.HighestPrice, expected.Images, expected.ImagesSize))
+		WillReturnRows(pgxmock.NewRows([]string{"images", "images_size"}).
+			AddRow(pq.StringArray{"img1", "img2"}, expected.ImagesSize))
 
 	got, err := repo.GetZhkHeader(context.Background(), zhk)
 	require.NoError(t, err)
-	require.Equal(t, expected.LowestPrice, got.LowestPrice)
+	require.Equal(t, expected.Images, got.Images)
 	require.Equal(t, expected.ImagesSize, got.ImagesSize)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
@@ -80,14 +81,12 @@ func TestRepository_GetZhkCharacteristics(t *testing.T) {
 	mock.ExpectQuery(`(?i)SELECT.*FROM kvartirum.housingcomplex hc`).
 		WithArgs(zhk.ID).
 		WillReturnRows(pgxmock.NewRows([]string{
-			"class_name", "decoration", "max_ceiling_height", "min_ceiling_height",
-			"max_floors", "min_floors", "max_area", "min_area",
-		}).AddRow("Комфорт", []string{"Чистовая", "Без отделки"}, 3, 2, 25, 10, 120, 40))
+			"class_name",
+		}).AddRow("Комфорт"))
 
 	got, err := repo.GetZhkCharacteristics(context.Background(), zhk)
 	require.NoError(t, err)
 	require.Equal(t, "Комфорт", got.Class)
-	require.Equal(t, 25, got.Floors.HighestFloor)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -97,8 +96,8 @@ func TestRepository_GetAllZhk(t *testing.T) {
 
 	mock.ExpectQuery(`(?i)SELECT.*FROM kvartirum.housingcomplex`).
 		WillReturnRows(pgxmock.NewRows([]string{
-			"id", "class_id", "name", "developer", "phone_number", "address", "description",
-		}).AddRow(1, 2, "ЖК Радуга", "ПИК", "88005553535", "г. Москва", "Описание ЖК"))
+			"id", "class_id", "name", "developer", "phone_number", "address", "description", "metro_station_id",
+		}).AddRow(1, 2, "ЖК Радуга", "ПИК", "88005553535", "г. Москва", "Описание ЖК", nil))
 
 	got, err := repo.GetAllZhk(context.Background())
 	require.NoError(t, err)

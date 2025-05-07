@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/auth/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
@@ -49,18 +50,20 @@ func TestRepository_GetUserByEmail(t *testing.T) {
 
 	email := "user@example.com"
 	id := int64(1)
+	createdAt := time.Now()
 
-	mock.ExpectQuery(`(?i)SELECT\s+u.id,\s+COALESCE\(i.uuid, ''\) as image,\s+u.first_name, u.last_name, u.email, u.password\s+FROM kvartirum.Users u\s+LEFT JOIN kvartirum.Image i on u.image_id = i.id\s+WHERE u.email = \$1`).
+	mock.ExpectQuery(`(?i)SELECT\s+u.id,\s+COALESCE\(i.uuid, ''\) as image,\s+u.first_name,\s+u.last_name,\s+u.email,\s+u.password,\s+u.created_at\s+FROM kvartirum.Users u\s+LEFT JOIN kvartirum.Image i on u.image_id = i.id\s+WHERE u.email = \$1`).
 		WithArgs(email).
 		WillReturnRows(pgxmock.NewRows([]string{
-			"id", "image", "first_name", "last_name", "email", "password",
-		}).AddRow(id, "avatar.png", "Ivan", "Petrov", email, "hashed_pw"))
+			"id", "image", "first_name", "last_name", "email", "password", "created_at",
+		}).AddRow(id, "avatar.png", "Ivan", "Petrov", email, "hashed_pw", createdAt))
 
 	u, err := repo.GetUserByEmail(context.Background(), email)
 	require.NoError(t, err)
-	require.Equal(t, 1, u.ID)
+	require.EqualValues(t, id, u.ID)
+	require.Equal(t, "Ivan", u.FirstName)
 	require.Equal(t, "avatar.png", u.Image)
-	require.Equal(t, email, u.Email)
+	require.Equal(t, createdAt, u.CreatedAt)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -69,17 +72,19 @@ func TestRepository_GetUserByID(t *testing.T) {
 	defer mock.Close()
 
 	id := int64(1)
+	createdAt := time.Now()
 
-	mock.ExpectQuery(`(?i)SELECT\s+u.id,\s+COALESCE\(i.uuid, ''\) as image,\s+u.first_name, u.last_name, u.email, u.password\s+FROM kvartirum.Users u\s+LEFT JOIN kvartirum.Image i on u.image_id = i.id\s+WHERE u.id = \$1`).
+	mock.ExpectQuery(`(?i)SELECT\s+u.id,\s+COALESCE\(i.uuid, ''\) as image,\s+u.first_name,\s+u.last_name,\s+u.email,\s+u.password,\s+u.created_at\s+FROM kvartirum.Users u\s+LEFT JOIN kvartirum.Image i on u.image_id = i.id\s+WHERE u.id = \$1`).
 		WithArgs(id).
 		WillReturnRows(pgxmock.NewRows([]string{
-			"id", "image", "first_name", "last_name", "email", "password",
-		}).AddRow(id, "avatar.png", "Ivan", "Petrov", "user@example.com", "hashed_pw"))
+			"id", "image", "first_name", "last_name", "email", "password", "created_at",
+		}).AddRow(id, "avatar.png", "Ivan", "Petrov", "user@example.com", "hashed_pw", createdAt))
 
 	u, err := repo.GetUserByID(context.Background(), id)
 	require.NoError(t, err)
-	require.Equal(t, 1, u.ID)
+	require.EqualValues(t, id, u.ID)
 	require.Equal(t, "Ivan", u.FirstName)
+	require.Equal(t, createdAt, u.CreatedAt)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 

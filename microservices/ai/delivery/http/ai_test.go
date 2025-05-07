@@ -46,7 +46,9 @@ func TestAIHandler_EvaluateOffer(t *testing.T) {
 			PossibleCostRange: domain.PossibleCostRange{Min: 5800000, Max: 6200000},
 		}
 
-		mockUC.EXPECT().EvaluateOffer(gomock.Any(), offer).Return(expected, nil)
+		mockUC.EXPECT().
+			EvaluateOffer(gomock.Any(), offer).
+			Return(&expected, nil)
 
 		req := httptest.NewRequest(http.MethodPost, "/evaluate", bytes.NewReader(body))
 		req = req.WithContext(context.WithValue(req.Context(), utils.UserIDKey, 1))
@@ -81,8 +83,8 @@ func TestAIHandler_EvaluateOffer(t *testing.T) {
 	t.Run("usecase error", func(t *testing.T) {
 		offer := domain.Offer{OfferType: "sale"}
 		body, _ := json.Marshal(offer)
+		mockUC.EXPECT().EvaluateOffer(gomock.Any(), offer).Return(nil, errors.New("fail"))
 
-		mockUC.EXPECT().EvaluateOffer(gomock.Any(), offer).Return(&domain.EvaluationResult{}, errors.New("fail"))
 
 		req := httptest.NewRequest(http.MethodPost, "/evaluate", bytes.NewReader(body))
 		req = req.WithContext(context.WithValue(req.Context(), utils.UserIDKey, 1))

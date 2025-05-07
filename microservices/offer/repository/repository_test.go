@@ -35,6 +35,8 @@ func TestRepository_CreateOffer(t *testing.T) {
 		Flat:           10,
 		Area:           45,
 		CeilingHeight:  3,
+		Longitude:      "37.6173",
+		Latitude:       "55.7558",
 	}
 
 	mock.ExpectQuery(`(?i)INSERT INTO kvartirum.Offer`).
@@ -43,6 +45,7 @@ func TestRepository_CreateOffer(t *testing.T) {
 			o.PurchaseTypeID, o.PropertyTypeID, o.StatusID, o.RenovationID,
 			o.ComplexID, o.Price, o.Description, o.Floor, o.TotalFloors,
 			o.Rooms, o.Address, o.Flat, o.Area, o.CeilingHeight,
+			o.Longitude, o.Latitude,
 		).
 		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(int64(1)))
 
@@ -56,19 +59,38 @@ func TestRepository_GetOfferByID(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()
 
-	o := Offer{ID: 1, SellerID: 2, OfferTypeID: 1, PropertyTypeID: 1, StatusID: 1, RenovationID: 1, Price: 12345, Floor: 1, TotalFloors: 3, Rooms: 2, Flat: 10, Area: 40, CeilingHeight: 3, CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	o := Offer{
+		ID:             1,
+		SellerID:       2,
+		OfferTypeID:    1,
+		PropertyTypeID: 1,
+		StatusID:       1,
+		RenovationID:   1,
+		Price:          12345,
+		Floor:          1,
+		TotalFloors:    3,
+		Rooms:          2,
+		Flat:           10,
+		Area:           40,
+		CeilingHeight:  3,
+		Longitude:      "37.6173",
+		Latitude:       "55.7558",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
 
 	mock.ExpectQuery(`(?i)SELECT .* FROM kvartirum.Offer WHERE id = \$1`).
 		WithArgs(o.ID).
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "seller_id", "offer_type_id", "metro_station_id", "rent_type_id", "purchase_type_id",
 			"property_type_id", "offer_status_id", "renovation_id", "complex_id", "price", "description",
-			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height", "created_at", "updated_at",
+			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height",
+			"longitude", "latitude", "created_at", "updated_at",
 		}).AddRow(
 			o.ID, o.SellerID, o.OfferTypeID, o.MetroStationID, o.RentTypeID, o.PurchaseTypeID,
 			o.PropertyTypeID, o.StatusID, o.RenovationID, o.ComplexID, o.Price, o.Description,
 			o.Floor, o.TotalFloors, o.Rooms, o.Address, o.Flat, o.Area, o.CeilingHeight,
-			o.CreatedAt, o.UpdatedAt,
+			o.Longitude, o.Latitude, o.CreatedAt, o.UpdatedAt,
 		))
 
 	got, err := repo.GetOfferByID(context.Background(), o.ID)
@@ -86,8 +108,13 @@ func TestRepository_GetAllOffers(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "seller_id", "offer_type_id", "metro_station_id", "rent_type_id", "purchase_type_id",
 			"property_type_id", "offer_status_id", "renovation_id", "complex_id", "price", "description",
-			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height", "created_at", "updated_at",
-		}).AddRow(1, 2, 1, nil, nil, nil, 1, 1, 1, nil, 100000, nil, 2, 5, 2, nil, 10, 50, 3, time.Now(), time.Now()))
+			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height",
+			"longitude", "latitude", "created_at", "updated_at",
+		}).AddRow(
+			1, 2, 1, nil, nil, nil, 1, 1, 1, nil, 100000, nil,
+			2, 5, 2, nil, 10, 50, 3,
+			"37.6173", "55.7558", time.Now(), time.Now(),
+		))
 
 	list, err := repo.GetAllOffers(context.Background())
 	require.NoError(t, err)
@@ -99,14 +126,33 @@ func TestRepository_UpdateOffer(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()
 
-	o := Offer{ID: 1, OfferTypeID: 1, PropertyTypeID: 1, StatusID: 1, RenovationID: 1, Price: 100000, Floor: 2, TotalFloors: 5, Rooms: 3, Flat: 12, Area: 40, CeilingHeight: 3}
+	o := Offer{
+		ID:             1,
+		OfferTypeID:    1,
+		MetroStationID: ptr(1),
+		RentTypeID:     ptr(1),
+		PurchaseTypeID: ptr(1),
+		PropertyTypeID: 1,
+		StatusID:       1,
+		RenovationID:   1,
+		ComplexID:      ptr(1),
+		Price:          100000,
+		Description:    ptr("Описание"),
+		Floor:          2,
+		TotalFloors:    5,
+		Rooms:          3,
+		Address:        ptr("Адрес"),
+		Flat:           12,
+		Area:           40,
+		CeilingHeight:  3,
+	}
 
 	mock.ExpectExec(`(?i)UPDATE kvartirum.Offer`).
 		WithArgs(
 			o.OfferTypeID, o.MetroStationID, o.RentTypeID, o.PurchaseTypeID,
 			o.PropertyTypeID, o.StatusID, o.RenovationID, o.ComplexID,
 			o.Price, o.Description, o.Floor, o.TotalFloors, o.Rooms,
-			o.Address, o.Flat, o.Area, o.CeilingHeight, o.ID,
+			o.Address, o.Flat, o.Area, o.CeilingHeight, o.Longitude, o.Latitude, o.ID,
 		).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
@@ -291,7 +337,7 @@ func TestRepository_GetLikeStat(t *testing.T) {
 	defer mock.Close()
 
 	mock.ExpectQuery(`(?i)SELECT COUNT\(\*\) FROM kvartirum.Likes`).
-		WithArgs(77).
+		WithArgs(ptr(77)).
 		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(5))
 
 	count, err := repo.GetLikeStat(context.Background(), domain.LikeRequest{OfferId: 77})
