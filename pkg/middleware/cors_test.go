@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-park-mail-ru/2025_1_404/config"
 )
 
 // Фейковый обработчик для тестов
@@ -15,8 +17,10 @@ func dummyHandler(w http.ResponseWriter, r *http.Request) {
 func TestCORSHandler_OptionsRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodOptions, "/test", nil)
 	rr := httptest.NewRecorder()
+	cfg := &config.CORSConfig{AllowOrigin: "http://localhost:8000", AllowMethods: "GET, POST, PUT, OPTIONS, DELETE",
+		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true",}
 
-	handler := CORSHandler(http.HandlerFunc(dummyHandler))
+	handler := CORSHandler(http.HandlerFunc(dummyHandler), cfg)
 	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
@@ -42,8 +46,10 @@ func TestCORSHandler_OptionsRequest(t *testing.T) {
 func TestCORSHandler_GetRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rr := httptest.NewRecorder()
+	cfg := &config.CORSConfig{AllowOrigin: "http://localhost:8000", AllowMethods: "GET, POST, PUT, OPTIONS, DELETE",
+		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true",}
 
-	handler := CORSHandler(http.HandlerFunc(dummyHandler))
+	handler := CORSHandler(http.HandlerFunc(dummyHandler), cfg)
 	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusTeapot { // Должен пройти в dummyHandler

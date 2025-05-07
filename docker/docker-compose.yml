@@ -1,0 +1,212 @@
+services:
+  auth:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: auth
+    command: /app/auth
+    env_file: .dev.env
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - default
+      - monitoring
+
+  offer:
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: offer
+    command: /app/offer
+    env_file: .dev.env
+    ports:
+     - "8002:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+      - monitoring
+
+  zhk:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: zhk
+    command: /app/zhk
+    env_file: .dev.env
+    ports:
+      - "8003:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - default
+      - monitoring
+        
+  ai:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ai
+    command: /app/ai
+    env_file: .dev.env
+    ports:
+      - "8004:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+      - monitoring
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - default
+  
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../db/migrations:/migrations
+    command: 
+    - "-path=/migrations"
+    - "-database=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB?sslmode=disable"
+    - "up" 
+    
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    networks:
+      - default
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+    command: server /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    networks:
+      - default
+
+  minio-client:
+    image: minio/mc:latest
+    container_name: minio-client
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_USER} ${MINIO_PASSWORD};
+
+      mc mb -p local/avatars;
+      mc anonymous set download local/avatars;
+
+      mc mb -p local/offers;
+      mc anonymous set download local/offers;
+      "
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - default
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports: 
+      - "9090:9090"
+    command: 
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--log.level=warn'
+    networks:
+      - monitoring
+    
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - '--log.level=warn'
+    networks:
+      - monitoring
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports: 
+      - "9080:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_LOG_LEVEL=warn
+    networks:
+      - monitoring
+
+volumes:
+    postgres_data:
+    minio_data:
+    redis_data:
+    grafana-storage:
+
+networks:
+  monitoring:
+  default:

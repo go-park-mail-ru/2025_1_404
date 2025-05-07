@@ -1,13 +1,15 @@
 package middleware
 
 import (
-	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"net/http"
+
+	"github.com/go-park-mail-ru/2025_1_404/config"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 )
 
-func CORSHandler(nextHandler http.Handler) http.Handler {
+func CORSHandler(nextHandler http.Handler, cfg *config.CORSConfig) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		utils.EnableCORS(w)
+		utils.EnableCORS(w, cfg)
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
