@@ -24,6 +24,7 @@ func TestGetZhkInfoHandler(t *testing.T) {
 			CORS: config.CORSConfig{AllowOrigin: "*"},
 		},
 	}
+
 	zhkHandlers := NewZhkHandler(mockUS, cfg)
 
 	t.Run("GetZhkInfo ok", func(t *testing.T) {
@@ -105,6 +106,7 @@ func TestGetAllZhkHandler(t *testing.T) {
 			CORS: config.CORSConfig{AllowOrigin: "*"},
 		},
 	}
+
 	zhkHandlers := NewZhkHandler(mockUS, cfg)
 
 	t.Run("GetAllZhk ok", func(t *testing.T) {

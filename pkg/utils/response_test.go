@@ -6,14 +6,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-park-mail-ru/2025_1_404/config"
 )
 
 // Тест SendJSONResponse (корректный JSON-ответ)
 func TestSendJSONResponse(t *testing.T) {
 	rr := httptest.NewRecorder()
 	data := map[string]string{"message": "OK"}
+	cfg := &config.CORSConfig{AllowOrigin: "http://localhost:8000", AllowMethods: "GET, POST, PUT, OPTIONS, DELETE",
+		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true"}
 
-	cfg := &config.CORSConfig{}
 	SendJSONResponse(rr, data, http.StatusOK, cfg)
 
 	if rr.Code != http.StatusOK {
@@ -41,8 +44,9 @@ func TestSendJSONResponse(t *testing.T) {
 func TestSendErrorResponse(t *testing.T) {
 	rr := httptest.NewRecorder()
 	errorMessage := "Something went wrong"
+	cfg := &config.CORSConfig{AllowOrigin: "http://localhost:8000", AllowMethods: "GET, POST, PUT, OPTIONS, DELETE",
+		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true"}
 
-	cfg := &config.CORSConfig{}
 	SendErrorResponse(rr, errorMessage, http.StatusBadRequest, cfg)
 
 	if rr.Code != http.StatusBadRequest {
@@ -69,12 +73,14 @@ func TestSendErrorResponse(t *testing.T) {
 // Тест EnableCORS (CORS-заголовки)
 func TestEnableCORS(t *testing.T) {
 	rr := httptest.NewRecorder()
+
 	cfg := &config.CORSConfig{
 		AllowOrigin:      "http://localhost:8000",
 		AllowMethods:     "GET, POST, PUT, OPTIONS, DELETE",
 		AllowHeaders:     "Content-Type, x-csrf-token",
 		AllowCredentials: "true",
 	}
+
 	EnableCORS(rr, cfg)
 
 	expectedHeaders := map[string]string{
