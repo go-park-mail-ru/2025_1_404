@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,7 +17,13 @@ func TestCORSHandler_OptionsRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodOptions, "/test", nil)
 	rr := httptest.NewRecorder()
 
-	handler := CORSHandler(http.HandlerFunc(dummyHandler))
+	cfg := &config.CORSConfig{
+		AllowOrigin:      "http://localhost:8000",
+		AllowMethods:     "GET, POST, PUT, OPTIONS, DELETE",
+		AllowHeaders:     "Content-Type, x-csrf-token",
+		AllowCredentials: "true",
+	}
+	handler := CORSHandler(http.HandlerFunc(dummyHandler), cfg)
 	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
@@ -43,7 +50,13 @@ func TestCORSHandler_GetRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rr := httptest.NewRecorder()
 
-	handler := CORSHandler(http.HandlerFunc(dummyHandler))
+	cfg := &config.CORSConfig{
+		AllowOrigin:      "http://localhost:8000",
+		AllowMethods:     "GET, POST, PUT, OPTIONS, DELETE",
+		AllowHeaders:     "Content-Type, x-csrf-token",
+		AllowCredentials: "true",
+	}
+	handler := CORSHandler(http.HandlerFunc(dummyHandler), cfg)
 	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusTeapot { // Должен пройти в dummyHandler

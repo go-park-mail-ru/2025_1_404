@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,7 +13,8 @@ func TestSendJSONResponse(t *testing.T) {
 	rr := httptest.NewRecorder()
 	data := map[string]string{"message": "OK"}
 
-	SendJSONResponse(rr, data, http.StatusOK)
+	cfg := &config.CORSConfig{}
+	SendJSONResponse(rr, data, http.StatusOK, cfg)
 
 	if rr.Code != http.StatusOK {
 		t.Errorf("Ожидался статус 200, получено %d", rr.Code)
@@ -40,7 +42,8 @@ func TestSendErrorResponse(t *testing.T) {
 	rr := httptest.NewRecorder()
 	errorMessage := "Something went wrong"
 
-	SendErrorResponse(rr, errorMessage, http.StatusBadRequest)
+	cfg := &config.CORSConfig{}
+	SendErrorResponse(rr, errorMessage, http.StatusBadRequest, cfg)
 
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("Ожидался статус 400, получено %d", rr.Code)
@@ -66,7 +69,13 @@ func TestSendErrorResponse(t *testing.T) {
 // Тест EnableCORS (CORS-заголовки)
 func TestEnableCORS(t *testing.T) {
 	rr := httptest.NewRecorder()
-	EnableCORS(rr)
+	cfg := &config.CORSConfig{
+		AllowOrigin:      "http://localhost:8000",
+		AllowMethods:     "GET, POST, PUT, OPTIONS, DELETE",
+		AllowHeaders:     "Content-Type, x-csrf-token",
+		AllowCredentials: "true",
+	}
+	EnableCORS(rr, cfg)
 
 	expectedHeaders := map[string]string{
 		"Access-Control-Allow-Origin":      "http://localhost:8000",

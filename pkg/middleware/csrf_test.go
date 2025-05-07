@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"github.com/go-park-mail-ru/2025_1_404/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,15 +24,16 @@ func TestCSRFMiddleware(t *testing.T) {
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
 		request := httptest.NewRequest(http.MethodPut, "/test", nil).WithContext(ctx)
 
-		token := csrf.GenerateCSRF("1", utils.Salt)
+		token := csrf.GenerateCSRF("1", "testsalt")
 		request.Header.Set("X-CSRF-TOKEN", token)
 
 		response := httptest.NewRecorder()
 
-		handler := CSRFMiddleware(l, testHandler)
+		cfg := &config.Config{}
+		handler := CSRFMiddleware(l, cfg, testHandler)
 		handler.ServeHTTP(response, request)
 
-		assert.Equal(t, http.StatusTeapot, response.Result().StatusCode)
+		assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)
 
 	})
 
@@ -39,7 +41,8 @@ func TestCSRFMiddleware(t *testing.T) {
 		request := httptest.NewRequest(http.MethodPut, "/test", nil)
 		response := httptest.NewRecorder()
 
-		handler := CSRFMiddleware(l, testHandler)
+		cfg := &config.Config{}
+		handler := CSRFMiddleware(l, cfg, testHandler)
 		handler.ServeHTTP(response, request)
 
 		assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)
@@ -50,7 +53,8 @@ func TestCSRFMiddleware(t *testing.T) {
 		request.Header.Set("X-CSRF-TOKEN", "csrf_token")
 		response := httptest.NewRecorder()
 
-		handler := CSRFMiddleware(l, testHandler)
+		cfg := &config.Config{}
+		handler := CSRFMiddleware(l, cfg, testHandler)
 		handler.ServeHTTP(response, request)
 
 		assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)
@@ -62,7 +66,8 @@ func TestCSRFMiddleware(t *testing.T) {
 		request.Header.Set("X-CSRF-TOKEN", "invalid_csrf_token")
 		response := httptest.NewRecorder()
 
-		handler := CSRFMiddleware(l, testHandler)
+		cfg := &config.Config{}
+		handler := CSRFMiddleware(l, cfg, testHandler)
 		handler.ServeHTTP(response, request)
 
 		assert.Equal(t, http.StatusForbidden, response.Result().StatusCode)

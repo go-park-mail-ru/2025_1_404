@@ -19,7 +19,11 @@ func TestGetZhkInfoHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockZhkUsecase(ctrl)
-	cfg, _ := config.NewConfig()
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
 	zhkHandlers := NewZhkHandler(mockUS, cfg)
 
 	t.Run("GetZhkInfo ok", func(t *testing.T) {
@@ -30,8 +34,7 @@ func TestGetZhkInfoHandler(t *testing.T) {
 		request = mux.SetURLVars(request, vars)
 		response := httptest.NewRecorder()
 
-		zhk := domain.Zhk{ID: 1}
-		mockUS.EXPECT().GetZhkInfo(gomock.Any(), zhk.ID).Return(domain.ZhkInfo{ID: 1}, nil)
+		mockUS.EXPECT().GetZhkInfo(gomock.Any(), int64(1)).Return(domain.ZhkInfo{ID: 1}, nil)
 
 		zhkHandlers.GetZhkInfo(response, request)
 
@@ -97,7 +100,11 @@ func TestGetAllZhkHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockZhkUsecase(ctrl)
-	cfg, _ := config.NewConfig()
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
 	zhkHandlers := NewZhkHandler(mockUS, cfg)
 
 	t.Run("GetAllZhk ok", func(t *testing.T) {

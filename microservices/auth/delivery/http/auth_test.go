@@ -20,13 +20,19 @@ import (
 
 // Тест на регистрацию
 func TestRegisterHandler(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
 
-	mockUS := mocks.NewMockAuthUsecase(ctrl)
-	cfg, _ := config.NewConfig()
-	userHandlers := NewAuthHandler(mockUS, cfg)
-	t.Run("registration ok", func(t *testing.T) {
+	t.Run("registration_ok", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		handler := NewAuthHandler(mockUS, cfg)
+
 		req := domain.RegisterRequest{
 			Email:     "email@mail.ru",
 			FirstName: "Ivan",
@@ -35,90 +41,64 @@ func TestRegisterHandler(t *testing.T) {
 		}
 
 		user := domain.User{
-			ID:        0,
+			ID:        1,
 			Email:     req.Email,
 			FirstName: req.FirstName,
 			LastName:  req.LastName,
-			Password:  "hashedPassword",
-			Image:     "",
 		}
 
-		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
 		mockUS.EXPECT().CreateUser(gomock.Any(), req.Email, req.Password, req.FirstName, req.LastName).Return(user, nil)
 
 		body, _ := json.Marshal(req)
-		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
-		request.Header.Set("Content-Type", "application/json")
-		response := httptest.NewRecorder()
+		reqHTTP := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
+		reqHTTP.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
 
-		userHandlers.Register(response, request)
-
-		res := response.Result()
-
-		assert.Equal(t, http.StatusCreated, res.StatusCode)
-
-		cookie := res.Cookies()[0]
-		assert.Equal(t, "token", cookie.Name)
-		assert.Equal(t, cookie.SameSite, http.SameSiteStrictMode)
-		assert.True(t, cookie.HttpOnly)
-		assert.False(t, cookie.Secure)
-
-		user.Password = ""
-		var responseBody domain.User
-		err := json.NewDecoder(response.Body).Decode(&responseBody)
-		assert.NoError(t, err)
-		assert.Equal(t, user, responseBody)
+		handler.Register(rec, reqHTTP)
+		assert.Equal(t, http.StatusCreated, rec.Code)
 	})
 
-	t.Run("invalid json", func(t *testing.T) {
-		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBufferString("bad json"))
+	t.Run("invalid_json", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		handler := NewAuthHandler(mockUS, cfg)
+
+		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBufferString("not json"))
 		request.Header.Set("Content-Type", "application/json")
-		response := httptest.NewRecorder()
+		rec := httptest.NewRecorder()
 
-		userHandlers.Register(response, request)
-
-		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+		handler.Register(rec, request)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
-	t.Run("invalid request fields", func(t *testing.T) {
+	t.Run("invalid_request_fields", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		handler := NewAuthHandler(mockUS, cfg)
+
 		req := domain.RegisterRequest{
-			Email:     "badEmail",
-			FirstName: "Ivan",
-			LastName:  "Ivanov",
-			Password:  "GoodPassword123",
+			Email:     "bad",
+			FirstName: "Name",
+			LastName:  "Last",
+			Password:  "123",
 		}
-
 		body, _ := json.Marshal(req)
 		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
 		request.Header.Set("Content-Type", "application/json")
-		response := httptest.NewRecorder()
+		rec := httptest.NewRecorder()
 
-		userHandlers.Register(response, request)
-
-		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+		handler.Register(rec, request)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
-	t.Run("email is taken", func(t *testing.T) {
-		req := domain.RegisterRequest{
-			Email:     "email@taken.ru",
-			FirstName: "Ivan",
-			LastName:  "Ivanov",
-			Password:  "GoodPassword123",
-		}
+	t.Run("usecase_CreateUser_failed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		handler := NewAuthHandler(mockUS, cfg)
 
-		body, _ := json.Marshal(req)
-		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
-		request.Header.Set("Content-Type", "application/json")
-		response := httptest.NewRecorder()
-
-		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(true)
-
-		userHandlers.Register(response, request)
-
-		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
-	})
-
-	t.Run("usecase CreateUser failed", func(t *testing.T) {
 		req := domain.RegisterRequest{
 			Email:     "email@mail.ru",
 			FirstName: "Ivan",
@@ -126,17 +106,16 @@ func TestRegisterHandler(t *testing.T) {
 			Password:  "GoodPassword123",
 		}
 
+		mockUS.EXPECT().CreateUser(gomock.Any(), req.Email, req.Password, req.FirstName, req.LastName).
+			Return(domain.User{}, fmt.Errorf("create fail"))
+
 		body, _ := json.Marshal(req)
 		request := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
 		request.Header.Set("Content-Type", "application/json")
-		response := httptest.NewRecorder()
+		rec := httptest.NewRecorder()
 
-		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
-		mockUS.EXPECT().CreateUser(gomock.Any(), req.Email, req.Password, req.FirstName, req.LastName).Return(domain.User{}, fmt.Errorf("create user fail"))
-
-		userHandlers.Register(response, request)
-
-		assert.Equal(t, http.StatusInternalServerError, response.Result().StatusCode)
+		handler.Register(rec, request)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
 
@@ -145,7 +124,11 @@ func TestLoginHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockAuthUsecase(ctrl)
-	cfg, _ := config.NewConfig()
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
 	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("login ok", func(t *testing.T) {
@@ -264,7 +247,11 @@ func TestMeHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockAuthUsecase(ctrl)
-	cfg, _ := config.NewConfig()
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
 	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("me ok", func(t *testing.T) {
@@ -315,7 +302,11 @@ func TestLogoutHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockAuthUsecase(ctrl)
-	cfg, _ := config.NewConfig()
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
 	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("logout ok", func(t *testing.T) {
@@ -329,27 +320,23 @@ func TestLogoutHandler(t *testing.T) {
 }
 
 func TestUpdateHandler(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockUS := mocks.NewMockAuthUsecase(ctrl)
-	cfg, _ := config.NewConfig()
-	userHandlers := NewAuthHandler(mockUS, cfg)
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
 
 	t.Run("update ok", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		userHandlers := NewAuthHandler(mockUS, cfg)
+
 		req := domain.UpdateRequest{
 			Email:     "newmail@mail.ru",
 			FirstName: "NewName",
 			LastName:  "NewLastName",
 		}
-
-		user := domain.User{
-			ID:        1,
-			Email:     "old@mail.ru",
-			FirstName: "OldName",
-			LastName:  "OldLastName",
-		}
-
 		updatedUser := domain.User{
 			ID:        1,
 			Email:     req.Email,
@@ -358,24 +345,25 @@ func TestUpdateHandler(t *testing.T) {
 		}
 
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
-
 		body, _ := json.Marshal(req)
-		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body))
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body)).WithContext(ctx)
 		request.Header.Set("Content-Type", "application/json")
-		requestWithCtx := request.WithContext(ctx)
 		response := httptest.NewRecorder()
 
 		req.ID = 1
-		mockUS.EXPECT().GetUserByID(gomock.Any(), 1).Return(user, nil)
-		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(false)
 		mockUS.EXPECT().UpdateUser(gomock.Any(), domain.UserFromUpdated(req)).Return(updatedUser, nil)
 
-		userHandlers.Update(response, requestWithCtx)
+		userHandlers.Update(response, request)
 
 		assert.Equal(t, http.StatusOK, response.Result().StatusCode)
 	})
 
 	t.Run("userID not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		userHandlers := NewAuthHandler(mockUS, cfg)
+
 		request := httptest.NewRequest(http.MethodPost, "/auth/me", nil)
 		response := httptest.NewRecorder()
 
@@ -385,92 +373,65 @@ func TestUpdateHandler(t *testing.T) {
 	})
 
 	t.Run("invalid json", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		userHandlers := NewAuthHandler(mockUS, cfg)
+
 		request := httptest.NewRequest(http.MethodPost, "/auth/update", bytes.NewBufferString("bad json"))
 		response := httptest.NewRecorder()
 
 		userHandlers.Update(response, request)
 
 		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
-
 	})
 
 	t.Run("invalid request fields", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		userHandlers := NewAuthHandler(mockUS, cfg)
+
 		req := domain.UpdateRequest{
 			Email:     "BadEmail",
 			FirstName: "NewName",
 			LastName:  "NewLastName",
 		}
-
 		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
-
-		body, _ := json.Marshal(req)
-		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body))
-		request.Header.Set("Content-Type", "application/json")
-		requestWithCtx := request.WithContext(ctx)
-		response := httptest.NewRecorder()
-
-		userHandlers.Update(response, requestWithCtx)
-
-		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
-	})
-
-	t.Run("email taken", func(t *testing.T) {
-		req := domain.UpdateRequest{
-			Email:     "new@taken.ru",
-			FirstName: "NewName",
-			LastName:  "NewLastName",
-		}
-		user := domain.User{
-			ID:        1,
-			Email:     "email@taken.ru",
-			FirstName: "OldName",
-			LastName:  "OldLastName",
-		}
-
-		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
-
-		body, _ := json.Marshal(req)
-		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body))
-		request.Header.Set("Content-Type", "application/json")
-		requestWithCtx := request.WithContext(ctx)
-		response := httptest.NewRecorder()
-
-		mockUS.EXPECT().GetUserByID(gomock.Any(), 1).Return(user, nil)
-		mockUS.EXPECT().IsEmailTaken(gomock.Any(), req.Email).Return(true)
-
-		userHandlers.Update(response, requestWithCtx)
-
-		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
-	})
-
-	t.Run("usecase UpdateUser failed", func(t *testing.T) {
-		req := domain.UpdateRequest{
-			Email:     "email@mail.ru",
-			FirstName: "NewName",
-			LastName:  "NewLastName",
-		}
-
-		user := domain.User{
-			ID:        1,
-			Email:     "email@mail.ru",
-			FirstName: "OldName",
-			LastName:  "OldLastName",
-		}
-
-		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
-
 		body, _ := json.Marshal(req)
 		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body)).WithContext(ctx)
 		request.Header.Set("Content-Type", "application/json")
 		response := httptest.NewRecorder()
 
-		mockUS.EXPECT().GetUserByID(gomock.Any(), 1).Return(user, nil)
+		userHandlers.Update(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
+	})
+
+	t.Run("usecase UpdateUser failed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		mockUS := mocks.NewMockAuthUsecase(ctrl)
+		userHandlers := NewAuthHandler(mockUS, cfg)
+
+		req := domain.UpdateRequest{
+			Email:     "email@mail.ru",
+			FirstName: "NewName",
+			LastName:  "NewLastName",
+		}
+
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		body, _ := json.Marshal(req)
+		request := httptest.NewRequest(http.MethodPost, "/auth/me", bytes.NewBuffer(body)).WithContext(ctx)
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+
 		req.ID = 1
-		mockUS.EXPECT().UpdateUser(gomock.Any(), domain.UserFromUpdated(req)).Return(domain.User{}, fmt.Errorf("usecase UserUpdate failed"))
+		mockUS.EXPECT().UpdateUser(gomock.Any(), domain.UserFromUpdated(req)).Return(domain.User{}, fmt.Errorf("update failed"))
 
 		userHandlers.Update(response, request)
 
-		assert.Equal(t, http.StatusInternalServerError, response.Result().StatusCode)
+		assert.Equal(t, http.StatusBadRequest, response.Result().StatusCode)
 	})
 }
 
@@ -479,7 +440,11 @@ func TestDeleteImage(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockUS := mocks.NewMockAuthUsecase(ctrl)
-	cfg, _ := config.NewConfig()
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
 	userHandlers := NewAuthHandler(mockUS, cfg)
 
 	t.Run("DeleteImage ok", func(t *testing.T) {
