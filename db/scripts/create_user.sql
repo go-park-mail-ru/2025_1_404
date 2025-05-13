@@ -33,7 +33,18 @@ ON TABLE
     RentType,
     MetroStation,
     MetroLine,
-    OfferType
+    OfferType,
+    ChatMessage,
+    Chat,
+    OfferImages,
+    UserReview,
+    UserNotification,
+    UserOfferFavourites,
+    OfferPriceHistory,
+    Offer,
+    Users,
+    Image,
+    Views
     TO user_role;
 
 -- Даем права на INSERT, UPDATE, DELETE
