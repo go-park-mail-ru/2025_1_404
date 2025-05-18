@@ -43,7 +43,6 @@ func main() {
 
 	ctx := context.Background()
 
-
 	// Инициализация подключения к БД
 	dbpool, err := database.NewPool(&cfg.Postgres, ctx)
 	if err != nil {
@@ -116,6 +115,11 @@ func main() {
 	r.Handle("/api/v1/offers/like",
 		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.LikeOffer)))).
 		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/favorite",
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.FavoriteOffer)))).
+		Methods(http.MethodPost)
+	r.HandleFunc("/api/v1/offers/favorites", offerHandler.GetFavorites).
+		Methods(http.MethodGet)
 
 	// Метрики
 	metrics, reg := metrics.NewMetrics("offer")

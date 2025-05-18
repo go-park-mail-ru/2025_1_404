@@ -364,3 +364,43 @@ func (h *OfferHandler) LikeOffer(w http.ResponseWriter, r *http.Request) {
 
 	utils.SendJSONResponse(w, likeStat, http.StatusOK, &h.cfg.App.CORS)
 }
+
+func (h *OfferHandler) FavoriteOffer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	var req domain.FavoriteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	req.UserId = userID
+
+	stat, err := h.OfferUC.FavoriteOffer(r.Context(), req)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при добавлении в избранное", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, stat, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) GetFavorites(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	offers, err := h.OfferUC.GetFavorites(r.Context(), userID)
+	if err != nil {
+		utils.SendErrorResponse(w, "Не удалось получить избранное", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, offers, http.StatusOK, &h.cfg.App.CORS)
+}

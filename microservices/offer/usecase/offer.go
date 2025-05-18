@@ -399,6 +399,68 @@ func (u *offerUsecase) LikeOffer(ctx context.Context, like domain.LikeRequest) (
 	return likeStat, nil
 }
 
+func (u *offerUsecase) GetFavorites(ctx context.Context, userID int) ([]domain.OfferInfo, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	offers, err := u.repo.GetFavoritesByUserID(ctx, userID)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": userID, "err": err.Error()}).Error("Offer usecase: get favourites failed")
+		return nil, err
+	}
+
+	offersDTO := mapOffers(offers)
+	return u.PrepareOffersInfo(ctx, offersDTO, &userID)
+}
+
+func (u *offerUsecase) FavoriteOffer(ctx context.Context, req domain.FavoriteRequest) (domain.FavoriteStat, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var stat domain.FavoriteStat
+
+	isFav, err := u.repo.IsFavorite(ctx, req.UserId, req.OfferId)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID, "err": err.Error(),
+		}).Error("Offer usecase: isOfferFavorited failed")
+		return stat, err
+	}
+
+	if isFav {
+		err = u.repo.RemoveFavorite(ctx, req.UserId, req.OfferId)
+		stat.IsFavorited = false
+	} else {
+		err = u.repo.AddFavorite(ctx, req.UserId, req.OfferId)
+		stat.IsFavorited = true
+	}
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID, "err": err.Error(),
+		}).Error("Offer usecase: toggle favorite failed")
+		return stat, err
+	}
+
+	total, err := u.repo.GetFavoriteStat(ctx, req)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID, "err": err.Error(),
+		}).Error("Offer usecase: getFavoriteAmount failed")
+		return stat, err
+	}
+
+	stat.Amount = total
+	return stat, nil
+}
+
+func (u *offerUsecase) IsFavorite(ctx context.Context, userID, offerID int) (bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	isFav, err := u.repo.IsFavorite(ctx, userID, offerID)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": userID, "offer_id": offerID, "err": err.Error()}).Error("Offer usecase: is favourite check failed")
+	}
+	return isFav, err
+}
+
 func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 

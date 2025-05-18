@@ -90,11 +90,6 @@ type LikesStat struct {
 	Amount  int  `json:"amount"`
 }
 
-// type FavoriteStat struct {
-// 	IsFavourited bool `json:"is_favorited"`
-// 	Amount       *int  `json:"amount"`
-// }
-
 type LikeRequest struct {
 	OfferId int `json:"offer_id"`
 	UserId  int `json:"user_id"`
@@ -105,4 +100,14 @@ const OfferStatusDraft = 2
 type OfferPriceHistory struct {
 	Price int       `json:"price"`
 	Date  time.Time `json:"date"`
+}
+
+type FavoriteRequest struct {
+	UserId  int `json:"user_id"`
+	OfferId int `json:"offer_id"`
+}
+
+type FavoriteStat struct {
+	IsFavorited bool `json:"is_favorited"`
+	Amount      int  `json:"amount"`
 }

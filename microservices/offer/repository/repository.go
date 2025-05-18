@@ -161,6 +161,38 @@ const (
 	deletePriceHistorySQL = `
 		DELETE FROM kvartirum.OfferPriceHistory WHERE offer_id = $1;
 	`
+
+	addFavoriteSQL = `
+		INSERT INTO kvartirum.Favorites (user_id, offer_id)
+		VALUES ($1, $2)
+		ON CONFLICT DO NOTHING;
+	`
+
+	removeFavoriteSQL = `
+		DELETE FROM kvartirum.Favorites
+		WHERE user_id = $1 AND offer_id = $2;
+	`
+
+	getFavoritesByUserSQL = `
+		SELECT o.id, o.seller_id, o.offer_type_id, o.metro_station_id, o.rent_type_id,
+			o.purchase_type_id, o.property_type_id, o.offer_status_id, o.renovation_id,
+			o.complex_id, o.price, o.description, o.floor, o.total_floors, o.rooms,
+			o.address, o.flat, o.area, o.ceiling_height, o.longitude, o.latitude,
+			o.created_at, o.updated_at
+		FROM kvartirum.Favorites f
+		JOIN kvartirum.Offer o ON f.offer_id = o.id
+		WHERE f.user_id = $1;
+	`
+
+	isFavoriteSQL = `
+		SELECT EXISTS (
+			SELECT 1 FROM kvartirum.Favorites WHERE user_id = $1 AND offer_id = $2
+		);
+	`
+
+	getFavoriteStat = `
+		SELECT COUNT(*) FROM kvartirum.Favorites WHERE offer_id = $1;
+	`
 )
 
 func (r *offerRepository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
@@ -684,4 +716,88 @@ func (r *offerRepository) GetPriceHistory(ctx context.Context, offerID int64, li
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query  GetPriceHistory")
 
 	return history, nil
+}
+
+func (r *offerRepository) AddFavorite(ctx context.Context, userID, offerID int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, addFavoriteSQL, userID, offerID)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID, "user_id": userID, "offer_id": offerID,
+		"success": err == nil,
+	}).Info("SQL Query AddFavorite")
+
+	return err
+}
+
+func (r *offerRepository) RemoveFavorite(ctx context.Context, userID, offerID int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, removeFavoriteSQL, userID, offerID)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID, "user_id": userID, "offer_id": offerID,
+		"success": err == nil,
+	}).Info("SQL Query RemoveFavorite")
+
+	return err
+}
+
+func (r *offerRepository) GetFavoritesByUserID(ctx context.Context, userID int) ([]Offer, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	rows, err := r.db.Query(ctx, getFavoritesByUserSQL, userID)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": false}).Error("SQL Query GetFavoritesByUserID failed")
+		return nil, err
+	}
+	defer rows.Close()
+
+	var offers []Offer
+	for rows.Next() {
+		var o Offer
+		err := rows.Scan(
+			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
+			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
+			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		offers = append(offers, o)
+	}
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": userID, "count": len(offers), "success": true}).Info("SQL Query GetFavoritesByUserID succeeded")
+
+	return offers, nil
+}
+
+func (r *offerRepository) IsFavorite(ctx context.Context, userID, offerID int) (bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var exists bool
+	err := r.db.QueryRow(ctx, isFavoriteSQL, userID, offerID).Scan(&exists)
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID, "user_id": userID, "offer_id": offerID, "is_fav": exists,
+		"success": err == nil,
+	}).Info("SQL Query IsFavorite")
+
+	return exists, err
+}
+
+func (r *offerRepository) GetFavoriteStat(ctx context.Context, req domain.FavoriteRequest) (int, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var count int
+	err := r.db.QueryRow(ctx, getFavoriteStat, req.OfferId).Scan(&count)
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"offer_id":  req.OfferId,
+		"success":   err == nil,
+	}).Info("SQL Query GetFavoriteStat")
+
+	return count, err
 }
