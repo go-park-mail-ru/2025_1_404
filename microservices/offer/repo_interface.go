@@ -2,6 +2,7 @@ package offer
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/repository"
@@ -36,4 +37,5 @@ type OfferRepository interface {
 	GetFavoritesByUserID(ctx context.Context, userID int) ([]repository.Offer, error)
 	IsFavorite(ctx context.Context, userID, offerID int) (bool, error)
 	GetFavoriteStat(ctx context.Context, req domain.FavoriteRequest) (int, error)
+	SetPromotesUntil(ctx context.Context, id int, until time.Time) error
 }

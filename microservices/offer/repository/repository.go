@@ -801,3 +801,12 @@ func (r *offerRepository) GetFavoriteStat(ctx context.Context, req domain.Favori
 
 	return count, err
 }
+
+func (r *offerRepository) SetPromotesUntil(ctx context.Context, id int, until time.Time) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE kvartirum.Offer
+		SET promotes_until = $1
+		WHERE id = $2;
+	`, until, id)
+	return err
+}

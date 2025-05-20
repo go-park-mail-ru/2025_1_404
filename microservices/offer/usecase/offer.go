@@ -461,6 +461,10 @@ func (u *offerUsecase) IsFavorite(ctx context.Context, userID, offerID int) (boo
 	return isFav, err
 }
 
+func (u *offerUsecase) PromoteOffer(ctx context.Context, offerID int, until time.Time) error {
+	return u.repo.SetPromotesUntil(ctx, offerID, until)
+}
+
 func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 

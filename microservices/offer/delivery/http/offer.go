@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
@@ -403,4 +404,47 @@ func (h *OfferHandler) GetFavorites(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONResponse(w, offers, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) PromoteOffer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	vars := mux.Vars(r)
+	offerID, err := strconv.Atoi(vars["id"])
+	if err != nil || offerID <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	var body struct {
+		PromotesUntil string `json:"promotes_until"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		utils.SendErrorResponse(w, "Неверное тело запроса", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	promoteUntil, err := time.Parse(time.RFC3339, body.PromotesUntil)
+	if err != nil {
+		utils.SendErrorResponse(w, "Неверный формат даты. Используйте RFC3339", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	if err := h.OfferUC.CheckAccessToOffer(r.Context(), offerID, userID); err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden, &h.cfg.App.CORS)
+		return
+	}
+
+	err = h.OfferUC.PromoteOffer(r.Context(), offerID, promoteUntil)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при установке продвижения", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, map[string]string{"message": "Продвижение установлено"}, http.StatusOK, &h.cfg.App.CORS)
 }
