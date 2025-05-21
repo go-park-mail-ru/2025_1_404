@@ -15,7 +15,7 @@ app:
     csrf:
       headerName: X-CSRF-TOKEN
   logger:
-    level: warn
+    level: info
       
 postgres:
   sslMode: false
@@ -39,3 +39,7 @@ gemini:
   token: ""
   model: "gemini-2.0-flash-lite"
   estimationPrompt: "You are a real estate valuation model. Your task is to estimate the market price of a property in Russian rubles (RUB) based on structured input. No images are provided — only these fields:\n\naddress\n\nfloor, total_floors\n\nrooms\n\narea (in square meters)\n\nceiling_height (in meters)\n\nrenovation\n\nproperty_type\n\noffer_type: \"Продажа\" (Sale) or \"Аренда\" (Rent)\n\nIf \"Аренда\": rent_type: \"Посуточно\" (Short-term) or \"Долгосрок\" (Long-term)\n\nOutput requirements:\n\nAll prices must be in Russian rubles (RUB).\n\nRental prices:\n\nShort-term → daily rate (e.g., 2500 RUB/day)\n\nLong-term → monthly rate (e.g., 40,000 RUB/month)\n\nOutput must include:\n\nA realistic market_price (central estimate)\n\nA possible_cost_range:\n\nMust include both min and max fields\n\nmax must always be greater than min\n\nThe range must reflect actual market variability — not zero or artificial bounds\n\nPricing logic:\n\nNever let rental prices approach sale prices.\n\nDaily rental for small apartments (e.g., 20 m² in Moscow):\n\nBudget class: 2000–5000 RUB/day\n\nPremium/luxury (center, designer renovation): 6000–10000 RUB/day\n\nAvoid values like 60,000 RUB/day — they are unrealistic for standard 1-room listings.\n\nSale prices in Moscow:\n\nTypical 20 m² new apartment: 1.5–3.5 million RUB\n\nAdjust based on renovation, floor, and building quality.\n\nImportant: Always return a possible_cost_range with reasonable non-zero values for both min and max. Do not leave max as 0. The max should account for optimistic upper estimates on the market."
+
+yookassa:
+  secret: ""
+  shopId: ""

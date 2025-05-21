@@ -3,16 +3,14 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"net"
-	"net/http"
-	"strconv"
-	"time"
-
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
+	"io"
+	"net"
+	"net/http"
+	"strconv"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -406,6 +404,49 @@ func (h *OfferHandler) GetFavorites(w http.ResponseWriter, r *http.Request) {
 	utils.SendJSONResponse(w, offers, http.StatusOK, &h.cfg.App.CORS)
 }
 
+func (h *OfferHandler) PromoteCheckOffer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	vars := mux.Vars(r)
+	offerId, err := strconv.Atoi(vars["id"])
+	if err != nil || offerId <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID объявления", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+	purchaseId, err := strconv.Atoi(vars["purchaseId"])
+	if err != nil || purchaseId <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID платежа", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	if err := h.OfferUC.CheckAccessToOffer(r.Context(), offerId, userID); err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden, &h.cfg.App.CORS)
+		return
+	}
+
+	validateResponse, err := h.OfferUC.ValidateOffer(r.Context(), offerId, purchaseId)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при создании ссылки для оплаты", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+	if !*validateResponse {
+		utils.SendErrorResponse(w, "Некорректный ID платежа", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	paymentData, err := h.OfferUC.CheckPayment(r.Context(), purchaseId)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при проверке платежа", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, paymentData, http.StatusOK, &h.cfg.App.CORS)
+}
+
 func (h *OfferHandler) PromoteOffer(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(utils.UserIDKey).(int)
 	if !ok {
@@ -414,37 +455,38 @@ func (h *OfferHandler) PromoteOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	offerID, err := strconv.Atoi(vars["id"])
-	if err != nil || offerID <= 0 {
+	offerId, err := strconv.Atoi(vars["id"])
+	if err != nil || offerId <= 0 {
 		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
-	var body struct {
-		PromotesUntil string `json:"promotes_until"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	createPaymentRequest := &domain.CreatePaymentRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&createPaymentRequest); err != nil {
 		utils.SendErrorResponse(w, "Неверное тело запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
-	promoteUntil, err := time.Parse(time.RFC3339, body.PromotesUntil)
-	if err != nil {
-		utils.SendErrorResponse(w, "Неверный формат даты. Используйте RFC3339", http.StatusBadRequest, &h.cfg.App.CORS)
-		return
-	}
-
-	if err := h.OfferUC.CheckAccessToOffer(r.Context(), offerID, userID); err != nil {
+	if err := h.OfferUC.CheckAccessToOffer(r.Context(), offerId, userID); err != nil {
 		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden, &h.cfg.App.CORS)
 		return
 	}
 
-	err = h.OfferUC.PromoteOffer(r.Context(), offerID, promoteUntil)
+	exists, err := h.OfferUC.CheckType(r.Context(), createPaymentRequest.Type)
 	if err != nil {
-		utils.SendErrorResponse(w, "Ошибка при установке продвижения", http.StatusInternalServerError, &h.cfg.App.CORS)
+		utils.SendErrorResponse(w, "Не удалось проверить тип продвижения", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+	if !exists {
+		utils.SendErrorResponse(w, "Неизвестный тип продвижения", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Продвижение установлено"}, http.StatusOK, &h.cfg.App.CORS)
+	createPaymentResponse, err := h.OfferUC.PromoteOffer(r.Context(), offerId, createPaymentRequest.Type)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при создании ссылки для оплаты", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, createPaymentResponse, http.StatusOK, &h.cfg.App.CORS)
 }

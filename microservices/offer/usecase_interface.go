@@ -2,8 +2,6 @@ package offer
 
 import (
 	"context"
-	"time"
-
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 )
@@ -30,5 +28,8 @@ type OfferUsecase interface {
 	GetFavorites(ctx context.Context, userID int) ([]domain.OfferInfo, error)
 	IsFavorite(ctx context.Context, userID, offerID int) (bool, error)
 	FavoriteOffer(ctx context.Context, req domain.FavoriteRequest) (domain.FavoriteStat, error)
-	PromoteOffer(ctx context.Context, offerID int, until time.Time) error
+	PromoteOffer(ctx context.Context, offerID int, paymentType int) (*domain.CreatePaymentResponse, error)
+	CheckType(ctx context.Context, paymentType int) (bool, error)
+	ValidateOffer(ctx context.Context, offerID int, purchaseId int) (*bool, error)
+	CheckPayment(ctx context.Context, paymentId int) (*domain.CheckPaymentResponse, error)
 }

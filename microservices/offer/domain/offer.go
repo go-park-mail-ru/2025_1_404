@@ -112,3 +112,24 @@ type FavoriteStat struct {
 	IsFavorited bool `json:"is_favorited"`
 	Amount      int  `json:"amount"`
 }
+
+type CreatePaymentRequest struct {
+	Type int `json:"type"`
+}
+
+type CreatePaymentResponse struct {
+	OfferId    int32  `json:"offer_id"`
+	PaymentUri string `json:"payment_uri"`
+}
+
+type CheckPaymentResponse struct {
+	OfferId  int  `json:"offer_id"`
+	IsActive bool `json:"is_active"`
+	IsPaid   bool `json:"is_paid"`
+	Days     int  `json:"days"`
+}
+
+type PaymentPeriods struct {
+	Days  int
+	Price int
+}

@@ -13,18 +13,19 @@ type Config struct {
 	Redis    RedisConfig    `yaml:"redis"`
 	Gemini   GeminiConfig   `yaml:"gemini"`
 	Yandex   YandexConfig   `yaml:"yandex"`
+	Yookassa YookassaConfig `yaml:"yookassa"`
 }
 
 type AppConfig struct {
-	Auth            AuthConfig `yaml:"auth"`
-	Logger			LoggerConfig `yaml:"logger"`
-	CORS            CORSConfig `yaml:"cors"`
-	Http            HttpConfig `yaml:"http"`
-	Grpc            GrpcConfig `yaml:"grpc"`
-	Host            string     `yaml:"host"`
-	BaseDir         string     `yaml:"basePath"`
-	BaseFrontendDir string     `yaml:"baseFrontendPath"`
-	BaseImagesPath  string     `yaml:"baseImagesPath"`
+	Auth            AuthConfig   `yaml:"auth"`
+	Logger          LoggerConfig `yaml:"logger"`
+	CORS            CORSConfig   `yaml:"cors"`
+	Http            HttpConfig   `yaml:"http"`
+	Grpc            GrpcConfig   `yaml:"grpc"`
+	Host            string       `yaml:"host"`
+	BaseDir         string       `yaml:"basePath"`
+	BaseFrontendDir string       `yaml:"baseFrontendPath"`
+	BaseImagesPath  string       `yaml:"baseImagesPath"`
 }
 
 type LoggerConfig struct {
@@ -85,6 +86,11 @@ type GeminiConfig struct {
 	Token            string `yaml:"token"`
 	Model            string `yaml:"model"`
 	EstimationPrompt string `yaml:"estimationPrompt"`
+}
+
+type YookassaConfig struct {
+	Secret string `yaml:"secret"`
+	ShopId string `yaml:"shopId"`
 }
 
 type YandexConfig struct {

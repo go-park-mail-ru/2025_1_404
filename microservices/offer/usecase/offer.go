@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	paymentpb "github.com/go-park-mail-ru/2025_1_404/proto/payment"
 	"html"
 	"strconv"
 	"time"
@@ -20,17 +21,18 @@ import (
 )
 
 type offerUsecase struct {
-	repo        offer.OfferRepository
-	logger      logger.Logger
-	s3Repo      s3.S3Repo
-	yandexRepo  yandex.YandexRepo
-	cfg         *config.Config
-	authService authpb.AuthServiceClient
-	redisRepo   redis.RedisRepo
+	repo           offer.OfferRepository
+	logger         logger.Logger
+	s3Repo         s3.S3Repo
+	yandexRepo     yandex.YandexRepo
+	cfg            *config.Config
+	authService    authpb.AuthServiceClient
+	paymentService paymentpb.PaymentServiceClient
+	redisRepo      redis.RedisRepo
 }
 
-func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient, redisRepo redis.RedisRepo, yandexRepo yandex.YandexRepo) *offerUsecase {
-	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService, redisRepo: redisRepo, yandexRepo: yandexRepo}
+func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient, paymentService paymentpb.PaymentServiceClient, redisRepo redis.RedisRepo, yandexRepo yandex.YandexRepo) *offerUsecase {
+	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService, paymentService: paymentService, redisRepo: redisRepo, yandexRepo: yandexRepo}
 }
 
 func (u *offerUsecase) GetOffers(ctx context.Context, userID *int) ([]domain.OfferInfo, error) {
@@ -461,8 +463,53 @@ func (u *offerUsecase) IsFavorite(ctx context.Context, userID, offerID int) (boo
 	return isFav, err
 }
 
-func (u *offerUsecase) PromoteOffer(ctx context.Context, offerID int, until time.Time) error {
-	return u.repo.SetPromotesUntil(ctx, offerID, until)
+func (u *offerUsecase) CheckType(ctx context.Context, paymentType int) (bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+	checkTypeResponse, err := u.paymentService.CheckType(ctx, &paymentpb.CheckTypeRequest{Type: int32(paymentType)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: check type failed")
+		return false, err
+	}
+	return checkTypeResponse.IsValid, nil
+}
+
+func (u *offerUsecase) PromoteOffer(ctx context.Context, offerID int, paymentType int) (*domain.CreatePaymentResponse, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+	createPaymentResponse, err := u.paymentService.CreatePayment(ctx, &paymentpb.CreatePaymentRequest{Type: int32(paymentType), OfferId: int32(offerID)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: create payment failed")
+		return nil, err
+	}
+	return &domain.CreatePaymentResponse{
+		OfferId:    createPaymentResponse.OfferId,
+		PaymentUri: createPaymentResponse.RedirectUri,
+	}, err
+}
+
+func (u *offerUsecase) ValidateOffer(ctx context.Context, offerID int, purchaseId int) (*bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+	validateResponse, err := u.paymentService.ValidatePayment(ctx, &paymentpb.ValidatePaymentRequest{PaymentId: int32(purchaseId), OfferId: int32(offerID)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: validate payment failed")
+		return nil, err
+	}
+	return &validateResponse.IsValid, err
+}
+
+func (u *offerUsecase) CheckPayment(ctx context.Context, paymentId int) (*domain.CheckPaymentResponse, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+	checkPaymentResponse, err := u.paymentService.CheckPayment(ctx, &paymentpb.CheckPaymentRequest{PaymentId: int32(paymentId)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: check payment failed")
+		return nil, err
+	}
+
+	return &domain.CheckPaymentResponse{
+		OfferId:  int(checkPaymentResponse.OfferId),
+		IsActive: checkPaymentResponse.IsActive,
+		IsPaid:   checkPaymentResponse.IsPaid,
+		Days:     int(checkPaymentResponse.Days),
+	}, nil
 }
 
 func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferInfo, error) {
