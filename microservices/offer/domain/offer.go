@@ -9,12 +9,19 @@ type OfferInfo struct {
 	OfferData OfferData `json:"offer_data"`
 }
 
+type OfferPromotion struct {
+	IsPromoted    bool       `json:"is_promoted"`
+	PromotedUntil *time.Time `json:"promoted_until"`
+}
+
 type OfferData struct {
-	Images    []OfferImage        `json:"offer_images"`
-	Seller    OfferSeller         `json:"seller"`
-	Metro     Metro               `json:"metro"`
-	OfferStat OfferStat           `json:"offer_stat"`
-	Prices    []OfferPriceHistory `json:"offer_prices"`
+	Images         []OfferImage        `json:"offer_images"`
+	Seller         OfferSeller         `json:"seller"`
+	Metro          Metro               `json:"metro"`
+	OfferStat      OfferStat           `json:"offer_stat"`
+	Prices         []OfferPriceHistory `json:"offer_prices"`
+	Promotion      *OfferPromotion     `json:"offer_promotion"`
+	PromotionScore float32             `json:"-"`
 }
 
 type Offer struct {

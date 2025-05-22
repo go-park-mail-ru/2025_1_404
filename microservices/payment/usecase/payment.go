@@ -49,6 +49,7 @@ func (u *paymentUsecase) CheckPayment(ctx context.Context, paymentId int) (*doma
 		}
 		if paymentResponse.Status != "pending" {
 			payment.IsPaid = paymentResponse.Paid
+			payment.Days = u.GetPaymentPeriods()[payment.Type].Days
 			err = u.repo.UpdatePayment(ctx, payment)
 			if err != nil {
 				u.logger.WithFields(logger.LoggerFields{"err": err.Error()}).Warn("Payment usecase: update payment failed")

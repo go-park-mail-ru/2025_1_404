@@ -17,15 +17,21 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Auth            AuthConfig   `yaml:"auth"`
-	Logger          LoggerConfig `yaml:"logger"`
-	CORS            CORSConfig   `yaml:"cors"`
-	Http            HttpConfig   `yaml:"http"`
-	Grpc            GrpcConfig   `yaml:"grpc"`
-	Host            string       `yaml:"host"`
-	BaseDir         string       `yaml:"basePath"`
-	BaseFrontendDir string       `yaml:"baseFrontendPath"`
-	BaseImagesPath  string       `yaml:"baseImagesPath"`
+	Auth            AuthConfig      `yaml:"auth"`
+	Logger          LoggerConfig    `yaml:"logger"`
+	Promotion       PromotionConfig `yaml:"promotion"`
+	CORS            CORSConfig      `yaml:"cors"`
+	Http            HttpConfig      `yaml:"http"`
+	Grpc            GrpcConfig      `yaml:"grpc"`
+	Host            string          `yaml:"host"`
+	BaseDir         string          `yaml:"basePath"`
+	BaseFrontendDir string          `yaml:"baseFrontendPath"`
+	BaseImagesPath  string          `yaml:"baseImagesPath"`
+}
+
+type PromotionConfig struct {
+	LikeScore      float32 `yaml:"likeScore"`
+	PromotionScore float32 `yaml:"promotionScore"`
 }
 
 type LoggerConfig struct {

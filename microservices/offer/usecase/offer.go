@@ -5,6 +5,7 @@ import (
 	"fmt"
 	paymentpb "github.com/go-park-mail-ru/2025_1_404/proto/payment"
 	"html"
+	"sort"
 	"strconv"
 	"time"
 
@@ -504,6 +505,10 @@ func (u *offerUsecase) CheckPayment(ctx context.Context, paymentId int) (*domain
 		return nil, err
 	}
 
+	if checkPaymentResponse.IsActive && checkPaymentResponse.IsPaid {
+		u.repo.SetPromotesUntil(ctx, int(checkPaymentResponse.OfferId), time.Now().Add(time.Duration(checkPaymentResponse.Days)*24*time.Hour))
+	}
+
 	return &domain.CheckPaymentResponse{
 		OfferId:  int(checkPaymentResponse.OfferId),
 		IsActive: checkPaymentResponse.IsActive,
@@ -519,6 +524,18 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer,
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(), "offer_id": offer.ID}).Error("Offer usecase: get offer data failed")
 		return domain.OfferInfo{}, fmt.Errorf("offer data get failed")
+	}
+
+	offerData.Promotion = nil
+	if userID != nil && *userID == offer.SellerID {
+		offerData.Promotion = &domain.OfferPromotion{
+			IsPromoted:    offer.PromotesUntil != nil && offer.PromotesUntil.After(time.Now()),
+			PromotedUntil: offer.PromotesUntil,
+		}
+	}
+	offerData.PromotionScore = float32(offerData.OfferStat.LikesStat.Amount) * u.cfg.App.Promotion.LikeScore
+	if offer.PromotesUntil != nil && offer.PromotesUntil.After(time.Now()) {
+		offerData.PromotionScore += u.cfg.App.Promotion.PromotionScore
 	}
 
 	seller, err := u.authService.GetUserById(ctx, &authpb.GetUserRequest{Id: int32(offer.SellerID)})
@@ -566,6 +583,9 @@ func (u *offerUsecase) PrepareOffersInfo(ctx context.Context, offers []domain.Of
 		}
 		offersInfo = append(offersInfo, offerInfo)
 	}
+	sort.Slice(offersInfo, func(i, j int) bool {
+		return offersInfo[i].OfferData.PromotionScore > offersInfo[j].OfferData.PromotionScore
+	})
 	return offersInfo, nil
 }
 
@@ -605,6 +625,7 @@ func mapOffer(o repository.Offer) domain.Offer {
 		Latitude:       o.Latitude,
 		CreatedAt:      o.CreatedAt,
 		UpdatedAt:      o.UpdatedAt,
+		PromotesUntil:  o.PromotesUntil,
 	}
 }
 

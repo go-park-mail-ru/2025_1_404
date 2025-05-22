@@ -16,6 +16,9 @@ app:
       headerName: X-CSRF-TOKEN
   logger:
     level: info
+  promotion:
+    likeScore: 0.1
+    promotionScore: 100
       
 postgres:
   sslMode: false
