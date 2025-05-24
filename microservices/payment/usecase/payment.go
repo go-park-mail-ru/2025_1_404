@@ -102,15 +102,15 @@ func (u *paymentUsecase) GetPaymentPeriods() map[int]domain.PaymentPeriods {
 	return map[int]domain.PaymentPeriods{
 		1: {
 			Days:  3,
-			Price: 500,
+			Price: 490,
 		},
 		2: {
 			Days:  7,
-			Price: 3000,
+			Price: 2990,
 		},
 		3: {
 			Days:  30,
-			Price: 10000,
+			Price: 9990,
 		},
 	}
 }
