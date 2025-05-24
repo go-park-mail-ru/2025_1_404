@@ -81,9 +81,9 @@ type OfferSeller struct {
 }
 
 type OfferStat struct {
-	LikesStat LikesStat `json:"likes_stat"`
-	Views     *int      `json:"views"`
-	// FavoutiteStat *FavoriteStat `json:"favourite_stat"`
+	LikesStat    LikesStat    `json:"likes_stat"`
+	Views        *int         `json:"views"`
+	FavoriteStat FavoriteStat `json:"favorite_stat"`
 }
 
 type LikesStat struct {
