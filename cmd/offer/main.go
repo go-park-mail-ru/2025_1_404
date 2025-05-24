@@ -135,7 +135,8 @@ func main() {
 	r.Handle("/api/v1/offers/{id:[0-9]+}/promote/check/{purchaseId:[0-9]+}",
 		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.PromoteCheckOffer)))).
 		Methods(http.MethodGet)
-	r.HandleFunc("/api/v1/offers/favorites", offerHandler.GetFavorites).
+	r.Handle("/api/v1/offers/favorites",
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.GetFavorites)))).
 		Methods(http.MethodGet)
 
 	// Метрики
