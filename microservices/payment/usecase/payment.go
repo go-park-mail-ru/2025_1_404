@@ -79,7 +79,7 @@ func (u *paymentUsecase) CreatePayment(ctx context.Context, request *domain.Crea
 	paymentResponse, err := u.yookassaRepo.CreatePayment(
 		paymentPeriod.Price,
 		fmt.Sprintf("Объявление №%d. Продвижение %d дней", request.OfferId, paymentPeriod.Days),
-		fmt.Sprintf("%s/payment/check/%d", u.cfg.App.BaseFrontendDir, offerPayment.Id),
+		fmt.Sprintf("%s/offer/%d/check/%d", u.cfg.App.BaseFrontendDir, offerPayment.OfferId, offerPayment.Id),
 	)
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"err": err.Error()}).Warn("Payment usecase: create payment failed")
