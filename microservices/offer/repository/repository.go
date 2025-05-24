@@ -164,13 +164,13 @@ const (
 	`
 
 	addFavoriteSQL = `
-		INSERT INTO kvartirum.Favorites (user_id, offer_id)
+		INSERT INTO kvartirum.UserOfferFavourites (user_id, offer_id)
 		VALUES ($1, $2)
 		ON CONFLICT DO NOTHING;
 	`
 
 	removeFavoriteSQL = `
-		DELETE FROM kvartirum.Favorites
+		DELETE FROM kvartirum.UserOfferFavourites
 		WHERE user_id = $1 AND offer_id = $2;
 	`
 
@@ -180,19 +180,19 @@ const (
 			o.complex_id, o.price, o.description, o.floor, o.total_floors, o.rooms,
 			o.address, o.flat, o.area, o.ceiling_height, o.longitude, o.latitude,
 			o.created_at, o.updated_at, o.promotes_until
-		FROM kvartirum.Favorites f
+		FROM kvartirum.UserOfferFavourites f
 		JOIN kvartirum.Offer o ON f.offer_id = o.id
 		WHERE f.user_id = $1;
 	`
 
 	isFavoriteSQL = `
 		SELECT EXISTS (
-			SELECT 1 FROM kvartirum.Favorites WHERE user_id = $1 AND offer_id = $2
+			SELECT 1 FROM kvartirum.UserOfferFavourites WHERE user_id = $1 AND offer_id = $2
 		);
 	`
 
 	getFavoriteStat = `
-		SELECT COUNT(*) FROM kvartirum.Favorites WHERE offer_id = $1;
+		SELECT COUNT(*) FROM kvartirum.UserOfferFavourites WHERE offer_id = $1;
 	`
 )
 
@@ -525,10 +525,18 @@ func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer, 
 
 	if userID != nil {
 		err = r.db.QueryRow(ctx, isOfferLiked, userID, offer.ID).Scan(&offerData.OfferStat.LikesStat.IsLiked)
+		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsLikedOffer")
+
+		err = r.db.QueryRow(ctx, isFavoriteSQL, userID, offer.ID).Scan(&offerData.OfferStat.FavoriteStat.IsFavorited)
+		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsFavoritedOffer")
 	}
-	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsLikedOffer")
+
 	err = r.db.QueryRow(ctx, getLikeStat, offer.ID).Scan(&offerData.OfferStat.LikesStat.Amount)
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query GetLikeStat")
+
+	err = r.db.QueryRow(ctx, getFavoriteStat, offer.ID).Scan(&offerData.OfferStat.FavoriteStat.Amount)
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query GetFavoriteStat")
+
 	err = r.db.QueryRow(ctx, countView, offer.ID).Scan(&offerData.OfferStat.Views)
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query CountViews")
 
