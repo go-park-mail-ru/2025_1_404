@@ -36,6 +36,7 @@ type Offer struct {
 	Latitude       string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	PromotesUntil  *time.Time
 }
 
 type offerRepository struct {
@@ -64,7 +65,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE id = $1;
 	`
@@ -73,7 +74,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE seller_id = $1;
 	`
@@ -82,7 +83,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer;
 	`
 
@@ -90,7 +91,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE offer_status_id != 2;
 	`
@@ -113,7 +114,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE complex_id = $1;
 	`
@@ -178,7 +179,7 @@ const (
 			o.purchase_type_id, o.property_type_id, o.offer_status_id, o.renovation_id,
 			o.complex_id, o.price, o.description, o.floor, o.total_floors, o.rooms,
 			o.address, o.flat, o.area, o.ceiling_height, o.longitude, o.latitude,
-			o.created_at, o.updated_at
+			o.created_at, o.updated_at, o.promotes_until
 		FROM kvartirum.UserOfferFavourites f
 		JOIN kvartirum.Offer o ON f.offer_id = o.id
 		WHERE f.user_id = $1;
@@ -224,7 +225,7 @@ func (r *offerRepository) GetOfferByID(ctx context.Context, id int64) (Offer, er
 		&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 		&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 		&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-		&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+		&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 	)
 
 	logFields := logger.LoggerFields{"requestID": requestID, "query": getOfferByIDSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}
@@ -256,7 +257,7 @@ func (r *offerRepository) GetOffersBySellerID(ctx context.Context, sellerID int6
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return nil, err
@@ -288,7 +289,7 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return nil, err
@@ -393,7 +394,7 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return nil, err
@@ -591,7 +592,7 @@ func (r *offerRepository) GetOffersByZhkId(ctx context.Context, zhkId int) ([]do
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return offers, err
@@ -768,7 +769,7 @@ func (r *offerRepository) GetFavoritesByUserID(ctx context.Context, userID int) 
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return nil, err

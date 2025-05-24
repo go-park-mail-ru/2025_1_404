@@ -18,6 +18,7 @@ type User struct {
 	LastName           string
 	Email              string
 	Password           string
+	Role               string
 	LastNotificationID *int
 	TokenVersion       int
 	CreatedAt          time.Time
@@ -45,7 +46,7 @@ const (
 		SELECT
 			u.id, 
 			COALESCE(i.uuid, '') as image,
-			u.first_name, u.last_name, u.email, u.password, u.created_at
+			u.first_name, u.last_name, u.email, u.password, u.created_at, u.role
 		FROM kvartirum.Users u
 		LEFT JOIN kvartirum.Image i on u.image_id = i.id
 		WHERE u.email = $1;
@@ -55,7 +56,7 @@ const (
 		SELECT
 			u.id, 
 			COALESCE(i.uuid, '') as image, 
-			u.first_name, u.last_name, u.email, u.password, u.created_at
+			u.first_name, u.last_name, u.email, u.password, u.created_at, u.role
 		FROM kvartirum.Users u
 		LEFT JOIN kvartirum.Image i on u.image_id = i.id
 		WHERE u.id = $1;
@@ -111,7 +112,7 @@ func (r *authRepository) GetUserByEmail(ctx context.Context, email string) (doma
 
 	var u domain.User
 	err := r.db.QueryRow(ctx, getUserByEmailSQL, email).Scan(
-		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password, &u.CreatedAt,
+		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password, &u.CreatedAt, &u.Role,
 	)
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getUserByEmailSQL, "params": logger.LoggerFields{"email": email}, "success": err == nil}).Info("SQL query GetUserByEmail")
@@ -124,7 +125,7 @@ func (r *authRepository) GetUserByID(ctx context.Context, id int64) (domain.User
 
 	var u domain.User
 	err := r.db.QueryRow(ctx, getUserByIDSQL, id).Scan(
-		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password, &u.CreatedAt,
+		&u.ID, &u.Image, &u.FirstName, &u.LastName, &u.Email, &u.Password, &u.CreatedAt, &u.Role,
 	)
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": getUserByEmailSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}).Info("SQL query GetUserByID")
