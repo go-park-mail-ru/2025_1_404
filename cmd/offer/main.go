@@ -133,10 +133,10 @@ func main() {
 		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.PromoteOffer)))).
 		Methods(http.MethodPost)
 	r.Handle("/api/v1/offers/{id:[0-9]+}/promote/check/{purchaseId:[0-9]+}",
-		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.PromoteCheckOffer)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.PromoteCheckOffer))).
 		Methods(http.MethodGet)
 	r.Handle("/api/v1/offers/favorites",
-		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.GetFavorites)))).
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.GetFavorites))).
 		Methods(http.MethodGet)
 
 	// Метрики
