@@ -30,3 +30,6 @@ go.work.sum
 
 # minio
 */minio_data
+
+# easyjson
+*_easyjson.go

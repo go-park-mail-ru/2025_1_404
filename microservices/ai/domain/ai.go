@@ -1,5 +1,8 @@
+//go:generate easyjson -all
+
 package domain
 
+//easyjson:json
 type Offer struct {
 	OfferType     string  `json:"offer_type"`
 	MetroStation  *string `json:"metro_station"`
@@ -16,16 +19,19 @@ type Offer struct {
 	CeilingHeight int     `json:"ceiling_height"`
 }
 
+//easyjson:json
 type MarketPrice struct {
 	Total          float32 `json:"total"`
 	PerSquareMeter float32 `json:"per_square_meter"`
 }
 
+//easyjson:json
 type PossibleCostRange struct {
 	Min float32 `json:"min"`
 	Max float32 `json:"max"`
 }
 
+//easyjson:json
 type EvaluationResult struct {
 	MarketPrice       MarketPrice       `json:"market_price"`
 	PossibleCostRange PossibleCostRange `json:"possible_cost_range"`

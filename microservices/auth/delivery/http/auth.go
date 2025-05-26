@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
@@ -31,7 +30,8 @@ func NewAuthHandler(uc auth.AuthUsecase, cfg *config.Config) *AuthHandler {
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	var req domain.RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	data, _ := io.ReadAll(r.Body)
+	if err := req.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
@@ -73,7 +73,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var req domain.LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+
+	data, _ := io.ReadAll(r.Body)
+	if err := req.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
@@ -148,7 +150,8 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now().Add(-time.Hour),
 	})
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Успешный выход"}, http.StatusOK, &h.cfg.App.CORS)
+	msg := utils.MessageResponse{Message: "Успешный выход"}
+	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +164,8 @@ func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updateUser domain.UpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&updateUser); err != nil {
+	data, _ := io.ReadAll(r.Body)
+	if err := updateUser.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}

@@ -1,10 +1,14 @@
+//go:generate easyjson -all
+
 package domain
 
+//easyjson:json
 type CreatePaymentRequest struct {
 	OfferId int32 `json:"offer_id"`
 	Type    int   `json:"type"`
 }
 
+//easyjson:json
 type CreatePaymentResponse struct {
 	OfferId    int32  `json:"offer_id"`
 	PaymentUri string `json:"payment_uri"`

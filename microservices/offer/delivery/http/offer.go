@@ -2,15 +2,15 @@ package http
 
 import (
 	"bytes"
-	"encoding/json"
-	"github.com/go-park-mail-ru/2025_1_404/config"
-	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
-	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
-	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 	"io"
 	"net"
 	"net/http"
 	"strconv"
+
+	"github.com/go-park-mail-ru/2025_1_404/config"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -97,7 +97,8 @@ func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) 
 			utils.SendErrorResponse(w, "Ошибка при фильтрации объявлений", http.StatusInternalServerError, &h.cfg.App.CORS)
 			return
 		}
-		utils.SendJSONResponse(w, offers, http.StatusOK, &h.cfg.App.CORS)
+		var offersInfo domain.OffersInfo = offers
+		utils.SendJSONResponse(w, offersInfo, http.StatusOK, &h.cfg.App.CORS)
 		return
 	}
 
@@ -107,7 +108,8 @@ func (h *OfferHandler) GetOffersHandler(w http.ResponseWriter, r *http.Request) 
 		utils.SendErrorResponse(w, "Ошибка при получении объявлений", http.StatusInternalServerError, &h.cfg.App.CORS)
 		return
 	}
-	utils.SendJSONResponse(w, offers, http.StatusOK, &h.cfg.App.CORS)
+	var offersInfo domain.OffersInfo = offers
+	utils.SendJSONResponse(w, offersInfo, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) GetOfferByID(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +147,8 @@ func (h *OfferHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var offer domain.Offer
-	if err := json.NewDecoder(r.Body).Decode(&offer); err != nil {
+	data, _ := io.ReadAll(r.Body)
+	if err := offer.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
@@ -158,7 +161,8 @@ func (h *OfferHandler) CreateOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]int{"id": id}, http.StatusCreated, &h.cfg.App.CORS)
+	resp := domain.OfferID{Id: id}
+	utils.SendJSONResponse(w, resp, http.StatusCreated, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
@@ -182,7 +186,8 @@ func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var offer domain.Offer
-	if err := json.NewDecoder(r.Body).Decode(&offer); err != nil {
+	data, _ := io.ReadAll(r.Body)
+	if err := offer.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
@@ -195,7 +200,8 @@ func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Обновлено"}, http.StatusOK, &h.cfg.App.CORS)
+	msg := utils.MessageResponse {Message: "Обновлено"}
+	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
@@ -223,7 +229,8 @@ func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Удалено"}, http.StatusOK, &h.cfg.App.CORS)
+	msg := utils.MessageResponse {Message: "Удалено"}
+	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) PublishOffer(w http.ResponseWriter, r *http.Request) {
@@ -246,7 +253,8 @@ func (h *OfferHandler) PublishOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Объявление опубликовано"}, http.StatusOK, &h.cfg.App.CORS)
+	msg := utils.MessageResponse {Message: "Объявление опубликовано"}
+	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) {
@@ -302,9 +310,8 @@ func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]any{
-		"image_id": imageID,
-	}, http.StatusCreated, &h.cfg.App.CORS)
+	resp := domain.ImageID {ImageID: imageID}
+	utils.SendJSONResponse(w, resp, http.StatusCreated, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) DeleteOfferImage(w http.ResponseWriter, r *http.Request) {
@@ -327,7 +334,8 @@ func (h *OfferHandler) DeleteOfferImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	utils.SendJSONResponse(w, map[string]string{"message": "Изображение удалено"}, http.StatusOK, &h.cfg.App.CORS)
+	msg := utils.MessageResponse {Message: "Изображение удалено"}
+	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) GetStations(w http.ResponseWriter, r *http.Request) {
@@ -337,7 +345,8 @@ func (h *OfferHandler) GetStations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendJSONResponse(w, stations, http.StatusOK, &h.cfg.App.CORS)
+	var stationsResp domain.Stations = stations
+	utils.SendJSONResponse(w, stationsResp, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) LikeOffer(w http.ResponseWriter, r *http.Request) {
@@ -348,7 +357,8 @@ func (h *OfferHandler) LikeOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req domain.LikeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	data, _ := io.ReadAll(r.Body)
+	if err := req.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
@@ -372,7 +382,8 @@ func (h *OfferHandler) FavoriteOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req domain.FavoriteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	data, _ := io.ReadAll(r.Body)
+	if err := req.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}
@@ -408,7 +419,8 @@ func (h *OfferHandler) GetFavorites(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendJSONResponse(w, favorites, http.StatusOK, &h.cfg.App.CORS)
+	var favoritesResp domain.OffersInfo = favorites
+	utils.SendJSONResponse(w, favoritesResp, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) PromoteCheckOffer(w http.ResponseWriter, r *http.Request) {
@@ -469,7 +481,8 @@ func (h *OfferHandler) PromoteOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	createPaymentRequest := &domain.CreatePaymentRequest{}
-	if err := json.NewDecoder(r.Body).Decode(&createPaymentRequest); err != nil {
+	data, _ := io.ReadAll(r.Body)
+	if err := createPaymentRequest.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Неверное тело запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}

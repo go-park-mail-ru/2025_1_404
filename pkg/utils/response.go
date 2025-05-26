@@ -1,18 +1,25 @@
 package utils
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
+	"github.com/mailru/easyjson"
 )
 
 // SendJSONResponse Отправка успешного JSON-ответа
-func SendJSONResponse(w http.ResponseWriter, data interface{}, statusCode int, cfg *config.CORSConfig) {
+func SendJSONResponse(w http.ResponseWriter, data easyjson.Marshaler, statusCode int, cfg *config.CORSConfig) {
 	EnableCORS(w, cfg)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+
+	buf, err := easyjson.Marshal(data)
+	if err != nil {
+		http.Error(w, "Ошибка сериализации JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(buf)
 }
 
 // SendErrorResponse Отправка ошибки в JSON-формате
@@ -20,7 +27,16 @@ func SendErrorResponse(w http.ResponseWriter, message string, statusCode int, cf
 	EnableCORS(w, cfg)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]string{"error": message})
+
+	errResp := ErrorResponse{Error: message}
+
+	buf, err := easyjson.Marshal(errResp)
+	if err != nil {
+		http.Error(w, "Ошибка сериализации JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(buf)
 }
 
 // EnableCORS CORS Middleware (чтобы фронтенд мог обращаться к API)

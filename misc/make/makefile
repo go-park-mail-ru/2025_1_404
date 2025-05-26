@@ -42,3 +42,16 @@ migrate-version:
 migrate-create:
 	@read -p "Migration name: " name; \
 	migrate create -seq -ext sql -dir $(MIGRATIONS_DIR) $$name
+
+# --- Генерация моков ---
+generate:
+	cd $(ROOT_DIR) && $(GO) generate ./...
+
+# --- Тестирование с покрытием ---
+test:
+	cd $(ROOT_DIR) && $(GO) test ./... -coverprofile=coverage.out
+	@echo "\nAverage coverage:"
+	@cd $(ROOT_DIR) && go tool cover -func=coverage.out \
+		| grep -v '0.0%$$' \
+		| grep -v '^total:' \
+		| awk '{ s+=$$3; n++ } END { if (n > 0) printf("%.1f%%\n", s/n) }'
