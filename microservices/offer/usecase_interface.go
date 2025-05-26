@@ -25,7 +25,7 @@ type OfferUsecase interface {
 	GetOffersByZhkId(ctx context.Context, zhkId int) ([]domain.Offer, error)
 	GetStations(ctx context.Context) ([]domain.Metro, error)
 	LikeOffer(ctx context.Context, like domain.LikeRequest) (domain.LikesStat, error)
-	GetFavorites(ctx context.Context, userID int) ([]domain.OfferInfo, error)
+	GetFavorites(ctx context.Context, userID int, offerTypeID *int) ([]domain.OfferInfo, error)
 	IsFavorite(ctx context.Context, userID, offerID int) (bool, error)
 	FavoriteOffer(ctx context.Context, req domain.FavoriteRequest) (domain.FavoriteStat, error)
 	PromoteOffer(ctx context.Context, offerID int, paymentType int) (*domain.CreatePaymentResponse, error)

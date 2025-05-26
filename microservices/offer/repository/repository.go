@@ -174,15 +174,14 @@ const (
 		WHERE user_id = $1 AND offer_id = $2;
 	`
 
-	getFavoritesByUserSQL = `
-		SELECT o.id, o.seller_id, o.offer_type_id, o.metro_station_id, o.rent_type_id,
-			o.purchase_type_id, o.property_type_id, o.offer_status_id, o.renovation_id,
-			o.complex_id, o.price, o.description, o.floor, o.total_floors, o.rooms,
-			o.address, o.flat, o.area, o.ceiling_height, o.longitude, o.latitude,
-			o.created_at, o.updated_at, o.promotes_until
-		FROM kvartirum.UserOfferFavourites f
-		JOIN kvartirum.Offer o ON f.offer_id = o.id
-		WHERE f.user_id = $1;
+	getFavoritesSQL = `
+	SELECT o.id, o.seller_id, o.offer_type_id, o.metro_station_id, o.rent_type_id,
+		o.purchase_type_id, o.property_type_id, o.offer_status_id, o.renovation_id,
+		o.complex_id, o.price, o.description, o.floor, o.total_floors, o.rooms,
+		o.address, o.flat, o.area, o.ceiling_height, o.longitude, o.latitude, o.created_at, o.updated_at
+	FROM kvartirum.UserOfferFavourites f
+	JOIN kvartirum.Offer o ON o.id = f.offer_id
+	WHERE f.user_id = $1
 	`
 
 	isFavoriteSQL = `
@@ -751,12 +750,17 @@ func (r *offerRepository) RemoveFavorite(ctx context.Context, userID, offerID in
 	return err
 }
 
-func (r *offerRepository) GetFavoritesByUserID(ctx context.Context, userID int) ([]Offer, error) {
-	requestID := ctx.Value(utils.RequestIDKey)
+func (r *offerRepository) GetFavorites(ctx context.Context, userID int64, offerTypeID *int) ([]Offer, error) {
+	query := getFavoritesSQL
+	args := []any{userID}
 
-	rows, err := r.db.Query(ctx, getFavoritesByUserSQL, userID)
+	if offerTypeID != nil {
+		query += " AND o.offer_type_id = $2"
+		args = append(args, *offerTypeID)
+	}
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": false}).Error("SQL Query GetFavoritesByUserID failed")
 		return nil, err
 	}
 	defer rows.Close()
@@ -764,20 +768,17 @@ func (r *offerRepository) GetFavoritesByUserID(ctx context.Context, userID int) 
 	var offers []Offer
 	for rows.Next() {
 		var o Offer
-		err := rows.Scan(
+		if err := rows.Scan(
 			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
-		)
-		if err != nil {
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		offers = append(offers, o)
 	}
-
-	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": userID, "count": len(offers), "success": true}).Info("SQL Query GetFavoritesByUserID succeeded")
 
 	return offers, nil
 }

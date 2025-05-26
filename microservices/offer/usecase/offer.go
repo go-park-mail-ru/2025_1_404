@@ -402,17 +402,24 @@ func (u *offerUsecase) LikeOffer(ctx context.Context, like domain.LikeRequest) (
 	return likeStat, nil
 }
 
-func (u *offerUsecase) GetFavorites(ctx context.Context, userID int) ([]domain.OfferInfo, error) {
+func (u *offerUsecase) GetFavorites(ctx context.Context, userID int, offerTypeID *int) ([]domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
-	offers, err := u.repo.GetFavoritesByUserID(ctx, userID)
+	rawOffers, err := u.repo.GetFavorites(ctx, int64(userID), offerTypeID)
 	if err != nil {
-		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": userID, "err": err.Error()}).Error("Offer usecase: get favourites failed")
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "userID": userID, "err": err.Error()}).Error("Offer usecase: get favorites failed")
 		return nil, err
 	}
 
-	offersDTO := mapOffers(offers)
-	return u.PrepareOffersInfo(ctx, offersDTO, &userID)
+	offersDTO := mapOffers(rawOffers)
+
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO, &userID)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: prepare favorites failed")
+		return nil, err
+	}
+
+	return offersInfo, nil
 }
 
 func (u *offerUsecase) FavoriteOffer(ctx context.Context, req domain.FavoriteRequest) (domain.FavoriteStat, error) {

@@ -34,7 +34,7 @@ type OfferRepository interface {
 	GetPriceHistory(ctx context.Context, offerID int64, limit int) ([]domain.OfferPriceHistory, error)
 	AddFavorite(ctx context.Context, userID, offerID int) error
 	RemoveFavorite(ctx context.Context, userID, offerID int) error
-	GetFavoritesByUserID(ctx context.Context, userID int) ([]repository.Offer, error)
+	GetFavorites(ctx context.Context, userID int64, offerTypeID *int) ([]repository.Offer, error)
 	IsFavorite(ctx context.Context, userID, offerID int) (bool, error)
 	GetFavoriteStat(ctx context.Context, req domain.FavoriteRequest) (int, error)
 	SetPromotesUntil(ctx context.Context, id int, until time.Time) error

@@ -395,13 +395,20 @@ func (h *OfferHandler) GetFavorites(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	offers, err := h.OfferUC.GetFavorites(r.Context(), userID)
+	var offerTypeID *int
+	if val := r.URL.Query().Get("offer_type_id"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil {
+			offerTypeID = &parsed
+		}
+	}
+
+	favorites, err := h.OfferUC.GetFavorites(r.Context(), userID, offerTypeID)
 	if err != nil {
-		utils.SendErrorResponse(w, "Не удалось получить избранное", http.StatusInternalServerError, &h.cfg.App.CORS)
+		utils.SendErrorResponse(w, "Ошибка при получении избранных", http.StatusInternalServerError, &h.cfg.App.CORS)
 		return
 	}
 
-	utils.SendJSONResponse(w, offers, http.StatusOK, &h.cfg.App.CORS)
+	utils.SendJSONResponse(w, favorites, http.StatusOK, &h.cfg.App.CORS)
 }
 
 func (h *OfferHandler) PromoteCheckOffer(w http.ResponseWriter, r *http.Request) {
