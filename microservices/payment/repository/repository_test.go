@@ -4,127 +4,112 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk/domain"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/payment/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
-	"github.com/lib/pq"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	pgxmock "github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestRepo(t *testing.T) (*zhkRepository, pgxmock.PgxPoolIface) {
+func newTestRepo(t *testing.T) (*paymentRepository, pgxmock.PgxPoolIface) {
 	mock, err := pgxmock.NewPool()
 	require.NoError(t, err)
-	repo := NewZhkRepository(mock, logger.NewStub())
+	repo := NewPaymentRepository(mock, logger.NewStub())
 	return repo, mock
 }
 
-func TestRepository_GetZhkByID(t *testing.T) {
+func TestGetPaymentById(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()
 
-	id := int64(1)
-	station := 3
-	expected := domain.Zhk{
-		ID:             id,
-		ClassID:        2,
-		Name:           "ЖК Лесной",
-		Developer:      "Брусника",
-		Phone:          "8001234567",
-		Address:        "Москва, Лесная 7",
-		Description:    "Уютный ЖК у парка",
-		MetroStationId: &station,
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "request-id")
+
+	payment := domain.OfferPayment {
+		Id: 1, 
+		OfferId: 2,
+		YookassaId: "id",
+		Type: 1,
+		IsActive: true,
+		IsPaid: true,
 	}
 
-	mock.ExpectQuery(`(?i)SELECT id, class_id, name, developer, phone_number, address, description, metro_station_id FROM kvartirum.HousingComplex WHERE id = \$1`).
-		WithArgs(id).
+	mock.ExpectQuery(`(?i)SELECT id, offer_id, yookassa_id, type, is_active, is_paid FROM kvartirum\.OfferPayment WHERE id = \$1;`).
+		WithArgs(payment.Id).
 		WillReturnRows(pgxmock.NewRows([]string{
-			"id", "class_id", "name", "developer", "phone_number", "address", "description", "metro_station_id",
-		}).AddRow(expected.ID, expected.ClassID, expected.Name, expected.Developer, expected.Phone, expected.Address, expected.Description, expected.MetroStationId))
-	got, err := repo.GetZhkByID(context.Background(), id)
+			"id", "offer_id", "yookassa_id", "type", "is_active", "is_paid", 
+		}).AddRow(payment.Id, payment.OfferId, payment.YookassaId, payment.Type, payment.IsActive, payment.IsPaid))
+
+	resp, err := repo.GetPaymentById(ctx, 1)
 	require.NoError(t, err)
-	require.Equal(t, expected, got)
+	require.Equal(t, payment, *resp)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestRepository_GetZhkHeader(t *testing.T) {
+func TestDeactivateAllPaymentsByOfferId(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()
 
-	zhk := domain.Zhk{ID: 1, Name: "ЖК Альфа"}
-	expected := domain.ZhkHeader{
-		Name:         zhk.Name,
-		LowestPrice:  3000000,
-		HighestPrice: 6000000,
-		Images:       []string{"img1", "img2"},
-		ImagesSize:   2,
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "request-id")
+
+	offerID := 1
+
+	mock.ExpectExec(`(?i)UPDATE\s+kvartirum\.OfferPayment\s+SET\s+is_active\s+=\s+false\s+WHERE\s+offer_id\s+=\s+\$1\s+AND\s+is_active\s+=\s+true;`).
+		WithArgs(offerID).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1)) // предполагаем, что 1 строка была обновлена
+
+	err := repo.DeactivateAllPaymentsByOfferId(ctx, offerID)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdatePayment(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "request-id")
+
+	payment := &domain.OfferPayment{
+		Id:          1,
+		IsActive:    false,
+		IsPaid:      true,
+		YookassaId:  "yookassa-id-123",
 	}
 
-	mock.ExpectQuery(`(?i)SELECT COALESCE\(ARRAY_AGG\(DISTINCT img.uuid\).*images_size`).
-		WithArgs(zhk.ID).
-		WillReturnRows(pgxmock.NewRows([]string{"images", "images_size"}).
-			AddRow(pq.StringArray{"img1", "img2"}, expected.ImagesSize))
+	mock.ExpectExec(`(?i)UPDATE\s+kvartirum\.OfferPayment\s+SET\s+is_active\s+=\s+\$2,\s+is_paid\s+=\s+\$3,\s+yookassa_id\s+=\s+\$4\s+WHERE\s+id\s+=\s+\$1`).
+		WithArgs(payment.Id, payment.IsActive, payment.IsPaid, payment.YookassaId).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	got, err := repo.GetZhkHeader(context.Background(), zhk)
+	err := repo.UpdatePayment(ctx, payment)
 	require.NoError(t, err)
-	require.Equal(t, expected.Images, got.Images)
-	require.Equal(t, expected.ImagesSize, got.ImagesSize)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestRepository_GetZhkCharacteristics(t *testing.T) {
+
+func TestCreatePaymentForOfferId(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()
 
-	zhk := domain.Zhk{ID: 1}
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "request-id")
 
-	mock.ExpectQuery(`(?i)SELECT.*FROM kvartirum.housingcomplex hc`).
-		WithArgs(zhk.ID).
-		WillReturnRows(pgxmock.NewRows([]string{
-			"class_name",
-		}).AddRow("Комфорт"))
+	offerID := 5
+	paymentType := 2
+	newPaymentID := 10
 
-	got, err := repo.GetZhkCharacteristics(context.Background(), zhk)
+	// Ожидаем SQL-запрос с учетом структуры INSERT и RETURNING
+	mock.ExpectQuery(`(?i)INSERT INTO kvartirum\.OfferPayment \(offer_id, type, yookassa_id\) VALUES \(\$1, \$2, \$3\) RETURNING id;`).
+		WithArgs(offerID, paymentType, "").
+		WillReturnRows(pgxmock.NewRows([]string{"id"}).AddRow(newPaymentID))
+
+	result, err := repo.CreatePaymentForOfferId(ctx, offerID, paymentType)
 	require.NoError(t, err)
-	require.Equal(t, "Комфорт", got.Class)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
+	require.NotNil(t, result)
 
-func TestRepository_GetAllZhk(t *testing.T) {
-	repo, mock := newTestRepo(t)
-	defer mock.Close()
+	require.Equal(t, newPaymentID, result.Id)
+	require.Equal(t, offerID, result.OfferId)
+	require.Equal(t, paymentType, result.Type)
+	require.True(t, result.IsActive)
+	require.False(t, result.IsPaid)
+	require.Equal(t, "", result.YookassaId)
 
-	mock.ExpectQuery(`(?i)SELECT.*FROM kvartirum.housingcomplex`).
-		WillReturnRows(pgxmock.NewRows([]string{
-			"id", "class_id", "name", "developer", "phone_number", "address", "description", "metro_station_id",
-		}).AddRow(1, 2, "ЖК Радуга", "ПИК", "88005553535", "г. Москва", "Описание ЖК", nil))
-
-	got, err := repo.GetAllZhk(context.Background())
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	require.Equal(t, "ЖК Радуга", got[0].Name)
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestRepository_GetZhkMetro(t *testing.T) {
-	repo, mock := newTestRepo(t)
-	defer mock.Close()
-
-	ctx := context.Background()
-	stationID := int64(3)
-
-	expected := domain.ZhkMetro{
-		Station: "Кропоткинская",
-		Line:    "Красная",
-		Color:   "#FF0000",
-	}
-
-	mock.ExpectQuery(`(?i)SELECT\s+ms.name as station_name, ml.name as line_name, ml.color\s+FROM kvartirum.MetroStation ms\s+JOIN kvartirum.MetroLine ml ON ms.metro_line_id = ml.id\s+WHERE ms.id = \$1`).
-		WithArgs(stationID).
-		WillReturnRows(pgxmock.NewRows([]string{"station_name", "line_name", "color"}).
-			AddRow(expected.Station, expected.Line, expected.Color))
-
-	result, err := repo.GetZhkMetro(ctx, stationID)
-	require.NoError(t, err)
-	require.Equal(t, expected, result)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

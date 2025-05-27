@@ -48,7 +48,7 @@ func TestAIHandler_EvaluateOffer(t *testing.T) {
 
 		mockUC.EXPECT().
 			EvaluateOffer(gomock.Any(), offer).
-			Return(&expected, nil)
+			Return(expected, nil)
 
 		req := httptest.NewRequest(http.MethodPost, "/evaluate", bytes.NewReader(body))
 		req = req.WithContext(context.WithValue(req.Context(), utils.UserIDKey, 1))

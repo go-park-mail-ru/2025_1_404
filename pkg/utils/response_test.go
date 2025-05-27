@@ -9,10 +9,11 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/config"
 )
 
+
 // Тест SendJSONResponse (корректный JSON-ответ)
 func TestSendJSONResponse(t *testing.T) {
 	rr := httptest.NewRecorder()
-	data := map[string]string{"message": "OK"}
+	data := TestResponse{Message: "OK"}
 	cfg := &config.CORSConfig{AllowOrigin: "http://localhost:8000", AllowMethods: "GET, POST, PUT, OPTIONS, DELETE",
 		AllowHeaders: "Content-Type, x-csrf-token", AllowCredentials: "true"}
 
@@ -29,7 +30,7 @@ func TestSendJSONResponse(t *testing.T) {
 		t.Fatalf("Ошибка сериализации в JSON: %v", err)
 	}
 
-	if response["message"] != "OK" {
+	if response["test_message"] != "OK" {
 		t.Errorf("Ожидалось сообщение 'OK', получено '%s'", response["message"])
 	}
 

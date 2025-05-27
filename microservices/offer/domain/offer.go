@@ -173,5 +173,5 @@ type OfferID struct {
 
 //easyjson:json
 type ImageID struct {
-	ImageID int64 `json:"iamge_id"`
+	ImageID int64 `json:"image_id"`
 }

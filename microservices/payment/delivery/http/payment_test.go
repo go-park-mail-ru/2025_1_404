@@ -1,4 +1,4 @@
-package http_test
+package http
 
 import (
 	"bytes"
@@ -10,86 +10,84 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
-	handlers "github.com/go-park-mail-ru/2025_1_404/microservices/ai/delivery/http"
-	"github.com/go-park-mail-ru/2025_1_404/microservices/ai/domain"
-	"github.com/go-park-mail-ru/2025_1_404/microservices/ai/mocks"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/payment/domain"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/payment/mocks"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAIHandler_EvaluateOffer(t *testing.T) {
+func TestPaymentHandler_CreatePayment(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockUC := mocks.NewMockAIUsecase(ctrl)
-	cfg := &config.Config{}
-	handler := handlers.NewAIHandler(mockUC, cfg)
+	mockUC := mocks.NewMockPaymentUsecase(ctrl)
+	cfg := &config.Config{
+		App: config.AppConfig{
+			CORS: config.CORSConfig{AllowOrigin: "*"},
+		},
+	}
+	handler := NewPaymentHandler(mockUC, cfg)
 
 	t.Run("success", func(t *testing.T) {
-		offer := domain.Offer{
-			OfferType:     "sale",
-			PurchaseType:  "mortgage",
-			PropertyType:  "flat",
-			Renovation:    "euro",
-			Floor:         3,
-			TotalFloors:   5,
-			Rooms:         2,
-			Address:       "Test Street",
-			Area:          60,
-			CeilingHeight: 3,
-		}
-		body, _ := json.Marshal(offer)
+		// Подготовка запроса и контекста с UserID
+		reqBody := []byte(`{"offer_id": 123, "type": 2}`)
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		req := httptest.NewRequest(http.MethodPost, "/payment/create", bytes.NewReader(reqBody)).WithContext(ctx)
+		w := httptest.NewRecorder()
 
-		expected := &domain.EvaluationResult{
-			MarketPrice:       domain.MarketPrice{Total: 6000000, PerSquareMeter: 100000},
-			PossibleCostRange: domain.PossibleCostRange{Min: 5800000, Max: 6200000},
+		expectedResp := &domain.CreatePaymentResponse{
+			OfferId:    123,
+			PaymentUri: "https://payment.com/pay/123",
 		}
 
-		mockUC.EXPECT().
-			EvaluateOffer(gomock.Any(), offer).
-			Return(&expected, nil)
+		mockUC.EXPECT().CreatePayment(gomock.Any(), &domain.CreatePaymentRequest{
+			OfferId: 123,
+			Type:    2,
+		}).Return(expectedResp, nil)
 
-		req := httptest.NewRequest(http.MethodPost, "/evaluate", bytes.NewReader(body))
-		req = req.WithContext(context.WithValue(req.Context(), utils.UserIDKey, 1))
-		rec := httptest.NewRecorder()
+		handler.CreatePayment(w, req)
 
-		handler.EvaluateOffer(rec, req)
-
-		assert.Equal(t, http.StatusOK, rec.Code)
-		var result domain.EvaluationResult
-		_ = json.NewDecoder(rec.Body).Decode(&result)
-		resp := *expected
-		assert.Equal(t, resp, result)
+		assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+		var actualResp domain.CreatePaymentResponse
+		err := json.NewDecoder(w.Body).Decode(&actualResp)
+		assert.NoError(t, err)
+		assert.Equal(t, *expectedResp, actualResp)
 	})
 
 	t.Run("missing user id", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/evaluate", nil)
-		rec := httptest.NewRecorder()
+		reqBody := []byte(`{"offer_id": 123, "type": 2}`)
+		req := httptest.NewRequest(http.MethodPost, "/payment/create", bytes.NewReader(reqBody))
+		w := httptest.NewRecorder()
 
-		handler.EvaluateOffer(rec, req)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		handler.CreatePayment(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("invalid body", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/evaluate", bytes.NewReader([]byte("bad json")))
-		req = req.WithContext(context.WithValue(req.Context(), utils.UserIDKey, 1))
-		rec := httptest.NewRecorder()
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		req := httptest.NewRequest(http.MethodPost, "/payment/create", bytes.NewReader([]byte(`invalid-json`))).WithContext(ctx)
+		w := httptest.NewRecorder()
 
-		handler.EvaluateOffer(rec, req)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		handler.CreatePayment(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
-	t.Run("usecase error", func(t *testing.T) {
-		offer := domain.Offer{OfferType: "sale"}
-		body, _ := json.Marshal(offer)
-		mockUC.EXPECT().EvaluateOffer(gomock.Any(), offer).Return(nil, errors.New("fail"))
+	t.Run("usecase returns error", func(t *testing.T) {
+		reqBody := []byte(`{"offer_id": 123, "type": 2}`)
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		req := httptest.NewRequest(http.MethodPost, "/payment/create", bytes.NewReader(reqBody)).WithContext(ctx)
+		w := httptest.NewRecorder()
 
-		req := httptest.NewRequest(http.MethodPost, "/evaluate", bytes.NewReader(body))
-		req = req.WithContext(context.WithValue(req.Context(), utils.UserIDKey, 1))
-		rec := httptest.NewRecorder()
+		mockUC.EXPECT().CreatePayment(gomock.Any(), &domain.CreatePaymentRequest{
+			OfferId: 123,
+			Type:    2,
+		}).Return(nil, errors.New("something went wrong"))
 
-		handler.EvaluateOffer(rec, req)
-		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+		handler.CreatePayment(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
