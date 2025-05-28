@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	paymentpb "github.com/go-park-mail-ru/2025_1_404/proto/payment"
 	"log"
 	"net"
 	"net/http"
@@ -43,7 +44,6 @@ func main() {
 
 	ctx := context.Background()
 
-
 	// Инициализация подключения к БД
 	dbpool, err := database.NewPool(&cfg.Postgres, ctx)
 	if err != nil {
@@ -76,8 +76,18 @@ func main() {
 
 	authService := authpb.NewAuthServiceClient(conn)
 
+	// Подключаемся к payment grpc
+	conn, err = grpc.NewClient(fmt.Sprint("payment", cfg.App.Grpc.Port), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("не удалось подключиться к payment grpc: %v", err)
+		return
+	}
+	defer conn.Close()
+
+	paymentService := paymentpb.NewPaymentServiceClient(conn)
+
 	offerRepo := repoOffer.NewOfferRepository(dbpool, l)
-	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService, redisRepo, yandexRepo)
+	offerUC := usecaseOffer.NewOfferUsecase(offerRepo, l, s3repo, cfg, authService, paymentService, redisRepo, yandexRepo)
 	offerHandler := deliveryOffer.NewOfferHandler(offerUC, cfg)
 
 	// Маршруты
@@ -116,6 +126,18 @@ func main() {
 	r.Handle("/api/v1/offers/like",
 		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.LikeOffer)))).
 		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/favorite",
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.FavoriteOffer)))).
+		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/{id:[0-9]+}/promote",
+		middleware.AuthHandler(l, &cfg.App.CORS, middleware.CSRFMiddleware(l, cfg, http.HandlerFunc(offerHandler.PromoteOffer)))).
+		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/{id:[0-9]+}/promote/check/{purchaseId:[0-9]+}",
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.PromoteCheckOffer))).
+		Methods(http.MethodGet)
+	r.Handle("/api/v1/offers/favorites",
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.GetFavorites))).
+		Methods(http.MethodGet)
 
 	// Метрики
 	metrics, reg := metrics.NewMetrics("offer")

@@ -3,15 +3,14 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"net"
-	"net/http"
-	"strconv"
-
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/content"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/database/s3"
+	"io"
+	"net"
+	"net/http"
+	"strconv"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
@@ -363,4 +362,138 @@ func (h *OfferHandler) LikeOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONResponse(w, likeStat, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) FavoriteOffer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	var req domain.FavoriteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	req.UserId = userID
+
+	stat, err := h.OfferUC.FavoriteOffer(r.Context(), req)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при добавлении в избранное", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, stat, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) GetFavorites(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	var offerTypeID *int
+	if val := r.URL.Query().Get("offer_type_id"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil {
+			offerTypeID = &parsed
+		}
+	}
+
+	favorites, err := h.OfferUC.GetFavorites(r.Context(), userID, offerTypeID)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при получении избранных", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, favorites, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) PromoteCheckOffer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	vars := mux.Vars(r)
+	offerId, err := strconv.Atoi(vars["id"])
+	if err != nil || offerId <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID объявления", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+	purchaseId, err := strconv.Atoi(vars["purchaseId"])
+	if err != nil || purchaseId <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID платежа", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	if err := h.OfferUC.CheckAccessToOffer(r.Context(), offerId, userID); err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden, &h.cfg.App.CORS)
+		return
+	}
+
+	validateResponse, err := h.OfferUC.ValidateOffer(r.Context(), offerId, purchaseId)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при создании ссылки для оплаты", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+	if !*validateResponse {
+		utils.SendErrorResponse(w, "Некорректный ID платежа", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	paymentData, err := h.OfferUC.CheckPayment(r.Context(), purchaseId)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при проверке платежа", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, paymentData, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) PromoteOffer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	vars := mux.Vars(r)
+	offerId, err := strconv.Atoi(vars["id"])
+	if err != nil || offerId <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	createPaymentRequest := &domain.CreatePaymentRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&createPaymentRequest); err != nil {
+		utils.SendErrorResponse(w, "Неверное тело запроса", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	if err := h.OfferUC.CheckAccessToOffer(r.Context(), offerId, userID); err != nil {
+		utils.SendErrorResponse(w, err.Error(), http.StatusForbidden, &h.cfg.App.CORS)
+		return
+	}
+
+	exists, err := h.OfferUC.CheckType(r.Context(), createPaymentRequest.Type)
+	if err != nil {
+		utils.SendErrorResponse(w, "Не удалось проверить тип продвижения", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+	if !exists {
+		utils.SendErrorResponse(w, "Неизвестный тип продвижения", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	createPaymentResponse, err := h.OfferUC.PromoteOffer(r.Context(), offerId, createPaymentRequest.Type)
+	if err != nil {
+		utils.SendErrorResponse(w, "Ошибка при создании ссылки для оплаты", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, createPaymentResponse, http.StatusOK, &h.cfg.App.CORS)
 }

@@ -36,6 +36,7 @@ type Offer struct {
 	Latitude       string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	PromotesUntil  *time.Time
 }
 
 type offerRepository struct {
@@ -64,7 +65,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE id = $1;
 	`
@@ -73,7 +74,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE seller_id = $1;
 	`
@@ -82,7 +83,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer;
 	`
 
@@ -90,7 +91,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE offer_status_id != 2;
 	`
@@ -113,7 +114,7 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at
+			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE complex_id = $1;
 	`
@@ -161,6 +162,37 @@ const (
 	deletePriceHistorySQL = `
 		DELETE FROM kvartirum.OfferPriceHistory WHERE offer_id = $1;
 	`
+
+	addFavoriteSQL = `
+		INSERT INTO kvartirum.UserOfferFavourites (user_id, offer_id)
+		VALUES ($1, $2)
+		ON CONFLICT DO NOTHING;
+	`
+
+	removeFavoriteSQL = `
+		DELETE FROM kvartirum.UserOfferFavourites
+		WHERE user_id = $1 AND offer_id = $2;
+	`
+
+	getFavoritesSQL = `
+	SELECT o.id, o.seller_id, o.offer_type_id, o.metro_station_id, o.rent_type_id,
+		o.purchase_type_id, o.property_type_id, o.offer_status_id, o.renovation_id,
+		o.complex_id, o.price, o.description, o.floor, o.total_floors, o.rooms,
+		o.address, o.flat, o.area, o.ceiling_height, o.longitude, o.latitude, o.created_at, o.updated_at
+	FROM kvartirum.UserOfferFavourites f
+	JOIN kvartirum.Offer o ON o.id = f.offer_id
+	WHERE f.user_id = $1
+	`
+
+	isFavoriteSQL = `
+		SELECT EXISTS (
+			SELECT 1 FROM kvartirum.UserOfferFavourites WHERE user_id = $1 AND offer_id = $2
+		);
+	`
+
+	getFavoriteStat = `
+		SELECT COUNT(*) FROM kvartirum.UserOfferFavourites WHERE offer_id = $1;
+	`
 )
 
 func (r *offerRepository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
@@ -192,7 +224,7 @@ func (r *offerRepository) GetOfferByID(ctx context.Context, id int64) (Offer, er
 		&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 		&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 		&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-		&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+		&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 	)
 
 	logFields := logger.LoggerFields{"requestID": requestID, "query": getOfferByIDSQL, "params": logger.LoggerFields{"id": id}, "success": err == nil}
@@ -224,7 +256,7 @@ func (r *offerRepository) GetOffersBySellerID(ctx context.Context, sellerID int6
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return nil, err
@@ -256,7 +288,7 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return nil, err
@@ -361,7 +393,7 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return nil, err
@@ -492,10 +524,18 @@ func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer, 
 
 	if userID != nil {
 		err = r.db.QueryRow(ctx, isOfferLiked, userID, offer.ID).Scan(&offerData.OfferStat.LikesStat.IsLiked)
+		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsLikedOffer")
+
+		err = r.db.QueryRow(ctx, isFavoriteSQL, userID, offer.ID).Scan(&offerData.OfferStat.FavoriteStat.IsFavorited)
+		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsFavoritedOffer")
 	}
-	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query IsLikedOffer")
+
 	err = r.db.QueryRow(ctx, getLikeStat, offer.ID).Scan(&offerData.OfferStat.LikesStat.Amount)
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query GetLikeStat")
+
+	err = r.db.QueryRow(ctx, getFavoriteStat, offer.ID).Scan(&offerData.OfferStat.FavoriteStat.Amount)
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query GetFavoriteStat")
+
 	err = r.db.QueryRow(ctx, countView, offer.ID).Scan(&offerData.OfferStat.Views)
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL Query CountViews")
 
@@ -551,7 +591,7 @@ func (r *offerRepository) GetOffersByZhkId(ctx context.Context, zhkId int) ([]do
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
 			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
-			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
 			return offers, err
@@ -684,4 +724,99 @@ func (r *offerRepository) GetPriceHistory(ctx context.Context, offerID int64, li
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "success": err == nil}).Info("SQL Query  GetPriceHistory")
 
 	return history, nil
+}
+
+func (r *offerRepository) AddFavorite(ctx context.Context, userID, offerID int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, addFavoriteSQL, userID, offerID)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID, "user_id": userID, "offer_id": offerID,
+		"success": err == nil,
+	}).Info("SQL Query AddFavorite")
+
+	return err
+}
+
+func (r *offerRepository) RemoveFavorite(ctx context.Context, userID, offerID int) error {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	_, err := r.db.Exec(ctx, removeFavoriteSQL, userID, offerID)
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID, "user_id": userID, "offer_id": offerID,
+		"success": err == nil,
+	}).Info("SQL Query RemoveFavorite")
+
+	return err
+}
+
+func (r *offerRepository) GetFavorites(ctx context.Context, userID int64, offerTypeID *int) ([]Offer, error) {
+	query := getFavoritesSQL
+	args := []any{userID}
+
+	if offerTypeID != nil {
+		query += " AND o.offer_type_id = $2"
+		args = append(args, *offerTypeID)
+	}
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var offers []Offer
+	for rows.Next() {
+		var o Offer
+		if err := rows.Scan(
+			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
+			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
+			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		offers = append(offers, o)
+	}
+
+	return offers, nil
+}
+
+func (r *offerRepository) IsFavorite(ctx context.Context, userID, offerID int) (bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var exists bool
+	err := r.db.QueryRow(ctx, isFavoriteSQL, userID, offerID).Scan(&exists)
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID, "user_id": userID, "offer_id": offerID, "is_fav": exists,
+		"success": err == nil,
+	}).Info("SQL Query IsFavorite")
+
+	return exists, err
+}
+
+func (r *offerRepository) GetFavoriteStat(ctx context.Context, req domain.FavoriteRequest) (int, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var count int
+	err := r.db.QueryRow(ctx, getFavoriteStat, req.OfferId).Scan(&count)
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"offer_id":  req.OfferId,
+		"success":   err == nil,
+	}).Info("SQL Query GetFavoriteStat")
+
+	return count, err
+}
+
+func (r *offerRepository) SetPromotesUntil(ctx context.Context, id int, until time.Time) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE kvartirum.Offer
+		SET promotes_until = $1
+		WHERE id = $2;
+	`, until, id)
+	return err
 }

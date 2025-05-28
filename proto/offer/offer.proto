@@ -30,6 +30,7 @@ message Offer {
     string latitude = 21;
     google.protobuf.Timestamp created_at = 22;
     google.protobuf.Timestamp updated_at = 23;
+    google.protobuf.Timestamp promotes_until = 25;
 }
 
 message GetOfferRequest {
