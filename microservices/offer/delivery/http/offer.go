@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -200,7 +201,7 @@ func (h *OfferHandler) UpdateOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg := utils.MessageResponse {Message: "Обновлено"}
+	msg := utils.MessageResponse{Message: "Обновлено"}
 	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
@@ -229,7 +230,7 @@ func (h *OfferHandler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg := utils.MessageResponse {Message: "Удалено"}
+	msg := utils.MessageResponse{Message: "Удалено"}
 	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
@@ -253,7 +254,7 @@ func (h *OfferHandler) PublishOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg := utils.MessageResponse {Message: "Объявление опубликовано"}
+	msg := utils.MessageResponse{Message: "Объявление опубликовано"}
 	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
@@ -310,7 +311,7 @@ func (h *OfferHandler) UploadOfferImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	resp := domain.ImageID {ImageID: imageID}
+	resp := domain.ImageID{ImageID: imageID}
 	utils.SendJSONResponse(w, resp, http.StatusCreated, &h.cfg.App.CORS)
 }
 
@@ -334,7 +335,7 @@ func (h *OfferHandler) DeleteOfferImage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	msg := utils.MessageResponse {Message: "Изображение удалено"}
+	msg := utils.MessageResponse{Message: "Изображение удалено"}
 	utils.SendJSONResponse(w, msg, http.StatusOK, &h.cfg.App.CORS)
 }
 
@@ -509,4 +510,65 @@ func (h *OfferHandler) PromoteOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.SendJSONResponse(w, createPaymentResponse, http.StatusOK, &h.cfg.App.CORS)
+}
+
+type verifyRequest struct {
+	OfferID int `json:"offer_id"`
+}
+
+type rejectRequest struct {
+	OfferID int    `json:"offer_id"`
+	Comment string `json:"comment"`
+}
+
+func (h *OfferHandler) VerifyOffer(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	vars := mux.Vars(r)
+	offerId, err := strconv.Atoi(vars["id"])
+	if err != nil || offerId <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID объявления", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	if err := h.OfferUC.VerifyOffer(r.Context(), offerId); err != nil {
+		utils.SendErrorResponse(w, "Ошибка при верификации объявления", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, utils.MessageResponse{Message: "Объявление верифицировано"}, http.StatusOK, &h.cfg.App.CORS)
+}
+
+func (h *OfferHandler) RejectOffer(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusUnauthorized, &h.cfg.App.CORS)
+		return
+	}
+
+	vars := mux.Vars(r)
+	offerId, err := strconv.Atoi(vars["id"])
+	if err != nil || offerId <= 0 {
+		utils.SendErrorResponse(w, "Некорректный ID объявления", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	var body struct {
+		Comment string `json:"comment"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Comment == "" {
+		utils.SendErrorResponse(w, "Комментарий обязателен", http.StatusBadRequest, &h.cfg.App.CORS)
+		return
+	}
+
+	if err := h.OfferUC.RejectOffer(r.Context(), offerId, body.Comment); err != nil {
+		utils.SendErrorResponse(w, "Ошибка при отклонении объявления", http.StatusInternalServerError, &h.cfg.App.CORS)
+		return
+	}
+
+	utils.SendJSONResponse(w, utils.MessageResponse{Message: "Объявление отклонено"}, http.StatusOK, &h.cfg.App.CORS)
 }

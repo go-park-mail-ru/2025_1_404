@@ -526,6 +526,14 @@ func (u *offerUsecase) CheckPayment(ctx context.Context, paymentId int) (*domain
 	}, nil
 }
 
+func (u *offerUsecase) VerifyOffer(ctx context.Context, offerID int) error {
+	return u.repo.VerifyOffer(ctx, offerID)
+}
+
+func (u *offerUsecase) RejectOffer(ctx context.Context, offerID int, comment string) error {
+	return u.repo.RejectOffer(ctx, offerID, comment)
+}
+
 func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 

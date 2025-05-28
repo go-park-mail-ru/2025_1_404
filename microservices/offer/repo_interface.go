@@ -38,4 +38,6 @@ type OfferRepository interface {
 	IsFavorite(ctx context.Context, userID, offerID int) (bool, error)
 	GetFavoriteStat(ctx context.Context, req domain.FavoriteRequest) (int, error)
 	SetPromotesUntil(ctx context.Context, id int, until time.Time) error
+	VerifyOffer(ctx context.Context, offerID int) error
+	RejectOffer(ctx context.Context, offerID int, comment string) error
 }

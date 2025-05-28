@@ -52,6 +52,8 @@ type Offer struct {
 	CeilingHeight  int        `json:"ceiling_height"`
 	Longitude      string     `json:"logitude"`
 	Latitude       string     `json:"latitude"`
+	Verified       bool       `json:"verified"`
+	Comment        *string    `json:"comment,omitempty"`
 	PromotesUntil  *time.Time `json:"promotes_until,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
@@ -163,6 +165,7 @@ type PaymentPeriods struct {
 
 //easyjson:json
 type OffersInfo []OfferInfo
+
 //easyjson:json
 type Stations []Metro
 

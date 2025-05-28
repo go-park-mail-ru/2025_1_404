@@ -138,6 +138,12 @@ func main() {
 	r.Handle("/api/v1/offers/favorites",
 		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.GetFavorites))).
 		Methods(http.MethodGet)
+	r.Handle("/api/v1/offers/{id:[0-9]+}/verify",
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.VerifyOffer))).
+		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/{id:[0-9]+}/reject",
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.RejectOffer))).
+		Methods(http.MethodPost)
 
 	// Метрики
 	metrics, reg := metrics.NewMetrics("offer")

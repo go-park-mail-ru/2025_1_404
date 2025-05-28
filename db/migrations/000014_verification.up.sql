@@ -1,0 +1,5 @@
+SET SEARCH_PATH = kvartirum;
+
+ALTER TABLE Offer
+    ADD COLUMN verified BOOLEAN DEFAULT FALSE,
+    ADD COLUMN comment TEXT;

@@ -189,6 +189,18 @@ const (
 	getFavoriteStat = `
 		SELECT COUNT(*) FROM kvartirum.UserOfferFavourites WHERE offer_id = $1;
 	`
+
+	verifyOfferSQL = `
+		UPDATE kvartirum.Offer
+		SET verified = TRUE, comment = ''
+		WHERE id = $1;
+	`
+
+	rejectOfferSQL = `
+		UPDATE kvartirum.Offer
+		SET verified = FALSE, comment = $2
+		WHERE id = $1;
+	`
 )
 
 func (r *offerRepository) CreateOffer(ctx context.Context, o Offer) (int64, error) {
@@ -814,5 +826,15 @@ func (r *offerRepository) SetPromotesUntil(ctx context.Context, id int, until ti
 		SET promotes_until = $1
 		WHERE id = $2;
 	`, until, id)
+	return err
+}
+
+func (r *offerRepository) VerifyOffer(ctx context.Context, offerID int) error {
+	_, err := r.db.Exec(ctx, verifyOfferSQL, offerID)
+	return err
+}
+
+func (r *offerRepository) RejectOffer(ctx context.Context, offerID int, comment string) error {
+	_, err := r.db.Exec(ctx, rejectOfferSQL, offerID, comment)
 	return err
 }

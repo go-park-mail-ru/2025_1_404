@@ -32,4 +32,6 @@ type OfferUsecase interface {
 	CheckType(ctx context.Context, paymentType int) (bool, error)
 	ValidateOffer(ctx context.Context, offerID int, purchaseId int) (*bool, error)
 	CheckPayment(ctx context.Context, paymentId int) (*domain.CheckPaymentResponse, error)
+	VerifyOffer(ctx context.Context, offerID int) error
+	RejectOffer(ctx context.Context, offerID int, comment string) error
 }
