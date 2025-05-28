@@ -39,16 +39,19 @@ jobs:
       - name: Run tests
         run: go test ./... -v
 
-      - name: Upload project to server
+      - name: Archive project
+        run: tar --owner=0 --group=0 -czf project.tar.gz .
+
+      - name: Upload archive to server
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.VDS_HOST }}
           username: ${{ secrets.VDS_USER }}
           key: ${{ secrets.VDS_KEY }}
-          source: "."
+          source: "project.tar.gz"
           target: "/home/backend/2025_1_404"
-
-      - name: Restart backend service
+      
+      - name: Unpack archive and restart service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VDS_HOST }}
@@ -56,4 +59,7 @@ jobs:
           key: ${{ secrets.VDS_KEY }}
           script: |
             cd /home/backend/2025_1_404
+            rm -rf ./*
+            tar -xzf project.tar.gz
+            rm project.tar.gz
             sudo systemctl restart backend.service
