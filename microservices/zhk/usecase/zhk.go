@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk"
@@ -126,7 +127,16 @@ func (u *zhkUsecase) GetAllZhk(ctx context.Context) ([]domain.ZhkInfo, error) {
 }
 
 func prepareOfferDate(header *domain.ZhkHeader, characteristics *domain.ZhkCharacteristics, apartments *domain.ZhkApartments, offers *offerpb.GetOffersByZhkResponse) {
-	var minPrice, maxPrice, minArea, maxArea, minFloors, maxFloors, minCeiling, maxCeiling int
+	var (
+		minPrice   = math.MaxInt
+		maxPrice   = 0
+		minArea    = math.MaxInt
+		maxArea    = 0
+		minFloors  = math.MaxInt
+		maxFloors  = 0
+		minCeiling = math.MaxInt
+		maxCeiling = 0
+	)
 	for _, offer := range offers.Offers {
 		// Цена
 		if offer.Price < int32(minPrice) {

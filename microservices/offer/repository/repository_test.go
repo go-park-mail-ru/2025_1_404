@@ -104,6 +104,98 @@ func TestRepository_GetOfferByID(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+
+func TestRepository_GetOffersBySellerID(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	now := time.Now()
+	promotesUntil := now.Add(24 * time.Hour)
+	description := "descr"
+	address := "addr"
+	expectedOffers := []Offer{
+		{
+			ID:             1,
+			SellerID:       2,
+			OfferTypeID:    1,
+			MetroStationID: nil,
+			RentTypeID:     nil,
+			PurchaseTypeID: nil,
+			PropertyTypeID: 1,
+			StatusID:       1,
+			RenovationID:   1,
+			ComplexID:      nil,
+			Price:          100000,
+			Description:    &description,
+			Floor:          2,
+			TotalFloors:    5,
+			Rooms:          3,
+			Address:        &address,
+			Flat:           10,
+			Area:           60,
+			CeilingHeight:  2,
+			Longitude:      "37.6173",
+			Latitude:       "55.7558",
+			CreatedAt:      now,
+			UpdatedAt:      now,
+			PromotesUntil:  &promotesUntil,
+		},
+		{
+			ID:             2,
+			SellerID:       2,
+			OfferTypeID:    1,
+			MetroStationID: nil,
+			RentTypeID:     nil,
+			PurchaseTypeID: nil,
+			PropertyTypeID: 2,
+			StatusID:       1,
+			RenovationID:   2,
+			ComplexID:      nil,
+			Price:          150000,
+			Description:   &description,
+			Floor:          4,
+			TotalFloors:    10,
+			Rooms:          4,
+			Address:        &address,
+			Flat:           20,
+			Area:           80,
+			CeilingHeight:  3.0,
+			Longitude:      "37.6179",
+			Latitude:       "55.7560",
+			CreatedAt:      now,
+			UpdatedAt:      now,
+			PromotesUntil:  nil,
+		},
+	}
+
+	rows := pgxmock.NewRows([]string{
+		"id", "seller_id", "offer_type_id", "metro_station_id", "rent_type_id", "purchase_type_id",
+		"property_type_id", "offer_status_id", "renovation_id", "complex_id", "price", "description",
+		"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height",
+		"longitude", "latitude", "created_at", "updated_at", "promotes_until",
+	})
+
+	for _, o := range expectedOffers {
+		rows.AddRow(
+			o.ID, o.SellerID, o.OfferTypeID, o.MetroStationID, o.RentTypeID, o.PurchaseTypeID,
+			o.PropertyTypeID, o.StatusID, o.RenovationID, o.ComplexID, o.Price, o.Description,
+			o.Floor, o.TotalFloors, o.Rooms, o.Address, o.Flat, o.Area, o.CeilingHeight,
+			o.Longitude, o.Latitude, o.CreatedAt, o.UpdatedAt, o.PromotesUntil,
+		)
+	}
+
+	mock.ExpectQuery(`(?i)SELECT .* FROM kvartirum.Offer WHERE seller_id = \$1`).
+		WithArgs(expectedOffers[0].SellerID).
+		WillReturnRows(rows)
+
+	got, err := repo.GetOffersBySellerID(context.Background(), expectedOffers[0].SellerID)
+	require.NoError(t, err)
+	require.Equal(t, len(expectedOffers), len(got))
+	require.Equal(t, expectedOffers[0].ID, got[0].ID)
+	require.Equal(t, expectedOffers[1].ID, got[1].ID)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestRepository_GetAllOffers(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()

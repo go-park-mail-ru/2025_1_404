@@ -218,7 +218,22 @@ func TestGetAllZhk(t *testing.T) {
 	}
 
 	// []*offerpb.Offer {{Id: 1}, {Id: 2}}
-	offers := &offerpb.GetOffersByZhkResponse{}
+	offers := &offerpb.GetOffersByZhkResponse{Offers: []*offerpb.Offer{
+		&offerpb.Offer{
+			Id: 1,
+			Price: 100,
+			Area: 3,
+			TotalFloors: 3,
+			CeilingHeight: 3,
+		},
+		&offerpb.Offer{
+			Id: 2,
+			Price: 20,
+			Area: 4,
+			TotalFloors: 4,
+			CeilingHeight: 3,
+		},
+	}}
 
 	t.Run("GetAllZhk ok", func(t *testing.T) {
 		mockRepo.EXPECT().GetAllZhk(ctx).Return(zhk, nil)
