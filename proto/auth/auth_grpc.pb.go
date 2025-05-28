@@ -4,6 +4,7 @@
 // - protoc             v6.30.2
 // source: auth.proto
 
+//go:generate mockgen -source=auth_grpc.pb.go -destination=mocks/mock_auth_service.go  -package=mocks
 package authpb
 
 import (

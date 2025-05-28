@@ -4,6 +4,7 @@
 // - protoc             v6.31.0
 // source: offer.proto
 
+//go:generate mockgen -source=offer_grpc.pb.go -destination=mocks/mock_offer_service.go  -package=mocks
 package offerpb
 
 import (
