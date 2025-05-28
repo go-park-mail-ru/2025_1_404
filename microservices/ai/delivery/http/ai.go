@@ -1,12 +1,13 @@
 package http
 
 import (
-	"encoding/json"
+	"io"
+	"net/http"
+
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/ai"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/ai/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
-	"net/http"
 )
 
 type AIHandler struct {
@@ -26,7 +27,8 @@ func (h *AIHandler) EvaluateOffer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var offer domain.Offer
-	if err := json.NewDecoder(r.Body).Decode(&offer); err != nil {
+	data, _ := io.ReadAll(r.Body)
+	if err := offer.UnmarshalJSON(data); err != nil {
 		utils.SendErrorResponse(w, "Ошибка в теле запроса", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
 	}

@@ -4,6 +4,7 @@
 // - protoc             v6.31.0
 // source: payment.proto
 
+//go:generate mockgen -source=payment_grpc.pb.go -destination=mocks/mock_payment.go  -package=mocks
 package paymentpb
 
 import (

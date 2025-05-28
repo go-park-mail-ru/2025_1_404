@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/go-park-mail-ru/2025_1_404/config"
-	"github.com/stretchr/testify/require"
 	"image"
 	"image/png"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-park-mail-ru/2025_1_404/config"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/mocks"
@@ -867,5 +869,321 @@ func TestLikeOffer(t *testing.T) {
 		handler.LikeOffer(rec, req)
 
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+}
+
+func TestPromoteOffer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	handler := NewOfferHandler(mockUC, cfg)
+
+	t.Run("PromoteOffer ok", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		reqBody := domain.CreatePaymentRequest{Type: 1}
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", bytes.NewBuffer(body)).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "2"})
+		response := httptest.NewRecorder()
+
+		mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(nil)
+		mockUC.EXPECT().CheckType(gomock.Any(), 1).Return(true, nil)
+		paymentResponse := &domain.CreatePaymentResponse{OfferId: 2, PaymentUri: "someURI"}
+		mockUC.EXPECT().PromoteOffer(gomock.Any(), 2, 1).Return(paymentResponse, nil)
+
+		handler.PromoteOffer(response, request)
+
+		assert.Equal(t, http.StatusOK, response.Code)
+	})
+
+	t.Run("UserID not found", func(t *testing.T) {
+		reqBody := domain.CreatePaymentRequest{Type: 1}
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", bytes.NewBuffer(body))
+		request = mux.SetURLVars(request, map[string]string{"id": "2"})
+		response := httptest.NewRecorder()
+
+		handler.PromoteOffer(response, request)
+
+		assert.Equal(t, http.StatusUnauthorized, response.Code)
+	})
+
+	t.Run("Incorrect ID", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		reqBody := domain.CreatePaymentRequest{Type: 1}
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/-2/promote", bytes.NewBuffer(body)).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "-2"})
+		response := httptest.NewRecorder()
+
+		handler.PromoteOffer(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Code)
+	})
+
+	t.Run("Invalid request body", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		invalidBody := "{invalid json}"
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", bytes.NewBufferString(invalidBody)).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "2"})
+		response := httptest.NewRecorder()
+
+		handler.PromoteOffer(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Code)
+	})
+
+	t.Run("No access to offer", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		reqBody := domain.CreatePaymentRequest{Type: 1}
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", bytes.NewBuffer(body)).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "2"})
+		response := httptest.NewRecorder()
+
+		mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(errors.New("no access"))
+
+		handler.PromoteOffer(response, request)
+
+		assert.Equal(t, http.StatusForbidden, response.Code)
+	})
+
+	t.Run("Invalid promotion type", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		reqBody := domain.CreatePaymentRequest{Type: 99} // несуществующий тип
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", bytes.NewBuffer(body)).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "2"})
+		response := httptest.NewRecorder()
+
+		mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(nil)
+		mockUC.EXPECT().CheckType(gomock.Any(), 99).Return(false, nil)
+
+		handler.PromoteOffer(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Code)
+	})
+
+	t.Run("Error checking promotion type", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		reqBody := domain.CreatePaymentRequest{Type: 1}
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", bytes.NewBuffer(body)).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "2"})
+		response := httptest.NewRecorder()
+
+		mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(nil)
+		mockUC.EXPECT().CheckType(gomock.Any(), 1).Return(false, errors.New("db error"))
+
+		handler.PromoteOffer(response, request)
+
+		assert.Equal(t, http.StatusInternalServerError, response.Code)
+	})
+
+	t.Run("Error promoting offer", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		reqBody := domain.CreatePaymentRequest{Type: 1}
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", bytes.NewBuffer(body)).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "2"})
+		response := httptest.NewRecorder()
+
+		mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(nil)
+		mockUC.EXPECT().CheckType(gomock.Any(), 1).Return(true, nil)
+		mockUC.EXPECT().PromoteOffer(gomock.Any(), 2, 1).Return(nil, errors.New("payment error"))
+
+		handler.PromoteOffer(response, request)
+
+		assert.Equal(t, http.StatusInternalServerError, response.Code)
+	})
+}
+
+func TestPromoteCheckOffer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	handler := NewOfferHandler(mockUC, cfg)
+
+	t.Run("PromoteCheckOffer ok", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", nil).WithContext(ctx)
+		request = mux.SetURLVars(request, map[string]string{"id": "2", "purchaseId": "1"})
+		response := httptest.NewRecorder()
+
+		mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(nil)
+		validateResult := true
+		mockUC.EXPECT().ValidateOffer(gomock.Any(), 2, 1).Return(&validateResult, nil)
+		paymentData := domain.CheckPaymentResponse{OfferId: 2, IsActive: true, IsPaid: true, Days: 30}
+		mockUC.EXPECT().CheckPayment(gomock.Any(), 1).Return(&paymentData, nil)
+
+		handler.PromoteCheckOffer(response, request)
+
+		assert.Equal(t, http.StatusOK, response.Code)
+	})
+
+	t.Run("UserID not found", func(t *testing.T) {
+        request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", nil)
+        request = mux.SetURLVars(request, map[string]string{"id": "2", "purchaseId": "1"})
+        response := httptest.NewRecorder()
+
+        handler.PromoteCheckOffer(response, request)
+
+        assert.Equal(t, http.StatusUnauthorized, response.Code)
+    })
+
+	t.Run("Invalid offer ID", func(t *testing.T) {
+        ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+        request := httptest.NewRequest(http.MethodPost, "/offers/-2/promote", nil).WithContext(ctx)
+        request = mux.SetURLVars(request, map[string]string{"id": "-2", "purchaseId": "1"})
+        response := httptest.NewRecorder()
+
+        handler.PromoteCheckOffer(response, request)
+
+        assert.Equal(t, http.StatusBadRequest, response.Code)
+    })
+
+	t.Run("Invalid purchase ID", func(t *testing.T) {
+        ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+        request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", nil).WithContext(ctx)
+        request = mux.SetURLVars(request, map[string]string{"id": "2", "purchaseId": "-1"})
+        response := httptest.NewRecorder()
+
+        handler.PromoteCheckOffer(response, request)
+
+        assert.Equal(t, http.StatusBadRequest, response.Code)
+    })
+
+	t.Run("No access to offer", func(t *testing.T) {
+        ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+        request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", nil).WithContext(ctx)
+        request = mux.SetURLVars(request, map[string]string{"id": "2", "purchaseId": "1"})
+        response := httptest.NewRecorder()
+
+        mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(errors.New("no access"))
+
+        handler.PromoteCheckOffer(response, request)
+
+        assert.Equal(t, http.StatusForbidden, response.Code)
+    })
+
+	t.Run("ValidateOffer error", func(t *testing.T) {
+        ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+        request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", nil).WithContext(ctx)
+        request = mux.SetURLVars(request, map[string]string{"id": "2", "purchaseId": "1"})
+        response := httptest.NewRecorder()
+
+        mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(nil)
+        mockUC.EXPECT().ValidateOffer(gomock.Any(), 2, 1).Return(nil, errors.New("validation error"))
+
+        handler.PromoteCheckOffer(response, request)
+
+        assert.Equal(t, http.StatusInternalServerError, response.Code)
+    })
+
+	t.Run("Invalid purchase validation", func(t *testing.T) {
+        ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+        request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", nil).WithContext(ctx)
+        request = mux.SetURLVars(request, map[string]string{"id": "2", "purchaseId": "1"})
+        response := httptest.NewRecorder()
+
+        mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(nil)
+        validateResult := false
+        mockUC.EXPECT().ValidateOffer(gomock.Any(), 2, 1).Return(&validateResult, nil)
+
+        handler.PromoteCheckOffer(response, request)
+
+        assert.Equal(t, http.StatusBadRequest, response.Code)
+    })
+
+	t.Run("CheckPayment error", func(t *testing.T) {
+        ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+        request := httptest.NewRequest(http.MethodPost, "/offers/2/promote", nil).WithContext(ctx)
+        request = mux.SetURLVars(request, map[string]string{"id": "2", "purchaseId": "1"})
+        response := httptest.NewRecorder()
+
+        mockUC.EXPECT().CheckAccessToOffer(gomock.Any(), 2, 1).Return(nil)
+        validateResult := true
+        mockUC.EXPECT().ValidateOffer(gomock.Any(), 2, 1).Return(&validateResult, nil)
+        mockUC.EXPECT().CheckPayment(gomock.Any(), 1).Return(nil, errors.New("payment error"))
+
+        handler.PromoteCheckOffer(response, request)
+
+        assert.Equal(t, http.StatusInternalServerError, response.Code)
+    })
+}
+
+func TestFavoriteOffer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUC := mocks.NewMockOfferUsecase(ctrl)
+	cfg := &config.Config{}
+	handler := NewOfferHandler(mockUC, cfg)
+
+	t.Run("FavoriteOffer ok", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		reqBody := domain.FavoriteRequest{OfferId: 2}
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/favorite", bytes.NewBuffer(body)).WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		stat := domain.FavoriteStat{IsFavorited: true, Amount: 1}
+		req := domain.FavoriteRequest{UserId: 1, OfferId: 2}
+		mockUC.EXPECT().FavoriteOffer(gomock.Any(), req).Return(stat, nil)
+
+		handler.FavoriteOffer(response, request)
+
+		assert.Equal(t, http.StatusOK, response.Code)
+	})
+
+	t.Run("UserID not found", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/offers/favorite", nil)
+		response := httptest.NewRecorder()
+
+		handler.FavoriteOffer(response, request)
+
+		assert.Equal(t, http.StatusUnauthorized, response.Code)
+	})
+
+	t.Run("Invalid request body", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		invalidBody := "{invalid json}"
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/favorite", bytes.NewBufferString(invalidBody)).WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		handler.FavoriteOffer(response, request)
+
+		assert.Equal(t, http.StatusBadRequest, response.Code)
+	})
+
+	t.Run("FavotireOffer UC failed", func(t *testing.T) {
+		ctx := context.WithValue(context.Background(), utils.UserIDKey, 1)
+		reqBody := domain.FavoriteRequest{OfferId: 2}
+		body, _ := json.Marshal(reqBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/offers/favorite", bytes.NewBuffer(body)).WithContext(ctx)
+		response := httptest.NewRecorder()
+
+		stat := domain.FavoriteStat{IsFavorited: true, Amount: 1}
+		req := domain.FavoriteRequest{UserId: 1, OfferId: 2}
+		mockUC.EXPECT().FavoriteOffer(gomock.Any(), req).Return(stat, errors.New("some error"))
+
+		handler.FavoriteOffer(response, request)
+
+		assert.Equal(t, http.StatusInternalServerError, response.Code)
 	})
 }

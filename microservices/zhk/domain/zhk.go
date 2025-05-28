@@ -1,3 +1,5 @@
+//go:generate easyjson -all
+
 package domain
 
 // Zhk Структура ЖК
@@ -12,7 +14,7 @@ type Zhk struct {
 	MetroStationId *int
 }
 
-// ZhkInfo Структура с информацией о ЖК
+//easyjson:json
 type ZhkInfo struct {
 	ID              int64              `json:"id"`
 	Description     string             `json:"description"`
@@ -24,13 +26,13 @@ type ZhkInfo struct {
 	Reviews         ZhkReviews         `json:"reviews"`
 }
 
-// ZhkAddress Расположение ЖК
+//easyjson:json
 type ZhkAddress struct {
 	Address string   `json:"address"`
 	Metro   ZhkMetro `json:"metro"`
 }
 
-// ZhkMetro Метро ЖК
+//easyjson:json
 type ZhkMetro struct {
 	Id      int    `json:"station_id"`
 	Color   string `json:"line_color"`
@@ -38,7 +40,7 @@ type ZhkMetro struct {
 	Station string `json:"station"`
 }
 
-// ZhkHeader Заголовок ЖК
+//easyjson:json
 type ZhkHeader struct {
 	Name         string   `json:"name"`
 	LowestPrice  int      `json:"lowest_price"`
@@ -47,13 +49,13 @@ type ZhkHeader struct {
 	ImagesSize   int      `json:"images_size"`
 }
 
-// ZhkContacts Контактная информация
+//easyjson:json
 type ZhkContacts struct {
 	Developer string `json:"developer"`
 	Phone     string `json:"phone"`
 }
 
-// ZhkCharacteristics Характеристики ЖК
+//easyjson:json
 type ZhkCharacteristics struct {
 	Decoration    []int        `json:"decoration"`
 	Class         string       `json:"class"`
@@ -62,30 +64,30 @@ type ZhkCharacteristics struct {
 	Square        SquareRange  `json:"square"`
 }
 
-// CeilingRange Диапазон потолков
+//easyjson:json
 type CeilingRange struct {
 	HighestHeight int `json:"highest_height"`
 	LowestHeight  int `json:"lowest_height"`
 }
 
-// FloorsRange Диапазон этажей
+//easyjson:json
 type FloorsRange struct {
 	HighestFloor int `json:"highest_floor"`
 	LowestFloor  int `json:"lowest_floor"`
 }
 
-// SquareRange Диапазон площадей
+//easyjson:json
 type SquareRange struct {
 	HighestSquare float64 `json:"highest_square"`
 	LowestSquare  float64 `json:"lowest_square"`
 }
 
-// ZhkApartments Предложения ЖК
+//easyjson:json
 type ZhkApartments struct {
 	Apartments []ZhkApartment `json:"items"`
 }
 
-// ZhkApartment Предложение ЖК
+//easyjson:json
 type ZhkApartment struct {
 	HighestPrice int `json:"highest_price"`
 	LowestPrice  int `json:"lowest_price"`
@@ -94,14 +96,14 @@ type ZhkApartment struct {
 	Rooms        int `json:"rooms"`
 }
 
-// ZhkReview Отзывы на ЖК
+//easyjson:json
 type ZhkReviews struct {
 	Reviews     []Review `json:"items"`
 	Quantity    int      `json:"quantity"`
 	TotalRating float64  `json:"total_rating"`
 }
 
-// Review Отзыв на ЖК
+//easyjson:json
 type Review struct {
 	Avatar    string `json:"avatar"`
 	FirstName string `json:"first_name"`
@@ -109,3 +111,6 @@ type Review struct {
 	Rating    int    `json:"rating"`
 	Text      string `json:"tetx"`
 }
+
+//easyjson:json
+type ZhksInfo []ZhkInfo
