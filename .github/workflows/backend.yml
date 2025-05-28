@@ -24,16 +24,18 @@ jobs:
       - name: Install easyjson
         run: go install github.com/mailru/easyjson/...@latest
 
-      - name: Install mockgen & easyjson
-        run: go install go.uber.org/mock/mockgen@latest
+      - name: Install mockgen
+        run: go install github.com/golang/mock/mockgen@latest
 
-      - name: Generate mocks
+      - name: Generate mocks & easyjson
         run: go generate ./...
 
-      - name: Run linter
+      - name: Install golangci-lint
         run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-          golangci-lint run ./...
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+
+      - name: Run linter
+        run: golangci-lint run ./...
 
       - name: Run tests
         run: go test ./... -v
@@ -59,5 +61,4 @@ jobs:
           username: ${{ secrets.VDS_USER }}
           key: ${{ secrets.VDS_KEY }}
           script: |
-            cd /home/backend/2025_1_404
             sudo systemctl restart backend.service
