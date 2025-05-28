@@ -55,7 +55,7 @@ func TestGetOffers(t *testing.T) {
 
 	User1 := &authpb.GetUserResponse{User: &authpb.User{Id: 3, FirstName: "Ivan", LastName: "Ivanov", Image: "image1.png", CreatedAt: timestamppb.New(time.Now())}}
 	User2 := &authpb.GetUserResponse{User: &authpb.User{Id: 1, FirstName: "Maksim", LastName: "Maksimov", Image: "image2.png", CreatedAt: timestamppb.New(time.Now())}}
-	History1 := []domain.OfferPriceHistory{{123, time.Now()}, {245, time.Now()}}
+	History1 := []domain.OfferPriceHistory{{Price: 123, Date: time.Now()}, {Price: 245, Date: time.Now()}}
 	History2 := []domain.OfferPriceHistory{{Price: 789, Date: time.Now()}, {Price: 456, Date: time.Now()}}
 	t.Run("successful get offers", func(t *testing.T) {
 		// Тестовые данные
@@ -144,7 +144,7 @@ func TestGetOffersByFilter(t *testing.T) {
 
 	User1 := &authpb.GetUserResponse{User: &authpb.User{Id: 3, FirstName: "Ivan", LastName: "Ivanov", Image: "image1.png", CreatedAt: timestamppb.New(time.Now())}}
 	User2 := &authpb.GetUserResponse{User: &authpb.User{Id: 1, FirstName: "Maksim", LastName: "Maksimov", Image: "image2.png", CreatedAt: timestamppb.New(time.Now())}}
-	History1 := []domain.OfferPriceHistory{{123, time.Now()}, {245, time.Now()}}
+	History1 := []domain.OfferPriceHistory{{Price: 123, Date: time.Now()}, {Price: 245, Date: time.Now()}}
 	History2 := []domain.OfferPriceHistory{{Price: 789, Date: time.Now()}, {Price: 456, Date: time.Now()}}
 
 	minPrice := 100000
@@ -240,7 +240,7 @@ func TestGetOfferByID(t *testing.T) {
 	UserID := &userID
 
 	User1 := &authpb.GetUserResponse{User: &authpb.User{Id: 1, FirstName: "Ivan", LastName: "Ivanov", Image: "image1.png", CreatedAt: timestamppb.New(time.Now())}}
-	History1 := []domain.OfferPriceHistory{{123, time.Now()}, {245, time.Now()}}
+	History1 := []domain.OfferPriceHistory{{Price: 123, Date: time.Now()}, {Price: 245, Date: time.Now()}}
 
 	testID := 123
 	IP := "123.123.123.123"
@@ -331,7 +331,7 @@ func TestGetOffersBySellerID(t *testing.T) {
 
 	User1 := &authpb.GetUserResponse{User: &authpb.User{Id: 3, FirstName: "Ivan", LastName: "Ivanov", Image: "image1.png", CreatedAt: timestamppb.New(time.Now())}}
 	User2 := &authpb.GetUserResponse{User: &authpb.User{Id: 1, FirstName: "Maksim", LastName: "Maksimov", Image: "image2.png", CreatedAt: timestamppb.New(time.Now())}}
-	History1 := []domain.OfferPriceHistory{{123, time.Now()}, {245, time.Now()}}
+	History1 := []domain.OfferPriceHistory{{Price: 123, Date: time.Now()}, {Price: 245, Date: time.Now()}}
 	History2 := []domain.OfferPriceHistory{{Price: 789, Date: time.Now()}, {Price: 456, Date: time.Now()}}
 
 	sellerID := 123
@@ -874,11 +874,11 @@ func TestCheckPayment(t *testing.T) {
 		resp := paymentpb.CheckPaymentResponse{OfferId: 1, IsActive: true, IsPaid: true, Days: 30}
 		mockPaymentService.EXPECT().CheckPayment(ctx, &paymentpb.CheckPaymentRequest{PaymentId: int32(1)}).Return(&resp, nil)
 		mockRepo.EXPECT().
-		SetPromotesUntil(ctx, 1, gomock.AssignableToTypeOf(time.Time{})).
-		DoAndReturn(func(_ context.Context, _ int, actualUntil time.Time) error {
-			assert.WithinDuration(t, expectedUntil, actualUntil, time.Second)
-			return nil
-		})
+			SetPromotesUntil(ctx, 1, gomock.AssignableToTypeOf(time.Time{})).
+			DoAndReturn(func(_ context.Context, _ int, actualUntil time.Time) error {
+				assert.WithinDuration(t, expectedUntil, actualUntil, time.Second)
+				return nil
+			})
 
 		paymentResponse, err := offerUsecase.CheckPayment(ctx, 1)
 

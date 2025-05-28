@@ -64,6 +64,9 @@ func (repo *yookassaRepo) CreatePayment(amount int, description string, redirect
 func (repo *yookassaRepo) GetPayment(paymentId string) (*CreatePaymentResponse, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.yookassa.ru/v3/payments/%s", paymentId), nil)
+	if err != nil {
+		return nil, err
+	}
 	req.SetBasicAuth(repo.shopId, repo.secret)
 	resp, err := client.Do(req)
 	if err != nil {
