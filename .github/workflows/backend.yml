@@ -4,11 +4,49 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build-test-deploy:
+  ci:
+    name: Build, Lint, Test
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.23"
+
+      - name: Set up GOPATH bin
+        run: echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Download Go dependencies
+        run: go mod download
+
+      - name: Install tools
+        run: |
+          go install github.com/mailru/easyjson/...@latest
+          go install github.com/golang/mock/mockgen@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Generate mocks and easyjson
+        run: go generate ./...
+
+      - name: Run linter
+        run: golangci-lint run --timeout=5m ./...
+
+      - name: Run tests
+        run: go test ./... -v
+
+  cd:
+    name: Deploy to Server
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
