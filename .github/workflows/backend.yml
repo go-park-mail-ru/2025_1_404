@@ -21,7 +21,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Install mockgen
+      - name: Install easyjson
+        run: go install github.com/mailru/easyjson/...@latest
+
+      - name: Install mockgen & easyjson
         run: go install go.uber.org/mock/mockgen@latest
 
       - name: Generate mocks
