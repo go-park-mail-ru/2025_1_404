@@ -39,11 +39,6 @@ jobs:
       - name: Run tests
         run: go test ./... -v
 
-      - name: Build binary
-        run: |
-          mkdir -p bin
-          go build -o bin/backend ./cmd
-
       - name: Upload project to server
         uses: appleboy/scp-action@v0.1.4
         with:
