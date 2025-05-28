@@ -43,7 +43,7 @@ jobs:
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.VDS_HOST }}
-          username: ${{ secrets.VDS_USER }}
+          username: "backend"
           key: ${{ secrets.VDS_KEY }}
           source: "."
           target: "/home/backend/2025_1_404"
