@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package paymentService;
+
+option go_package = "./;paymentpb";
+
+message CreatePaymentRequest {
+    int32 offer_id = 1;
+    int32 type = 2;
+}
+
+message CheckTypeRequest {
+    int32 type = 1;
+}
+
+message CreatePaymentResponse {
+    int32 offer_id = 1;
+    string redirect_uri = 2;
+}
+
+message CheckTypeResponse {
+    bool is_valid = 1;
+}
+
+message CheckPaymentRequest {
+    int32 payment_id = 1;
+}
+
+message CheckPaymentResponse {
+    int32 offer_id = 1;
+    bool is_active = 2;
+    bool is_paid = 3;
+    int32 days = 4;
+}
+
+message ValidatePaymentRequest {
+    int32 payment_id = 1;
+    int32 offer_id = 2;
+}
+
+message ValidatePaymentResponse {
+    bool is_valid = 1;
+}
+
+service PaymentService {
+    rpc CreatePayment (CreatePaymentRequest) returns (CreatePaymentResponse);
+    rpc CheckType (CheckTypeRequest) returns (CheckTypeResponse);
+    rpc CheckPayment (CheckPaymentRequest) returns (CheckPaymentResponse);
+    rpc ValidatePayment (ValidatePaymentRequest) returns (ValidatePaymentResponse);
+}

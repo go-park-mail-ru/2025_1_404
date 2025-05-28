@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-park-mail-ru/2025_1_404/config"
 	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk"
+	"github.com/go-park-mail-ru/2025_1_404/microservices/zhk/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	"github.com/gorilla/mux"
 )
@@ -45,5 +46,6 @@ func (h *ZhkHandler) GetAllZhk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.SendJSONResponse(w, zhks, http.StatusOK, &h.cfg.App.CORS)
+	var zhksInfo domain.ZhksInfo = zhks
+	utils.SendJSONResponse(w, zhksInfo, http.StatusOK, &h.cfg.App.CORS)
 }

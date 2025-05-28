@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/go-park-mail-ru/2025_1_404/microservices/offer/domain"
 	"github.com/go-park-mail-ru/2025_1_404/pkg/logger"
+	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	pgxmock "github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
 )
@@ -59,6 +61,7 @@ func TestRepository_GetOfferByID(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()
 
+	promotesUntil := time.Now()
 	o := Offer{
 		ID:             1,
 		SellerID:       2,
@@ -77,6 +80,7 @@ func TestRepository_GetOfferByID(t *testing.T) {
 		Latitude:       "55.7558",
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
+		PromotesUntil:  &promotesUntil,
 	}
 
 	mock.ExpectQuery(`(?i)SELECT .* FROM kvartirum.Offer WHERE id = \$1`).
@@ -85,12 +89,12 @@ func TestRepository_GetOfferByID(t *testing.T) {
 			"id", "seller_id", "offer_type_id", "metro_station_id", "rent_type_id", "purchase_type_id",
 			"property_type_id", "offer_status_id", "renovation_id", "complex_id", "price", "description",
 			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height",
-			"longitude", "latitude", "created_at", "updated_at",
+			"longitude", "latitude", "created_at", "updated_at", "promotes_until",
 		}).AddRow(
 			o.ID, o.SellerID, o.OfferTypeID, o.MetroStationID, o.RentTypeID, o.PurchaseTypeID,
 			o.PropertyTypeID, o.StatusID, o.RenovationID, o.ComplexID, o.Price, o.Description,
 			o.Floor, o.TotalFloors, o.Rooms, o.Address, o.Flat, o.Area, o.CeilingHeight,
-			o.Longitude, o.Latitude, o.CreatedAt, o.UpdatedAt,
+			o.Longitude, o.Latitude, o.CreatedAt, o.UpdatedAt, o.PromotesUntil,
 		))
 
 	got, err := repo.GetOfferByID(context.Background(), o.ID)
@@ -104,16 +108,17 @@ func TestRepository_GetAllOffers(t *testing.T) {
 	repo, mock := newTestRepo(t)
 	defer mock.Close()
 
+	promotesUntil := time.Now()
 	mock.ExpectQuery(`(?i)SELECT .* FROM kvartirum.Offer`).
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "seller_id", "offer_type_id", "metro_station_id", "rent_type_id", "purchase_type_id",
 			"property_type_id", "offer_status_id", "renovation_id", "complex_id", "price", "description",
 			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height",
-			"longitude", "latitude", "created_at", "updated_at",
+			"longitude", "latitude", "created_at", "updated_at", "promotes_until",
 		}).AddRow(
 			1, 2, 1, nil, nil, nil, 1, 1, 1, nil, 100000, nil,
 			2, 5, 2, nil, 10, 50, 3,
-			"37.6173", "55.7558", time.Now(), time.Now(),
+			"37.6173", "55.7558", time.Now(), time.Now(), &promotesUntil,
 		))
 
 	list, err := repo.GetAllOffers(context.Background())
@@ -191,9 +196,9 @@ func TestRepository_GetOffersByFilter(t *testing.T) {
 		WillReturnRows(pgxmock.NewRows([]string{
 			"id", "seller_id", "offer_type_id", "metro_station_id", "rent_type_id", "purchase_type_id",
 			"property_type_id", "offer_status_id", "renovation_id", "complex_id", "price", "description",
-			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height", "longitude", "latitude", "created_at", "updated_at",
+			"floor", "total_floors", "rooms", "address", "flat", "area", "ceiling_height", "longitude", "latitude", "created_at", "updated_at", "promotes_until",
 		}).AddRow(
-			1, 2, 1, nil, nil, nil, 1, 1, 1, nil, 1800000, nil, 2, 5, 2, nil, 10, 50, 3, "37.6173", "55.7558", timeNow, timeNow,
+			1, 2, 1, nil, nil, nil, 1, 1, 1, nil, 1800000, nil, 2, 5, 2, nil, 10, 50, 3, "37.6173", "55.7558", timeNow, timeNow, &timeNow,
 		))
 
 	offers, err := repo.GetOffersByFilter(context.Background(), filter, nil)
@@ -399,5 +404,104 @@ func TestRepository_GetPriceHistory(t *testing.T) {
 	require.Len(t, history, 1)
 	require.Equal(t, 123456, history[0].Price)
 	require.Equal(t, timestamp, history[0].Date)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_SetPromotesUntil(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	testID := 123
+	testTime := time.Now().Add(24 * time.Hour)
+
+	mock.ExpectExec(`UPDATE kvartirum.Offer SET promotes_until = \$1 WHERE id = \$2`).
+		WithArgs(testTime, testID).
+		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+
+	err := repo.SetPromotesUntil(context.Background(), testID, testTime)
+
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_GetFavoriteStat_Success(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	testOfferID := 123
+	expectedCount := 42
+	requestID := "test-request-id"
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, requestID)
+
+	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM kvartirum\.UserOfferFavourites WHERE offer_id = \$1`).
+		WithArgs(testOfferID).
+		WillReturnRows(pgxmock.NewRows([]string{"count"}).AddRow(expectedCount))
+	count, err := repo.GetFavoriteStat(ctx, domain.FavoriteRequest{OfferId: testOfferID})
+
+	require.NoError(t, err)
+	require.Equal(t, expectedCount, count)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_IsFavorite_Exists(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	userID := 1
+	offerID := 123
+	requestID := "test-request-id"
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, requestID)
+
+	// Точное соответствие SQL-запросу
+	mock.ExpectQuery(`SELECT EXISTS \(\s*SELECT 1 FROM kvartirum\.UserOfferFavourites WHERE user_id = \$1 AND offer_id = \$2\s*\)`).
+		WithArgs(userID, offerID).
+		WillReturnRows(pgxmock.NewRows([]string{"exists"}).AddRow(true))
+
+	result, err := repo.IsFavorite(ctx, userID, offerID)
+
+	require.NoError(t, err)
+	require.True(t, result)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_RemoveFavorite_Success(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	userID := 1
+	offerID := 123
+	requestID := "test-request-id"
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, requestID)
+
+	mock.ExpectExec(`DELETE FROM kvartirum\.UserOfferFavourites WHERE user_id = \$1 AND offer_id = \$2`).
+		WithArgs(userID, offerID).
+		WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	err := repo.RemoveFavorite(ctx, userID, offerID)
+
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestRepository_AddFavorite_Success(t *testing.T) {
+	repo, mock := newTestRepo(t)
+	defer mock.Close()
+
+	userID := 1
+	offerID := 123
+	requestID := "test-request"
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, requestID)
+
+	// Expect exact SQL with ON CONFLICT clause
+	mock.ExpectExec(regexp.QuoteMeta(`
+        INSERT INTO kvartirum.UserOfferFavourites (user_id, offer_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+    `)).WithArgs(userID, offerID).
+		WillReturnResult(pgxmock.NewResult("INSERT", 1))
+
+	err := repo.AddFavorite(ctx, userID, offerID)
+
+	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

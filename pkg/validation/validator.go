@@ -2,6 +2,7 @@ package validation
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"unicode"
 
@@ -9,14 +10,18 @@ import (
 )
 
 // Регулярка для email
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 var nameRegex = regexp.MustCompile(`^[A-Za-zА-Яа-яЁё-]+$`)
 
 func GetValidator() *validator.Validate {
 	validate := validator.New()
 
-	validate.RegisterValidation("password", passwordValidator)
-	validate.RegisterValidation("name", nameValidator)
+	if err := validate.RegisterValidation("password", passwordValidator); err != nil {
+		log.Println("cannot register password validator:", err)
+	}
+
+	if err := validate.RegisterValidation("name", nameValidator); err != nil {
+		log.Println("cannot register name validator:", err)
+	}
 
 	return validate
 }

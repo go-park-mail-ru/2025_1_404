@@ -1,3 +1,5 @@
+//go:generate easyjson -all
+
 package csrf
 
 import (
@@ -29,6 +31,7 @@ func ValidateCSRF(token string, key string, salt string) bool {
 	return hmac.Equal([]byte(expected), []byte(token))
 }
 
+//easyjson:json
 type CSRFResponse struct {
 	CSRF string `json:"csrf_token"`
 }

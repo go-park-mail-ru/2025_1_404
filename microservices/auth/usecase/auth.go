@@ -65,6 +65,7 @@ func (u *authUsecase) CreateUser(ctx context.Context, email, password, firstName
 		Password:  user.Password,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
+		Role:      user.Role,
 	}, nil
 }
 

@@ -1,13 +1,13 @@
 app:
-  baseDir: "http://localhost:8001"
-  baseFrontendDir: "http://localhost:8000"
+  baseDir: "https://kvartirum.online"
+  baseFrontendDir: "https://kvartirum.online"
   baseImagesPath: "/images/"
   http:
     port: :8001
   grpc:
     port: :8099
   cors:
-    allowOrigin: "http://localhost:8000"
+    allowOrigin: "https://kvartirum.online"
     allowMethods: "GET, POST, PUT, OPTIONS, DELETE"
     allowHeaders: "Content-Type, X-CSRF-TOKEN"
     allowCredentials: "true"
@@ -15,7 +15,10 @@ app:
     csrf:
       headerName: X-CSRF-TOKEN
   logger:
-    level: warn
+    level: info
+  promotion:
+    likeScore: 0.1
+    promotionScore: 100
       
 postgres:
   sslMode: false
@@ -35,7 +38,11 @@ yandex:
   token: "16697f01-687e-4e40-8c4f-f21ec269013d"
 
 gemini:
-  proxy: ""
-  token: ""
+  proxy: "http://kKkXHU:qpUVFJ@190.185.109.116:9417/"
+  token: "AIzaSyB7ASxqrdBIt3tRVKHZrvhaxmIPuu3NWt8"
   model: "gemini-2.0-flash-lite"
   estimationPrompt: "You are a real estate valuation model. Your task is to estimate the market price of a property in Russian rubles (RUB) based on structured input. No images are provided — only these fields:\n\naddress\n\nfloor, total_floors\n\nrooms\n\narea (in square meters)\n\nceiling_height (in meters)\n\nrenovation\n\nproperty_type\n\noffer_type: \"Продажа\" (Sale) or \"Аренда\" (Rent)\n\nIf \"Аренда\": rent_type: \"Посуточно\" (Short-term) or \"Долгосрок\" (Long-term)\n\nOutput requirements:\n\nAll prices must be in Russian rubles (RUB).\n\nRental prices:\n\nShort-term → daily rate (e.g., 2500 RUB/day)\n\nLong-term → monthly rate (e.g., 40,000 RUB/month)\n\nOutput must include:\n\nA realistic market_price (central estimate)\n\nA possible_cost_range:\n\nMust include both min and max fields\n\nmax must always be greater than min\n\nThe range must reflect actual market variability — not zero or artificial bounds\n\nPricing logic:\n\nNever let rental prices approach sale prices.\n\nDaily rental for small apartments (e.g., 20 m² in Moscow):\n\nBudget class: 2000–5000 RUB/day\n\nPremium/luxury (center, designer renovation): 6000–10000 RUB/day\n\nAvoid values like 60,000 RUB/day — they are unrealistic for standard 1-room listings.\n\nSale prices in Moscow:\n\nTypical 20 m² new apartment: 1.5–3.5 million RUB\n\nAdjust based on renovation, floor, and building quality.\n\nImportant: Always return a possible_cost_range with reasonable non-zero values for both min and max. Do not leave max as 0. The max should account for optimistic upper estimates on the market."
+
+yookassa:
+  secret: "test_QDmpk2Yb2-ZAL6CyI1Cunza1TbDFgX3ly7eH5BMj1ag"
+  shopId: "1085074"

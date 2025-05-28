@@ -3,7 +3,9 @@ package usecase
 import (
 	"context"
 	"fmt"
+	paymentpb "github.com/go-park-mail-ru/2025_1_404/proto/payment"
 	"html"
+	"sort"
 	"strconv"
 	"time"
 
@@ -20,17 +22,18 @@ import (
 )
 
 type offerUsecase struct {
-	repo        offer.OfferRepository
-	logger      logger.Logger
-	s3Repo      s3.S3Repo
-	yandexRepo  yandex.YandexRepo
-	cfg         *config.Config
-	authService authpb.AuthServiceClient
-	redisRepo   redis.RedisRepo
+	repo           offer.OfferRepository
+	logger         logger.Logger
+	s3Repo         s3.S3Repo
+	yandexRepo     yandex.YandexRepo
+	cfg            *config.Config
+	authService    authpb.AuthServiceClient
+	paymentService paymentpb.PaymentServiceClient
+	redisRepo      redis.RedisRepo
 }
 
-func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient, redisRepo redis.RedisRepo, yandexRepo yandex.YandexRepo) *offerUsecase {
-	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService, redisRepo: redisRepo, yandexRepo: yandexRepo}
+func NewOfferUsecase(repo offer.OfferRepository, logger logger.Logger, s3Repo s3.S3Repo, cfg *config.Config, authService authpb.AuthServiceClient, paymentService paymentpb.PaymentServiceClient, redisRepo redis.RedisRepo, yandexRepo yandex.YandexRepo) *offerUsecase {
+	return &offerUsecase{repo: repo, logger: logger, s3Repo: s3Repo, cfg: cfg, authService: authService, paymentService: paymentService, redisRepo: redisRepo, yandexRepo: yandexRepo}
 }
 
 func (u *offerUsecase) GetOffers(ctx context.Context, userID *int) ([]domain.OfferInfo, error) {
@@ -399,6 +402,130 @@ func (u *offerUsecase) LikeOffer(ctx context.Context, like domain.LikeRequest) (
 	return likeStat, nil
 }
 
+func (u *offerUsecase) GetFavorites(ctx context.Context, userID int, offerTypeID *int) ([]domain.OfferInfo, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	rawOffers, err := u.repo.GetFavorites(ctx, int64(userID), offerTypeID)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "userID": userID, "err": err.Error()}).Error("Offer usecase: get favorites failed")
+		return nil, err
+	}
+
+	offersDTO := mapOffers(rawOffers)
+
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO, &userID)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: prepare favorites failed")
+		return nil, err
+	}
+
+	return offersInfo, nil
+}
+
+func (u *offerUsecase) FavoriteOffer(ctx context.Context, req domain.FavoriteRequest) (domain.FavoriteStat, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	var stat domain.FavoriteStat
+
+	isFav, err := u.repo.IsFavorite(ctx, req.UserId, req.OfferId)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID, "err": err.Error(),
+		}).Error("Offer usecase: isOfferFavorited failed")
+		return stat, err
+	}
+
+	if isFav {
+		err = u.repo.RemoveFavorite(ctx, req.UserId, req.OfferId)
+		stat.IsFavorited = false
+	} else {
+		err = u.repo.AddFavorite(ctx, req.UserId, req.OfferId)
+		stat.IsFavorited = true
+	}
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID, "err": err.Error(),
+		}).Error("Offer usecase: toggle favorite failed")
+		return stat, err
+	}
+
+	total, err := u.repo.GetFavoriteStat(ctx, req)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{
+			"requestID": requestID, "err": err.Error(),
+		}).Error("Offer usecase: getFavoriteAmount failed")
+		return stat, err
+	}
+
+	stat.Amount = total
+	return stat, nil
+}
+
+func (u *offerUsecase) IsFavorite(ctx context.Context, userID, offerID int) (bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	isFav, err := u.repo.IsFavorite(ctx, userID, offerID)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "user_id": userID, "offer_id": offerID, "err": err.Error()}).Error("Offer usecase: is favourite check failed")
+	}
+	return isFav, err
+}
+
+func (u *offerUsecase) CheckType(ctx context.Context, paymentType int) (bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+	checkTypeResponse, err := u.paymentService.CheckType(ctx, &paymentpb.CheckTypeRequest{Type: int32(paymentType)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: check type failed")
+		return false, err
+	}
+	return checkTypeResponse.IsValid, nil
+}
+
+func (u *offerUsecase) PromoteOffer(ctx context.Context, offerID int, paymentType int) (*domain.CreatePaymentResponse, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+	createPaymentResponse, err := u.paymentService.CreatePayment(ctx, &paymentpb.CreatePaymentRequest{Type: int32(paymentType), OfferId: int32(offerID)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: create payment failed")
+		return nil, err
+	}
+	return &domain.CreatePaymentResponse{
+		OfferId:    createPaymentResponse.OfferId,
+		PaymentUri: createPaymentResponse.RedirectUri,
+	}, err
+}
+
+func (u *offerUsecase) ValidateOffer(ctx context.Context, offerID int, purchaseId int) (*bool, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+	validateResponse, err := u.paymentService.ValidatePayment(ctx, &paymentpb.ValidatePaymentRequest{PaymentId: int32(purchaseId), OfferId: int32(offerID)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: validate payment failed")
+		return nil, err
+	}
+	return &validateResponse.IsValid, err
+}
+
+func (u *offerUsecase) CheckPayment(ctx context.Context, paymentId int) (*domain.CheckPaymentResponse, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+	checkPaymentResponse, err := u.paymentService.CheckPayment(ctx, &paymentpb.CheckPaymentRequest{PaymentId: int32(paymentId)})
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Warn("Offer usecase: check payment failed")
+		return nil, err
+	}
+
+	if checkPaymentResponse.IsActive && checkPaymentResponse.IsPaid {
+		if err := u.repo.SetPromotesUntil(ctx, int(checkPaymentResponse.OfferId), time.Now().Add(time.Duration(checkPaymentResponse.Days)*24*time.Hour)); err != nil {
+			u.logger.Error("failed to set promotes_until")
+		}
+	}
+
+	return &domain.CheckPaymentResponse{
+		OfferId:  int(checkPaymentResponse.OfferId),
+		IsActive: checkPaymentResponse.IsActive,
+		IsPaid:   checkPaymentResponse.IsPaid,
+		Days:     int(checkPaymentResponse.Days),
+	}, nil
+}
+
 func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferInfo, error) {
 	requestID := ctx.Value(utils.RequestIDKey)
 
@@ -406,6 +533,18 @@ func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer,
 	if err != nil {
 		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error(), "offer_id": offer.ID}).Error("Offer usecase: get offer data failed")
 		return domain.OfferInfo{}, fmt.Errorf("offer data get failed")
+	}
+
+	offerData.Promotion = nil
+	if userID != nil && *userID == offer.SellerID {
+		offerData.Promotion = &domain.OfferPromotion{
+			IsPromoted:    offer.PromotesUntil != nil && offer.PromotesUntil.After(time.Now()),
+			PromotedUntil: offer.PromotesUntil,
+		}
+	}
+	offerData.PromotionScore = float32(offerData.OfferStat.LikesStat.Amount) * u.cfg.App.Promotion.LikeScore
+	if offer.PromotesUntil != nil && offer.PromotesUntil.After(time.Now()) {
+		offerData.PromotionScore += u.cfg.App.Promotion.PromotionScore
 	}
 
 	seller, err := u.authService.GetUserById(ctx, &authpb.GetUserRequest{Id: int32(offer.SellerID)})
@@ -453,6 +592,9 @@ func (u *offerUsecase) PrepareOffersInfo(ctx context.Context, offers []domain.Of
 		}
 		offersInfo = append(offersInfo, offerInfo)
 	}
+	sort.Slice(offersInfo, func(i, j int) bool {
+		return offersInfo[i].OfferData.PromotionScore > offersInfo[j].OfferData.PromotionScore
+	})
 	return offersInfo, nil
 }
 
@@ -492,6 +634,7 @@ func mapOffer(o repository.Offer) domain.Offer {
 		Latitude:       o.Latitude,
 		CreatedAt:      o.CreatedAt,
 		UpdatedAt:      o.UpdatedAt,
+		PromotesUntil:  o.PromotesUntil,
 	}
 }
 

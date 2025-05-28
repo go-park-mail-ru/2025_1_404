@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"log"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -67,5 +68,7 @@ func (l *ZapLogger) WithFields(fields LoggerFields) Logger {
 }
 
 func (l *ZapLogger) Close() {
-	l.logger.Sync()
+	if err := l.logger.Sync(); err != nil {
+		log.Println("logger sync error:", err)
+	}
 }

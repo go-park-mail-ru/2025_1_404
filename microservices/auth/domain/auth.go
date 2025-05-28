@@ -1,8 +1,10 @@
+//go:generate easyjson -all
+
 package domain
 
 import "time"
 
-// User Структура пользователя
+//easyjson:json
 type User struct {
 	ID        int       `json:"id"`
 	Email     string    `json:"email"`
@@ -10,10 +12,11 @@ type User struct {
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
 	Image     string    `json:"image"`
+	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"-"`
 }
 
-// RegisterRequest Запрос на регистрацию
+//easyjson:json
 type RegisterRequest struct {
 	Email     string `json:"email" validate:"required,email"`
 	Password  string `json:"password" validate:"required,password,min=8"`
@@ -21,13 +24,13 @@ type RegisterRequest struct {
 	LastName  string `json:"last_name" validate:"required,name,max=32"`
 }
 
-// LoginRequest Запрос на вход
+//easyjson:json
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required"`
 	Password string `json:"password" validate:"required"`
 }
 
-// UpdateRequest Запрос на обновление данных
+//easyjson:json
 type UpdateRequest struct {
 	ID        int
 	Email     string `json:"email,omitempty" validate:"omitempty,email"`
