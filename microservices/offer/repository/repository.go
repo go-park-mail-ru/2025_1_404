@@ -138,10 +138,6 @@ const (
 		DELETE FROM kvartirum.Likes WHERE user_id = $1 AND offer_id = $2;
 	`
 
-	deleteAllLikes = `
-		Delete FROM kvartirum.Likes WHERE offer_id = $1;
-	`
-
 	getLikeStat = `
 		SELECT COUNT(*) FROM kvartirum.Likes WHERE offer_id = $1
 	`

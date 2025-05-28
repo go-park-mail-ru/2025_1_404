@@ -19,7 +19,7 @@ func SendJSONResponse(w http.ResponseWriter, data easyjson.Marshaler, statusCode
 		return
 	}
 
-	w.Write(buf)
+	_, _ = w.Write(buf)
 }
 
 // SendErrorResponse Отправка ошибки в JSON-формате
@@ -36,7 +36,7 @@ func SendErrorResponse(w http.ResponseWriter, message string, statusCode int, cf
 		return
 	}
 
-	w.Write(buf)
+	_, _ = w.Write(buf)
 }
 
 // EnableCORS CORS Middleware (чтобы фронтенд мог обращаться к API)

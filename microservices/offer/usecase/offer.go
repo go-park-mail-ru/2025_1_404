@@ -513,7 +513,9 @@ func (u *offerUsecase) CheckPayment(ctx context.Context, paymentId int) (*domain
 	}
 
 	if checkPaymentResponse.IsActive && checkPaymentResponse.IsPaid {
-		u.repo.SetPromotesUntil(ctx, int(checkPaymentResponse.OfferId), time.Now().Add(time.Duration(checkPaymentResponse.Days)*24*time.Hour))
+		if err := u.repo.SetPromotesUntil(ctx, int(checkPaymentResponse.OfferId), time.Now().Add(time.Duration(checkPaymentResponse.Days)*24*time.Hour)); err != nil {
+			u.logger.Error("failed to set promotes_until")
+		}
 	}
 
 	return &domain.CheckPaymentResponse{

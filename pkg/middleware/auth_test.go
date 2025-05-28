@@ -62,7 +62,9 @@ func TestAuthMiddleware_Fail_EmptyCookie(t *testing.T) {
 	message := "Учётные данные не предоставлены"
 
 	var response map[string]string
-	json.NewDecoder(rr.Body).Decode(&response)
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
 
 	if (response["error"]) != message {
 		t.Errorf(`Ожидалось сообщение "%s", получено ""%s`, message, response["error"])
@@ -89,7 +91,9 @@ func TestAuthMiddleware_Fail_IncorrectToken(t *testing.T) {
 	message := "Неверный токен"
 
 	var response map[string]string
-	json.NewDecoder(rr.Body).Decode(&response)
+	if err := json.NewDecoder(rr.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
 
 	if (response["error"]) != message {
 		t.Errorf(`Ожидалось сообщение "%s", получено ""%s`, message, response["error"])
