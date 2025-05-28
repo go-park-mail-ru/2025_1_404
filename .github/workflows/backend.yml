@@ -40,7 +40,7 @@ jobs:
         run: go test ./... -v
 
       - name: Archive project
-        run: tar --owner=0 --group=0 -czf project.tar.gz .
+        run: tar --owner=0 --group=0 --warning=no-file-changed -czf project.tar.gz .
 
       - name: Upload archive to server
         uses: appleboy/scp-action@v0.1.4
