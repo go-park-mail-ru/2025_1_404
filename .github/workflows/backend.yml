@@ -19,7 +19,7 @@ jobs:
           go-version: 1.23
 
       - name: Download dependencies
-        run: go mod tidy
+        run: go mod tidy -e
 
       - name: Install tools
         run: |
