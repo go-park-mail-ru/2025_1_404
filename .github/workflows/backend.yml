@@ -1,0 +1,54 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.23
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run linter
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run ./...
+
+      - name: Run tests
+        run: go test ./... -v
+
+      - name: Build binary
+        run: |
+          mkdir -p bin
+          go build -o bin/backend ./cmd
+
+      - name: Upload project to server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.VDS_HOST }}
+          username: ${{ secrets.VDS_USER }}
+          key: ${{ secrets.VDS_KEY }}
+          source: "."
+          target: "/home/backend/2025_1_404"
+
+      - name: Restart docker-compose service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VDS_HOST }}
+          username: ${{ secrets.VDS_USER }}
+          key: ${{ secrets.VDS_KEY }}
+          script: |
+            cd /home/backend/2025_1_404
+            sudo systemctl restart backend.service
