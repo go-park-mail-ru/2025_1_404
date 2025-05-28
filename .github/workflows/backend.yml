@@ -21,6 +21,12 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Install mockgen
+        run: go install go.uber.org/mock/mockgen@latest
+
+      - name: Generate mocks
+        run: go generate ./...
+
       - name: Run linter
         run: |
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
