@@ -518,7 +518,7 @@ func (r *offerRepository) GetOfferData(ctx context.Context, offer domain.Offer, 
 	FROM kvartirum.MetroStation ms
 	LEFT JOIN kvartirum.MetroLine ml ON ms.metro_line_id = ml.id
 	WHERE ms.id = $1;
-	`, offer.MetroStationID).Scan(&offerData.Metro.Station, &offerData.Metro.Id, &offerData.Metro.Color)
+	`, offer.MetroStationID).Scan(&offerData.Metro.Id, &offerData.Metro.Station, &offerData.Metro.Color)
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "offerID": offer.ID, "success": err == nil}).Info("SQL GetOfferStation")
 
