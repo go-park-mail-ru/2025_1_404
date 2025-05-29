@@ -14,6 +14,11 @@ type OfferPromotion struct {
 	PromotedUntil *time.Time `json:"promoted_until"`
 }
 
+type HousingComplex struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 type OfferData struct {
 	Images         []OfferImage        `json:"offer_images"`
 	Seller         OfferSeller         `json:"seller"`
@@ -21,6 +26,7 @@ type OfferData struct {
 	OfferStat      OfferStat           `json:"offer_stat"`
 	Prices         []OfferPriceHistory `json:"offer_prices"`
 	Promotion      *OfferPromotion     `json:"offer_promotion"`
+	HousingComplex *HousingComplex     `json:"housing_complex"`
 	PromotionScore float32             `json:"-"`
 }
 
