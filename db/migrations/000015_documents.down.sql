@@ -1,3 +1,3 @@
 SET SEARCH_PATH = kvartirum;
 
-DROP TABLE IF EXISTS offer_documents;
+DROP TABLE IF EXISTS kvartirum.offer_documents;

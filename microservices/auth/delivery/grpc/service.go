@@ -35,6 +35,7 @@ func (s *authService) GetUserById(ctx context.Context, r *authpb.GetUserRequest)
 			FirstName: user.FirstName,
 			LastName:  user.LastName,
 			Image:     user.Image,
+			Role:      user.Role,
 			CreatedAt: timestamppb.New(user.CreatedAt),
 		},
 	}, nil

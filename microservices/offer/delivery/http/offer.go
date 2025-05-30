@@ -626,7 +626,7 @@ func (h *OfferHandler) UploadOfferDocument(w http.ResponseWriter, r *http.Reques
 	}
 
 	upload := s3.Upload{
-		Bucket:      "documents",
+		Bucket:      "offers",
 		Filename:    header.Filename,
 		Size:        header.Size,
 		File:        bytes.NewReader(fileBytes),
@@ -643,11 +643,23 @@ func (h *OfferHandler) UploadOfferDocument(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *OfferHandler) GetOfferDocuments(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(utils.UserIDKey).(int)
+	if !ok {
+		utils.SendErrorResponse(w, "UserID not found", http.StatusBadRequest, &h.cfg.App.CORS)
+	}
+
 	vars := mux.Vars(r)
 	offerID, err := strconv.Atoi(vars["id"])
 	if err != nil || offerID <= 0 {
 		utils.SendErrorResponse(w, "Некорректный ID объявления", http.StatusBadRequest, &h.cfg.App.CORS)
 		return
+	}
+
+	if err := h.OfferUC.CheckModer(r.Context(), offerID); err != nil {
+		if err := h.OfferUC.CheckAccessToOffer(r.Context(), offerID, userID); err != nil {
+			utils.SendErrorResponse(w, err.Error(), http.StatusForbidden, &h.cfg.App.CORS)
+			return
+		}
 	}
 
 	docs, err := h.OfferUC.GetDocuments(r.Context(), offerID)

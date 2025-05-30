@@ -153,7 +153,7 @@ func main() {
 	r.Handle("/api/v1/offers/documents/{id:[0-9]+}",
 		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.GetOfferDocuments))).
 		Methods(http.MethodGet)
-	r.Handle("/api/v1/offers/documents/{id:[0-9]+}",
+	r.Handle("/api/v1/offers/documents/{offerId:[0-9]+}/{documentId:[0-9]+}",
 		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.DeleteOfferDocument))).
 		Methods(http.MethodDelete)
 

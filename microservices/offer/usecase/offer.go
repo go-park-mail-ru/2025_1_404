@@ -568,6 +568,7 @@ func (u *offerUsecase) SaveOfferDocument(ctx context.Context, offerID int, uploa
 	if err != nil {
 		return err
 	}
+	u.logger.Info("Save offerDocument url: " + url)
 	return u.repo.AddDocument(ctx, offerID, url, name)
 }
 
@@ -659,13 +660,13 @@ func (u *offerUsecase) CheckAccessToOffer(ctx context.Context, offerID int, user
 }
 
 func (u *offerUsecase) CheckModer(ctx context.Context, userID int) error {
-	_, err := u.authService.GetUserById(ctx, &authpb.GetUserRequest{Id: int32(userID)})
+	user, err := u.authService.GetUserById(ctx, &authpb.GetUserRequest{Id: int32(userID)})
 	if err != nil {
 		return err
 	}
-	//if user.User.Role != "moderator" {
-	//	return fmt.Errorf("пользователь не модератор")
-	//}
+	if user.User.Role != "moderator" {
+		return fmt.Errorf("пользователь не модератор")
+	}
 	return nil
 }
 

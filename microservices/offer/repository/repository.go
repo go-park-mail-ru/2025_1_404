@@ -913,11 +913,18 @@ func (r *offerRepository) AddDocument(ctx context.Context, offerID int, url, nam
 }
 
 func (r *offerRepository) GetDocuments(ctx context.Context, offerID int) ([]domain.OfferDocument, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
 	rows, err := r.db.Query(ctx, selectDocumentsSQL, offerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
+	r.logger.WithFields(logger.LoggerFields{
+		"requestID": requestID,
+		"success":   err == nil,
+	}).Info("SQL Query GetDocuments")
 
 	var docs []domain.OfferDocument
 	for rows.Next() {
@@ -932,9 +939,9 @@ func (r *offerRepository) GetDocuments(ctx context.Context, offerID int) ([]doma
 
 func (r *offerRepository) DeleteDocument(ctx context.Context, documentID int, userID int) error {
 	const query = `
-		DELETE FROM kvartirum.offer_documents 
+		DELETE FROM kvartirum.offer_documents
 		WHERE id = $1 AND offer_id IN (
-			SELECT id FROM offers WHERE seller_id = $2
+			SELECT id FROM kvartirum.offer WHERE seller_id = $2
 		)
 	`
 
