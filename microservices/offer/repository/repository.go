@@ -32,6 +32,8 @@ type Offer struct {
 	Flat           int
 	Area           int
 	CeilingHeight  int
+	Verified       bool
+	Comment        *string
 	Longitude      string
 	Latitude       string
 	CreatedAt      time.Time
@@ -65,7 +67,8 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
+			address, flat, area, ceiling_height, verified, comment,
+			longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE id = $1;
 	`
@@ -74,7 +77,8 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
+			address, flat, area, ceiling_height, verified, comment,
+			longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE seller_id = $1;
 	`
@@ -83,7 +87,8 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
+			address, flat, area, ceiling_height, verified, comment,
+			longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer;
 	`
 
@@ -91,7 +96,8 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
+			address, flat, area, ceiling_height, verified, comment, 
+			longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE offer_status_id != 2;
 	`
@@ -114,7 +120,8 @@ const (
 		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
 			purchase_type_id, property_type_id, offer_status_id, renovation_id,
 			complex_id, price, description, floor, total_floors, rooms,
-			address, flat, area, ceiling_height, longitude, latitude, created_at, updated_at, promotes_until
+			address, flat, area, ceiling_height, verified, comment,
+			longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
 		WHERE complex_id = $1;
 	`
@@ -136,10 +143,6 @@ const (
 
 	deleteLike = `
 		DELETE FROM kvartirum.Likes WHERE user_id = $1 AND offer_id = $2;
-	`
-
-	deleteAllLikes = `
-		Delete FROM kvartirum.Likes WHERE offer_id = $1;
 	`
 
 	getLikeStat = `
@@ -178,7 +181,8 @@ const (
 	SELECT o.id, o.seller_id, o.offer_type_id, o.metro_station_id, o.rent_type_id,
 		o.purchase_type_id, o.property_type_id, o.offer_status_id, o.renovation_id,
 		o.complex_id, o.price, o.description, o.floor, o.total_floors, o.rooms,
-		o.address, o.flat, o.area, o.ceiling_height, o.longitude, o.latitude, o.created_at, o.updated_at
+		o.address, o.flat, o.area, o.ceiling_height, o.verified, o.comment, 
+		o.longitude, o.latitude, o.created_at, o.updated_at
 	FROM kvartirum.UserOfferFavourites f
 	JOIN kvartirum.Offer o ON o.id = f.offer_id
 	WHERE f.user_id = $1
@@ -192,6 +196,28 @@ const (
 
 	getFavoriteStat = `
 		SELECT COUNT(*) FROM kvartirum.UserOfferFavourites WHERE offer_id = $1;
+	`
+
+	verifyOfferSQL = `
+		UPDATE kvartirum.Offer
+		SET verified = TRUE, comment = ''
+		WHERE id = $1;
+	`
+
+	rejectOfferSQL = `
+		UPDATE kvartirum.Offer
+		SET verified = FALSE, comment = $2
+		WHERE id = $1;
+	`
+
+	getUnverifiedOffersSQL = `
+		SELECT id, seller_id, offer_type_id, metro_station_id, rent_type_id,
+			purchase_type_id, property_type_id, offer_status_id, renovation_id,
+			complex_id, price, description, floor, total_floors, rooms,
+			address, flat, area, ceiling_height, verified, comment,
+			longitude, latitude, created_at, updated_at, promotes_until
+		FROM kvartirum.Offer
+		WHERE verified = false
 	`
 )
 
@@ -223,7 +249,7 @@ func (r *offerRepository) GetOfferByID(ctx context.Context, id int64) (Offer, er
 		&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
 		&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 		&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
-		&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+		&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight, &o.Verified, &o.Comment,
 		&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 	)
 
@@ -255,7 +281,7 @@ func (r *offerRepository) GetOffersBySellerID(ctx context.Context, sellerID int6
 			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
-			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight, &o.Verified, &o.Comment,
 			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
@@ -287,7 +313,7 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
-			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight, &o.Verified, &o.Comment,
 			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
@@ -297,6 +323,38 @@ func (r *offerRepository) GetAllOffers(ctx context.Context) ([]Offer, error) {
 	}
 
 	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": query, "success": true, "count": len(offers)}).Info("SQL query GetAllOffers succeeded")
+
+	return offers, nil
+}
+
+func (r *offerRepository) GetUnverifiedOffers(ctx context.Context) ([]Offer, error) {
+	query := getUnverifiedOffersSQL
+
+	requestID := ctx.Value(utils.RequestIDKey)
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": query, "success": false, "err": err.Error()}).Error("SQL query GetUnverifiedOffers failed")
+		return nil, err
+	}
+	defer rows.Close()
+
+	var offers []Offer
+	for rows.Next() {
+		var o Offer
+		err = rows.Scan(
+			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
+			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
+			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight, &o.Verified, &o.Comment,
+			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
+		)
+		if err != nil {
+			return nil, err
+		}
+		offers = append(offers, o)
+	}
+
+	r.logger.WithFields(logger.LoggerFields{"requestID": requestID, "query": query, "success": true, "count": len(offers)}).Info("SQL query GetUnverifiedOffers succeeded")
 
 	return offers, nil
 }
@@ -392,7 +450,7 @@ func (r *offerRepository) GetOffersByFilter(ctx context.Context, f domain.OfferF
 			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
-			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight, &o.Verified, &o.Comment,
 			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
@@ -603,7 +661,7 @@ func (r *offerRepository) GetOffersByZhkId(ctx context.Context, zhkId int) ([]do
 			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
-			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight, &o.Verified, &o.Comment,
 			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt, &o.PromotesUntil,
 		)
 		if err != nil {
@@ -785,7 +843,7 @@ func (r *offerRepository) GetFavorites(ctx context.Context, userID int64, offerT
 			&o.ID, &o.SellerID, &o.OfferTypeID, &o.MetroStationID, &o.RentTypeID,
 			&o.PurchaseTypeID, &o.PropertyTypeID, &o.StatusID, &o.RenovationID,
 			&o.ComplexID, &o.Price, &o.Description, &o.Floor, &o.TotalFloors,
-			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight,
+			&o.Rooms, &o.Address, &o.Flat, &o.Area, &o.CeilingHeight, &o.Verified, &o.Comment,
 			&o.Longitude, &o.Latitude, &o.CreatedAt, &o.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -832,4 +890,64 @@ func (r *offerRepository) SetPromotesUntil(ctx context.Context, id int, until ti
 		WHERE id = $2;
 	`, until, id)
 	return err
+}
+
+func (r *offerRepository) VerifyOffer(ctx context.Context, offerID int) error {
+	_, err := r.db.Exec(ctx, verifyOfferSQL, offerID)
+	return err
+}
+
+func (r *offerRepository) RejectOffer(ctx context.Context, offerID int, comment string) error {
+	_, err := r.db.Exec(ctx, rejectOfferSQL, offerID, comment)
+	return err
+}
+
+const (
+	insertDocumentSQL  = `INSERT INTO kvartirum.offer_documents (offer_id, url, name) VALUES ($1, $2, $3)`
+	selectDocumentsSQL = `SELECT id, offer_id, url, name, created_at FROM kvartirum.offer_documents WHERE offer_id = $1`
+)
+
+func (r *offerRepository) AddDocument(ctx context.Context, offerID int, url, name string) error {
+	_, err := r.db.Exec(ctx, insertDocumentSQL, offerID, url, name)
+	return err
+}
+
+func (r *offerRepository) GetDocuments(ctx context.Context, offerID int) ([]domain.OfferDocument, error) {
+	rows, err := r.db.Query(ctx, selectDocumentsSQL, offerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var docs []domain.OfferDocument
+	for rows.Next() {
+		var d domain.OfferDocument
+		if err := rows.Scan(&d.ID, &d.OfferID, &d.URL, &d.Name, &d.CreatedAt); err != nil {
+			return nil, err
+		}
+		docs = append(docs, d)
+	}
+	return docs, nil
+}
+
+func (r *offerRepository) DeleteDocument(ctx context.Context, documentID int, userID int) error {
+	const query = `
+		DELETE FROM kvartirum.offer_documents 
+		WHERE id = $1 AND offer_id IN (
+			SELECT id FROM offers WHERE seller_id = $2
+		)
+	`
+
+	res, err := r.db.Exec(ctx, query, documentID, userID)
+	if err != nil {
+		return fmt.Errorf("ошибка при удалении документа: %w", err)
+	}
+
+	rowsAffected := res.RowsAffected()
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("нет доступа к удалению или документ не найден")
+	}
+
+	return nil
 }

@@ -20,6 +20,8 @@ import (
 	"github.com/go-park-mail-ru/2025_1_404/pkg/utils"
 	authpb "github.com/go-park-mail-ru/2025_1_404/proto/auth"
 	authService "github.com/go-park-mail-ru/2025_1_404/proto/auth/mocks"
+	paymentpb "github.com/go-park-mail-ru/2025_1_404/proto/payment"
+	paymentService "github.com/go-park-mail-ru/2025_1_404/proto/payment/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -42,9 +44,10 @@ func TestGetOffers(t *testing.T) {
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	var userID = 1
@@ -52,7 +55,7 @@ func TestGetOffers(t *testing.T) {
 
 	User1 := &authpb.GetUserResponse{User: &authpb.User{Id: 3, FirstName: "Ivan", LastName: "Ivanov", Image: "image1.png", CreatedAt: timestamppb.New(time.Now())}}
 	User2 := &authpb.GetUserResponse{User: &authpb.User{Id: 1, FirstName: "Maksim", LastName: "Maksimov", Image: "image2.png", CreatedAt: timestamppb.New(time.Now())}}
-	History1 := []domain.OfferPriceHistory{{123, time.Now()}, {245, time.Now()}}
+	History1 := []domain.OfferPriceHistory{{Price: 123, Date: time.Now()}, {Price: 245, Date: time.Now()}}
 	History2 := []domain.OfferPriceHistory{{Price: 789, Date: time.Now()}, {Price: 456, Date: time.Now()}}
 	t.Run("successful get offers", func(t *testing.T) {
 		// Тестовые данные
@@ -129,10 +132,11 @@ func TestGetOffersByFilter(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	var userID = 1
@@ -140,7 +144,7 @@ func TestGetOffersByFilter(t *testing.T) {
 
 	User1 := &authpb.GetUserResponse{User: &authpb.User{Id: 3, FirstName: "Ivan", LastName: "Ivanov", Image: "image1.png", CreatedAt: timestamppb.New(time.Now())}}
 	User2 := &authpb.GetUserResponse{User: &authpb.User{Id: 1, FirstName: "Maksim", LastName: "Maksimov", Image: "image2.png", CreatedAt: timestamppb.New(time.Now())}}
-	History1 := []domain.OfferPriceHistory{{123, time.Now()}, {245, time.Now()}}
+	History1 := []domain.OfferPriceHistory{{Price: 123, Date: time.Now()}, {Price: 245, Date: time.Now()}}
 	History2 := []domain.OfferPriceHistory{{Price: 789, Date: time.Now()}, {Price: 456, Date: time.Now()}}
 
 	minPrice := 100000
@@ -225,17 +229,18 @@ func TestGetOfferByID(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	var userID = 1
 	UserID := &userID
 
 	User1 := &authpb.GetUserResponse{User: &authpb.User{Id: 1, FirstName: "Ivan", LastName: "Ivanov", Image: "image1.png", CreatedAt: timestamppb.New(time.Now())}}
-	History1 := []domain.OfferPriceHistory{{123, time.Now()}, {245, time.Now()}}
+	History1 := []domain.OfferPriceHistory{{Price: 123, Date: time.Now()}, {Price: 245, Date: time.Now()}}
 
 	testID := 123
 	IP := "123.123.123.123"
@@ -314,10 +319,11 @@ func TestGetOffersBySellerID(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	var userID = 1
@@ -325,7 +331,7 @@ func TestGetOffersBySellerID(t *testing.T) {
 
 	User1 := &authpb.GetUserResponse{User: &authpb.User{Id: 3, FirstName: "Ivan", LastName: "Ivanov", Image: "image1.png", CreatedAt: timestamppb.New(time.Now())}}
 	User2 := &authpb.GetUserResponse{User: &authpb.User{Id: 1, FirstName: "Maksim", LastName: "Maksimov", Image: "image2.png", CreatedAt: timestamppb.New(time.Now())}}
-	History1 := []domain.OfferPriceHistory{{123, time.Now()}, {245, time.Now()}}
+	History1 := []domain.OfferPriceHistory{{Price: 123, Date: time.Now()}, {Price: 245, Date: time.Now()}}
 	History2 := []domain.OfferPriceHistory{{Price: 789, Date: time.Now()}, {Price: 456, Date: time.Now()}}
 
 	sellerID := 123
@@ -415,10 +421,11 @@ func TestCreateOffer(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	description := "Описание"
@@ -502,10 +509,11 @@ func TestDeleteOffer(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	offerId := 1
@@ -542,10 +550,11 @@ func TestSaveOfferImage(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	offerId := 1
@@ -586,10 +595,11 @@ func TestPublishOffer(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	offerID := 1
@@ -680,10 +690,11 @@ func TestDeleteOfferImage(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	offerID := 1
@@ -770,10 +781,11 @@ func TestLikeOffer(t *testing.T) {
 		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
 	}
 	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
 	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
 	mockRedis := redisMock.NewMockRedisRepo(ctrl)
 
-	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockRedis, mockYa)
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
 	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
 
 	like := domain.LikeRequest{
@@ -834,5 +846,335 @@ func TestLikeOffer(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, true, stat.IsLiked)
 		assert.Equal(t, 0, stat.Amount)
+	})
+}
+
+func TestCheckPayment(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
+	mockS3 := s3Mock.NewMockS3Repo(ctrl)
+	cfg := &config.Config{
+		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
+	}
+	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
+	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
+	mockRedis := redisMock.NewMockRedisRepo(ctrl)
+
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
+
+	t.Run("CheckPayment ok", func(t *testing.T) {
+		now := time.Now()
+		expectedUntil := now.Add(time.Duration(30) * 24 * time.Hour)
+
+		resp := paymentpb.CheckPaymentResponse{OfferId: 1, IsActive: true, IsPaid: true, Days: 30}
+		mockPaymentService.EXPECT().CheckPayment(ctx, &paymentpb.CheckPaymentRequest{PaymentId: int32(1)}).Return(&resp, nil)
+		mockRepo.EXPECT().
+			SetPromotesUntil(ctx, 1, gomock.AssignableToTypeOf(time.Time{})).
+			DoAndReturn(func(_ context.Context, _ int, actualUntil time.Time) error {
+				assert.WithinDuration(t, expectedUntil, actualUntil, time.Second)
+				return nil
+			})
+
+		paymentResponse, err := offerUsecase.CheckPayment(ctx, 1)
+
+		assert.NoError(t, err)
+		assert.Equal(t, true, paymentResponse.IsActive)
+	})
+
+	t.Run("CheckPayment failed", func(t *testing.T) {
+		resp := paymentpb.CheckPaymentResponse{OfferId: 1, IsActive: true, IsPaid: true, Days: 30}
+		mockPaymentService.EXPECT().CheckPayment(ctx, &paymentpb.CheckPaymentRequest{PaymentId: int32(1)}).Return(&resp, errors.New("some error"))
+
+		_, err := offerUsecase.CheckPayment(ctx, 1)
+
+		assert.Error(t, err, "some error")
+	})
+}
+
+func TestValidateOffer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
+	mockS3 := s3Mock.NewMockS3Repo(ctrl)
+	cfg := &config.Config{
+		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
+	}
+	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
+	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
+	mockRedis := redisMock.NewMockRedisRepo(ctrl)
+
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
+
+	t.Run("ValidateOffer ok", func(t *testing.T) {
+		resp := paymentpb.ValidatePaymentResponse{IsValid: true}
+		mockPaymentService.EXPECT().
+			ValidatePayment(ctx, &paymentpb.ValidatePaymentRequest{
+				PaymentId: int32(100),
+				OfferId:   int32(1),
+			}).Return(&resp, nil)
+
+		result, err := offerUsecase.ValidateOffer(ctx, 1, 100)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.True(t, *result)
+	})
+
+	t.Run("ValidateOffer failed", func(t *testing.T) {
+		mockPaymentService.EXPECT().
+			ValidatePayment(ctx, &paymentpb.ValidatePaymentRequest{
+				PaymentId: int32(100),
+				OfferId:   int32(1),
+			}).Return(nil, errors.New("validation failed"))
+
+		result, err := offerUsecase.ValidateOffer(ctx, 1, 100)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
+func TestPromoteOffer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
+	mockS3 := s3Mock.NewMockS3Repo(ctrl)
+	cfg := &config.Config{
+		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
+	}
+	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
+	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
+	mockRedis := redisMock.NewMockRedisRepo(ctrl)
+
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
+
+	t.Run("PromoteOffer ok", func(t *testing.T) {
+		resp := &paymentpb.CreatePaymentResponse{
+			OfferId:     42,
+			RedirectUri: "https://payment.example.com/redirect",
+		}
+		mockPaymentService.EXPECT().
+			CreatePayment(ctx, &paymentpb.CreatePaymentRequest{
+				Type:    int32(1),
+				OfferId: int32(42),
+			}).
+			Return(resp, nil)
+
+		result, err := offerUsecase.PromoteOffer(ctx, 42, 1)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, int32(42), result.OfferId)
+		assert.Equal(t, "https://payment.example.com/redirect", result.PaymentUri)
+	})
+
+	t.Run("PromoteOffer failed", func(t *testing.T) {
+		mockPaymentService.EXPECT().
+			CreatePayment(ctx, &paymentpb.CreatePaymentRequest{
+				Type:    int32(2),
+				OfferId: int32(13),
+			}).
+			Return(nil, errors.New("create payment error"))
+
+		result, err := offerUsecase.PromoteOffer(ctx, 13, 2)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
+func TestCheckType(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
+	mockS3 := s3Mock.NewMockS3Repo(ctrl)
+	cfg := &config.Config{
+		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
+	}
+	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
+	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
+	mockRedis := redisMock.NewMockRedisRepo(ctrl)
+
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
+
+	t.Run("CheckType valid", func(t *testing.T) {
+		resp := &paymentpb.CheckTypeResponse{IsValid: true}
+		mockPaymentService.EXPECT().
+			CheckType(ctx, &paymentpb.CheckTypeRequest{Type: int32(1)}).
+			Return(resp, nil)
+
+		isValid, err := offerUsecase.CheckType(ctx, 1)
+
+		assert.NoError(t, err)
+		assert.True(t, isValid)
+	})
+
+	t.Run("CheckType not valid", func(t *testing.T) {
+		resp := &paymentpb.CheckTypeResponse{IsValid: false}
+		mockPaymentService.EXPECT().
+			CheckType(ctx, &paymentpb.CheckTypeRequest{Type: int32(2)}).
+			Return(resp, nil)
+
+		isValid, err := offerUsecase.CheckType(ctx, 2)
+
+		assert.NoError(t, err)
+		assert.False(t, isValid)
+	})
+
+	t.Run("CheckType failed", func(t *testing.T) {
+		mockPaymentService.EXPECT().
+			CheckType(ctx, &paymentpb.CheckTypeRequest{Type: int32(3)}).
+			Return(nil, errors.New("check type error"))
+
+		isValid, err := offerUsecase.CheckType(ctx, 3)
+
+		assert.Error(t, err)
+		assert.False(t, isValid)
+	})
+}
+
+func TestIsFavorite(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
+	mockS3 := s3Mock.NewMockS3Repo(ctrl)
+	cfg := &config.Config{
+		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
+	}
+	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
+	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
+	mockRedis := redisMock.NewMockRedisRepo(ctrl)
+
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
+
+	t.Run("IsFavorite true", func(t *testing.T) {
+		mockRepo.EXPECT().
+			IsFavorite(ctx, 42, 7).
+			Return(true, nil)
+
+		isFav, err := offerUsecase.IsFavorite(ctx, 42, 7)
+
+		assert.NoError(t, err)
+		assert.True(t, isFav)
+	})
+
+	t.Run("IsFavorite false", func(t *testing.T) {
+		mockRepo.EXPECT().
+			IsFavorite(ctx, 42, 8).
+			Return(false, nil)
+
+		isFav, err := offerUsecase.IsFavorite(ctx, 42, 8)
+
+		assert.NoError(t, err)
+		assert.False(t, isFav)
+	})
+
+	t.Run("IsFavorite error", func(t *testing.T) {
+		mockRepo.EXPECT().
+			IsFavorite(ctx, 42, 9).
+			Return(false, errors.New("db error"))
+
+		isFav, err := offerUsecase.IsFavorite(ctx, 42, 9)
+
+		assert.Error(t, err)
+		assert.False(t, isFav)
+	})
+}
+
+func TestFavoriteOffer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockOfferRepository(ctrl)
+	mockLogger := logger.NewStub()
+	mockS3 := s3Mock.NewMockS3Repo(ctrl)
+	cfg := &config.Config{
+		Minio: config.MinioConfig{Path: Path, OffersBucket: Bucket},
+	}
+	mockYa := yaMock.NewMockYandexRepo(ctrl)
+	mockPaymentService := paymentService.NewMockPaymentServiceClient(ctrl)
+	mockAuthService := authService.NewMockAuthServiceClient(ctrl)
+	mockRedis := redisMock.NewMockRedisRepo(ctrl)
+
+	offerUsecase := NewOfferUsecase(mockRepo, mockLogger, mockS3, cfg, mockAuthService, mockPaymentService, mockRedis, mockYa)
+	ctx := context.WithValue(context.Background(), utils.RequestIDKey, "test-request-id")
+
+	req := domain.FavoriteRequest{UserId: 1, OfferId: 10}
+
+	t.Run("Add to favorites", func(t *testing.T) {
+		mockRepo.EXPECT().IsFavorite(ctx, req.UserId, req.OfferId).Return(false, nil)
+		mockRepo.EXPECT().AddFavorite(ctx, req.UserId, req.OfferId).Return(nil)
+		mockRepo.EXPECT().GetFavoriteStat(ctx, req).Return(5, nil)
+
+		stat, err := offerUsecase.FavoriteOffer(ctx, req)
+
+		assert.NoError(t, err)
+		assert.True(t, stat.IsFavorited)
+		assert.Equal(t, 5, stat.Amount)
+	})
+
+	t.Run("Remove from favorites", func(t *testing.T) {
+		mockRepo.EXPECT().IsFavorite(ctx, req.UserId, req.OfferId).Return(true, nil)
+		mockRepo.EXPECT().RemoveFavorite(ctx, req.UserId, req.OfferId).Return(nil)
+		mockRepo.EXPECT().GetFavoriteStat(ctx, req).Return(3, nil)
+
+		stat, err := offerUsecase.FavoriteOffer(ctx, req)
+
+		assert.NoError(t, err)
+		assert.False(t, stat.IsFavorited)
+		assert.Equal(t, 3, stat.Amount)
+	})
+
+	t.Run("Error on IsFavorite", func(t *testing.T) {
+		mockRepo.EXPECT().IsFavorite(ctx, req.UserId, req.OfferId).Return(false, errors.New("db error"))
+
+		_, err := offerUsecase.FavoriteOffer(ctx, req)
+		assert.Error(t, err)
+	})
+
+	t.Run("Error on AddFavorite", func(t *testing.T) {
+		mockRepo.EXPECT().IsFavorite(ctx, req.UserId, req.OfferId).Return(false, nil)
+		mockRepo.EXPECT().AddFavorite(ctx, req.UserId, req.OfferId).Return(errors.New("add error"))
+
+		_, err := offerUsecase.FavoriteOffer(ctx, req)
+		assert.Error(t, err)
+	})
+
+	t.Run("Error on RemoveFavorite", func(t *testing.T) {
+		mockRepo.EXPECT().IsFavorite(ctx, req.UserId, req.OfferId).Return(true, nil)
+		mockRepo.EXPECT().RemoveFavorite(ctx, req.UserId, req.OfferId).Return(errors.New("remove error"))
+
+		_, err := offerUsecase.FavoriteOffer(ctx, req)
+		assert.Error(t, err)
+	})
+
+	t.Run("Error on GetFavoriteStat", func(t *testing.T) {
+		mockRepo.EXPECT().IsFavorite(ctx, req.UserId, req.OfferId).Return(true, nil)
+		mockRepo.EXPECT().RemoveFavorite(ctx, req.UserId, req.OfferId).Return(nil)
+		mockRepo.EXPECT().GetFavoriteStat(ctx, req).Return(0, errors.New("stat error"))
+
+		_, err := offerUsecase.FavoriteOffer(ctx, req)
+		assert.Error(t, err)
 	})
 }

@@ -513,7 +513,9 @@ func (u *offerUsecase) CheckPayment(ctx context.Context, paymentId int) (*domain
 	}
 
 	if checkPaymentResponse.IsActive && checkPaymentResponse.IsPaid {
-		u.repo.SetPromotesUntil(ctx, int(checkPaymentResponse.OfferId), time.Now().Add(time.Duration(checkPaymentResponse.Days)*24*time.Hour))
+		if err := u.repo.SetPromotesUntil(ctx, int(checkPaymentResponse.OfferId), time.Now().Add(time.Duration(checkPaymentResponse.Days)*24*time.Hour)); err != nil {
+			u.logger.Error("failed to set promotes_until")
+		}
 	}
 
 	return &domain.CheckPaymentResponse{
@@ -522,6 +524,55 @@ func (u *offerUsecase) CheckPayment(ctx context.Context, paymentId int) (*domain
 		IsPaid:   checkPaymentResponse.IsPaid,
 		Days:     int(checkPaymentResponse.Days),
 	}, nil
+}
+
+func (u *offerUsecase) VerifyOffer(ctx context.Context, offerID int) error {
+	return u.repo.VerifyOffer(ctx, offerID)
+}
+
+func (u *offerUsecase) RejectOffer(ctx context.Context, offerID int, comment string) error {
+	return u.repo.RejectOffer(ctx, offerID, comment)
+}
+
+func (u *offerUsecase) GetUnverifiedOffers(ctx context.Context, userID *int) ([]domain.OfferInfo, error) {
+	requestID := ctx.Value(utils.RequestIDKey)
+
+	offers, err := u.repo.GetUnverifiedOffers(ctx)
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get all offers failed")
+		return nil, err
+	}
+
+	offersDTO := mapOffers(offers)
+
+	offersInfo, err := u.PrepareOffersInfo(ctx, offersDTO, userID)
+
+	if err != nil {
+		u.logger.WithFields(logger.LoggerFields{"requestID": requestID, "err": err.Error()}).Error("Offer usecase: get offers data failed")
+		return []domain.OfferInfo{}, err
+	}
+
+	return offersInfo, nil
+}
+
+func (u *offerUsecase) AddDocument(ctx context.Context, offerID int, url, name string) error {
+	return u.repo.AddDocument(ctx, offerID, url, name)
+}
+
+func (u *offerUsecase) GetDocuments(ctx context.Context, offerID int) ([]domain.OfferDocument, error) {
+	return u.repo.GetDocuments(ctx, offerID)
+}
+
+func (u *offerUsecase) SaveOfferDocument(ctx context.Context, offerID int, upload s3.Upload, name string) error {
+	url, err := u.s3Repo.Put(ctx, upload)
+	if err != nil {
+		return err
+	}
+	return u.repo.AddDocument(ctx, offerID, url, name)
+}
+
+func (u *offerUsecase) DeleteDocument(ctx context.Context, offerID int, documentID int) error {
+	return u.repo.DeleteDocument(ctx, offerID, documentID)
 }
 
 func (u *offerUsecase) PrepareOfferInfo(ctx context.Context, offer domain.Offer, userID *int) (domain.OfferInfo, error) {
@@ -607,6 +658,17 @@ func (u *offerUsecase) CheckAccessToOffer(ctx context.Context, offerID int, user
 	return nil
 }
 
+func (u *offerUsecase) CheckModer(ctx context.Context, userID int) error {
+	_, err := u.authService.GetUserById(ctx, &authpb.GetUserRequest{Id: int32(userID)})
+	if err != nil {
+		return err
+	}
+	//if user.User.Role != "moderator" {
+	//	return fmt.Errorf("пользователь не модератор")
+	//}
+	return nil
+}
+
 func mapOffer(o repository.Offer) domain.Offer {
 	return domain.Offer{
 		ID:             int(o.ID),
@@ -628,6 +690,8 @@ func mapOffer(o repository.Offer) domain.Offer {
 		Flat:           o.Flat,
 		Area:           o.Area,
 		CeilingHeight:  o.CeilingHeight,
+		Verified:       o.Verified,
+		Comment:        o.Comment,
 		Longitude:      o.Longitude,
 		Latitude:       o.Latitude,
 		CreatedAt:      o.CreatedAt,
@@ -665,6 +729,8 @@ func unmapOffer(o domain.Offer) repository.Offer {
 		Flat:           o.Flat,
 		Area:           o.Area,
 		CeilingHeight:  o.CeilingHeight,
+		Verified:       o.Verified,
+		Comment:        o.Comment,
 		Longitude:      o.Longitude,
 		Latitude:       o.Latitude,
 	}

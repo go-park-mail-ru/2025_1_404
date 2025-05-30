@@ -1,24 +1,30 @@
+//go:generate easyjson -all
+
 package domain
 
 import (
 	"time"
 )
 
+//easyjson:json
 type OfferInfo struct {
 	Offer     Offer     `json:"offer"`
 	OfferData OfferData `json:"offer_data"`
 }
 
+//easyjson:json
 type OfferPromotion struct {
 	IsPromoted    bool       `json:"is_promoted"`
 	PromotedUntil *time.Time `json:"promoted_until"`
 }
 
+//easyjson:json
 type HousingComplex struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 }
 
+//easyjson:json
 type OfferData struct {
 	Images         []OfferImage        `json:"offer_images"`
 	Seller         OfferSeller         `json:"seller"`
@@ -30,6 +36,7 @@ type OfferData struct {
 	PromotionScore float32             `json:"-"`
 }
 
+//easyjson:json
 type Offer struct {
 	ID             int        `json:"id"`
 	SellerID       int        `json:"seller_id"`
@@ -52,11 +59,14 @@ type Offer struct {
 	CeilingHeight  int        `json:"ceiling_height"`
 	Longitude      string     `json:"logitude"`
 	Latitude       string     `json:"latitude"`
+	Verified       bool       `json:"verified"`
+	Comment        *string    `json:"comment,omitempty"`
 	PromotesUntil  *time.Time `json:"promotes_until,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
+//easyjson:json
 type OfferFilter struct {
 	MinArea        *int    `json:"min_area"`
 	MaxArea        *int    `json:"max_area"`
@@ -75,17 +85,20 @@ type OfferFilter struct {
 	OnlyMe         *bool   `json:"me"`
 }
 
+//easyjson:json
 type Metro struct {
 	Id      int    `json:"station_id"`
 	Color   string `json:"color"`
 	Station string `json:"station"`
 }
 
+//easyjson:json
 type OfferImage struct {
 	ID    int    `json:"id"`
 	Image string `json:"image"`
 }
 
+//easyjson:json
 type OfferSeller struct {
 	FirstName string    `json:"seller_name"`
 	LastName  string    `json:"seller_last_name"`
@@ -93,17 +106,20 @@ type OfferSeller struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+//easyjson:json
 type OfferStat struct {
 	LikesStat    LikesStat    `json:"likes_stat"`
 	Views        *int         `json:"views"`
 	FavoriteStat FavoriteStat `json:"favorite_stat"`
 }
 
+//easyjson:json
 type LikesStat struct {
 	IsLiked bool `json:"is_liked"`
 	Amount  int  `json:"amount"`
 }
 
+//easyjson:json
 type LikeRequest struct {
 	OfferId int `json:"offer_id"`
 	UserId  int `json:"user_id"`
@@ -111,30 +127,36 @@ type LikeRequest struct {
 
 const OfferStatusDraft = 2
 
+//easyjson:json
 type OfferPriceHistory struct {
 	Price int       `json:"price"`
 	Date  time.Time `json:"date"`
 }
 
+//easyjson:json
 type FavoriteRequest struct {
 	UserId  int `json:"user_id"`
 	OfferId int `json:"offer_id"`
 }
 
+//easyjson:json
 type FavoriteStat struct {
 	IsFavorited bool `json:"is_favorited"`
 	Amount      int  `json:"amount"`
 }
 
+//easyjson:json
 type CreatePaymentRequest struct {
 	Type int `json:"type"`
 }
 
+//easyjson:json
 type CreatePaymentResponse struct {
 	OfferId    int32  `json:"offer_id"`
 	PaymentUri string `json:"payment_uri"`
 }
 
+//easyjson:json
 type CheckPaymentResponse struct {
 	OfferId  int  `json:"offer_id"`
 	IsActive bool `json:"is_active"`
@@ -142,7 +164,41 @@ type CheckPaymentResponse struct {
 	Days     int  `json:"days"`
 }
 
+//easyjson:json
 type PaymentPeriods struct {
 	Days  int
 	Price int
 }
+
+//easyjson:json
+type OffersInfo []OfferInfo
+
+//easyjson:json
+type Stations []Metro
+
+//easyjson:json
+type OfferID struct {
+	Id int `json:"id"`
+}
+
+//easyjson:json
+type ImageID struct {
+	ImageID int64 `json:"image_id"`
+}
+
+//easyjson:json
+type RejectOfferRequest struct {
+	Comment string `json:"comment"`
+}
+
+//easyjson:json
+type OfferDocument struct {
+	ID        int    `json:"id"`
+	OfferID   int    `json:"offer_id"`
+	URL       string `json:"url"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+}
+
+//easyjson:json
+type OfferDocuments []OfferDocument
