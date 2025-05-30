@@ -27,19 +27,31 @@ const (
 	getZhkHeaderSQL = `
 	SELECT
 		COALESCE(ARRAY_AGG(DISTINCT img.uuid) FILTER (WHERE img.uuid IS NOT NULL), '{}') AS images,
-		COUNT (DISTINCT img.id) as images_size
+		COUNT (DISTINCT img.id) as images_size,
+		COALESCE(MIN(o.price), 0) AS lowest_price,
+		COALESCE(MAX(o.price), 0) AS highest_price
 	FROM kvartirum.housingcomplex hc
 	LEFT JOIN kvartirum.HousingComplexImages hci on hci.housing_complex_id = hc.id
 	LEFT JOIN kvartirum.Image img on img.id = hci.image_id
-	WHERE hc.id = $1;
+	LEFT JOIN kvartirum.offer o ON o.complex_id = hc.id
+	WHERE hc.id = $1
+	GROUP BY hc.id;
 	`
 
 	getZhkCharacteristicsSQL = `
 	SELECT
-		hcc.name as class_name
+		hcc.name as class_name,
+		COALESCE(MIN(o.ceiling_height), 0) AS lowest_ceiling_height,
+		COALESCE(MAX(o.ceiling_height), 0) AS highest_ceiling_height,
+		COALESCE(MIN(o.floor), 0) AS lowest_floor,
+		COALESCE(MAX(o.floor), 0) AS highest_floor,
+		COALESCE(MIN(o.area), 0) AS lowest_square,
+		COALESCE(MAX(o.area), 0) AS highest_square
 		FROM kvartirum.housingcomplex hc
 		LEFT JOIN kvartirum.housingcomplexclass hcc ON hcc.id = hc.class_id
-		WHERE hc.id = $1;
+		LEFT JOIN kvartirum.offer o ON o.complex_id = hc.id
+		WHERE hc.id = $1
+		GROUP BY hcc.name;
 	`
 
 	getAllZhkSQL = `
@@ -77,7 +89,7 @@ func (r *zhkRepository) GetZhkHeader(ctx context.Context, zhk domain.Zhk) (domai
 	header := domain.ZhkHeader{Name: zhk.Name}
 
 	err := r.db.QueryRow(ctx, getZhkHeaderSQL, zhk.ID).Scan(
-		&header.Images, &header.ImagesSize,
+		&header.Images, &header.ImagesSize, &header.LowestPrice, &header.HighestPrice,
 	)
 
 	logFields := logger.LoggerFields{"requestID": requestID, "query": getZhkHeaderSQL, "params": logger.LoggerFields{"id": zhk.ID}, "success": err == nil}
@@ -96,7 +108,15 @@ func (r *zhkRepository) GetZhkCharacteristics(ctx context.Context, zhk domain.Zh
 
 	var characteristics domain.ZhkCharacteristics
 
-	err := r.db.QueryRow(ctx, getZhkCharacteristicsSQL, zhk.ID).Scan(&characteristics.Class)
+	err := r.db.QueryRow(ctx, getZhkCharacteristicsSQL, zhk.ID).Scan(
+		&characteristics.Class,
+		&characteristics.CeilingHeight.LowestHeight,
+		&characteristics.CeilingHeight.HighestHeight,
+		&characteristics.Floors.LowestFloor,
+		&characteristics.Floors.HighestFloor,
+		&characteristics.Square.LowestSquare,
+		&characteristics.Square.HighestSquare,
+	)
 
 	logFields := logger.LoggerFields{"requestID": requestID, "query": getZhkCharacteristicsSQL, "params": logger.LoggerFields{"id": zhk.ID}, "success": err == nil}
 
