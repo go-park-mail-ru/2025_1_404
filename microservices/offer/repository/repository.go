@@ -108,7 +108,8 @@ const (
 			purchase_type_id = $4, property_type_id = $5, offer_status_id = $6,
 			renovation_id = $7, complex_id = $8, price = $9, description = $10,
 			floor = $11, total_floors = $12, rooms = $13, address = $14,
-			flat = $15, area = $16, ceiling_height = $17,  longitude = $18, latitude = $19
+			flat = $15, area = $16, ceiling_height = $17,  longitude = $18, latitude = $19,
+			verified = false, comment = ''
 		WHERE id = $20;
 	`
 
