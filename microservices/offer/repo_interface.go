@@ -40,4 +40,8 @@ type OfferRepository interface {
 	SetPromotesUntil(ctx context.Context, id int, until time.Time) error
 	VerifyOffer(ctx context.Context, offerID int) error
 	RejectOffer(ctx context.Context, offerID int, comment string) error
+	GetUnverifiedOffers(ctx context.Context) ([]repository.Offer, error)
+	AddDocument(ctx context.Context, offerID int, url, name string) error
+	GetDocuments(ctx context.Context, offerID int) ([]domain.OfferDocument, error)
+	DeleteDocument(ctx context.Context, offerID int, documentID int) error
 }

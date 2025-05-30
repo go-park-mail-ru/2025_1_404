@@ -34,4 +34,10 @@ type OfferUsecase interface {
 	CheckPayment(ctx context.Context, paymentId int) (*domain.CheckPaymentResponse, error)
 	VerifyOffer(ctx context.Context, offerID int) error
 	RejectOffer(ctx context.Context, offerID int, comment string) error
+	GetUnverifiedOffers(ctx context.Context, userID *int) ([]domain.OfferInfo, error)
+	CheckModer(ctx context.Context, userID int) error
+	AddDocument(ctx context.Context, offerID int, url, name string) error
+	GetDocuments(ctx context.Context, offerID int) ([]domain.OfferDocument, error)
+	SaveOfferDocument(ctx context.Context, offerID int, upload s3.Upload, name string) error
+	DeleteDocument(ctx context.Context, offerID int, documentID int) error
 }

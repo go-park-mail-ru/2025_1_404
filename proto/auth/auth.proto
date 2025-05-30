@@ -12,7 +12,8 @@ message User {
     string first_name = 3;
     string last_name = 4;
     string image = 5;
-    google.protobuf.Timestamp created_at = 6;
+    string role = 6;
+    google.protobuf.Timestamp created_at = 7;
 }
 
 message GetUserRequest {

@@ -144,6 +144,18 @@ func main() {
 	r.Handle("/api/v1/offers/{id:[0-9]+}/reject",
 		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.RejectOffer))).
 		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/unverified",
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.GetUnverifiedOffers))).
+		Methods(http.MethodGet)
+	r.Handle("/api/v1/offers/documents/{id:[0-9]+}",
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.UploadOfferDocument))).
+		Methods(http.MethodPost)
+	r.Handle("/api/v1/offers/documents/{id:[0-9]+}",
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.GetOfferDocuments))).
+		Methods(http.MethodGet)
+	r.Handle("/api/v1/offers/documents/{id:[0-9]+}",
+		middleware.AuthHandler(l, &cfg.App.CORS, http.HandlerFunc(offerHandler.DeleteOfferDocument))).
+		Methods(http.MethodDelete)
 
 	// Метрики
 	metrics, reg := metrics.NewMetrics("offer")

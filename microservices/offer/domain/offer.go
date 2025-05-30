@@ -178,3 +178,20 @@ type OfferID struct {
 type ImageID struct {
 	ImageID int64 `json:"image_id"`
 }
+
+//easyjson:json
+type RejectOfferRequest struct {
+	Comment string `json:"comment"`
+}
+
+//easyjson:json
+type OfferDocument struct {
+	ID        int    `json:"id"`
+	OfferID   int    `json:"offer_id"`
+	URL       string `json:"url"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+}
+
+//easyjson:json
+type OfferDocuments []OfferDocument
