@@ -217,7 +217,7 @@ const (
 			address, flat, area, ceiling_height, verified, comment,
 			longitude, latitude, created_at, updated_at, promotes_until
 		FROM kvartirum.Offer
-		WHERE verified = false
+		WHERE verified = false AND offer_status_id != 2;
 	`
 )
 
